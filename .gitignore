@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Data files (too large for git)
+data/
+*.irg
+*.TIFF
+*.tiff
+*.JPG
+*.jpg
+*.png
+
+# Output directories
+sgd_output/
+ocean_output/
+
+# Alignment and config files (user-specific)
+thermal_alignment.json
+sgd_detections.geojson
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Keep sample data directory structure
+!data/.gitkeep
