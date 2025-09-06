@@ -1,0 +1,181 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "EPSG:4326"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.4451356702425,
+          -27.163680973114808
+        ]
+      },
+      "properties": {
+        "frame": 248,
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 460.87507450059593,
+        "shore_distance": 1.0,
+        "altitude": 414.23855
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.4447911694229,
+          -27.16375160562947
+        ]
+      },
+      "properties": {
+        "frame": 248,
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 140.01632020074248,
+        "shore_distance": 1.0,
+        "altitude": 414.23855
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.44451991942722,
+          -27.163752858055407
+        ]
+      },
+      "properties": {
+        "frame": 248,
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 56.06402964916794,
+        "shore_distance": 1.0,
+        "altitude": 414.23855
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.44404551596304,
+          -27.163905249356375
+        ]
+      },
+      "properties": {
+        "frame": 248,
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 1102.5925831003028,
+        "shore_distance": 1.0,
+        "altitude": 414.23855
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.4429319390203,
+          -27.163499095115412
+        ]
+      },
+      "properties": {
+        "frame": 248,
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 1942.6905043047577,
+        "shore_distance": 1.0,
+        "altitude": 414.23855
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.44412111952298,
+          -27.163372235023747
+        ]
+      },
+      "properties": {
+        "frame": 248,
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 15.237915750799491,
+        "shore_distance": 1.4142135623730951,
+        "altitude": 414.23855
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.44391438706575,
+          -27.163719599697984
+        ]
+      },
+      "properties": {
+        "frame": 248,
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 16.100439283863615,
+        "shore_distance": 1.0,
+        "altitude": 414.23855
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.44378798182682,
+          -27.16374081328818
+        ]
+      },
+      "properties": {
+        "frame": 248,
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 20.98807263789364,
+        "shore_distance": 1.0,
+        "altitude": 414.23855
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.4431692828658,
+          -27.164086547655096
+        ]
+      },
+      "properties": {
+        "frame": 248,
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 796.6842367068941,
+        "shore_distance": 1.0,
+        "altitude": 414.23855
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.44345481787622,
+          -27.163839320285163
+        ]
+      },
+      "properties": {
+        "frame": 248,
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 27.3132452136972,
+        "shore_distance": 3.605551275463989,
+        "altitude": 414.23855
+      }
+    }
+  ]
+}

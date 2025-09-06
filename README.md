@@ -27,8 +27,8 @@ Submarine Groundwater Discharge (SGD) occurs when freshwater from underground aq
 
 ### 1. **Data Acquisition**
 The Autel 640T drone captures synchronized image pairs:
-- **RGB Camera**: 4096×3072 pixels (wide field of view)
-- **Thermal Camera**: 640×512 pixels (narrower FOV, centered)
+- **RGB Camera**: 4096×3072 pixels, ~80° FOV (wide field of view)
+- **Thermal Camera**: 640×512 pixels, ~45° FOV (narrower, covers ~70% of RGB FOV)
 
 ### 2. **Image Alignment**
 The thermal camera's field of view is a subset of the RGB image. The toolkit automatically:
@@ -49,9 +49,15 @@ The system identifies SGD through multiple criteria:
 3. **Plume Characteristics**: Minimum area, elongated shape
 4. **Persistence**: Consistent across multiple frames
 
-### 5. **Validation & Export**
+### 5. **Georeferencing**
+Converts pixel coordinates to real-world GPS locations:
+- Extracts GPS from image EXIF data
+- Accounts for thermal camera's narrower FOV
+- Applies altitude and heading corrections
+
+### 6. **Validation & Export**
 - Confidence scoring based on temperature differential and distance from shore
-- GeoJSON export for GIS mapping
+- Multiple export formats: GeoJSON, CSV, KML
 - Statistical analysis and visualization
 
 ## 📦 Installation
@@ -112,13 +118,22 @@ Controls:
 The all-in-one solution with built-in alignment:
 ```python
 from sgd_detector_integrated import IntegratedSGDDetector
+from sgd_georef import SGDGeoref
 
+# Detect SGD plumes
 detector = IntegratedSGDDetector(
     temp_threshold=1.0,  # °C below ocean median
     min_area=50          # Minimum plume size (pixels)
 )
-
 result = detector.process_frame(248, visualize=True)
+
+# Georeference detections
+georef = SGDGeoref(thermal_fov_ratio=0.7)
+locations = georef.process_frame(248, result['plume_info'])
+
+# Export to GIS
+georef.export_geojson("sgd_locations.geojson")
+georef.export_csv("sgd_locations.csv")
 ```
 
 ### Supporting Tools
@@ -149,6 +164,16 @@ python rgb_ocean_segmenter.py
 - HSV and LAB color space analysis
 - Wave zone detection
 - Confidence mapping
+
+#### **sgd_georef.py** - Georeferencing Module
+Converts pixel detections to GPS coordinates:
+```python
+from sgd_georef import SGDGeoref
+
+georef = SGDGeoref(thermal_fov_ratio=0.7)
+locations = georef.process_frame(frame_num, plume_list)
+georef.export_geojson("output.geojson")
+```
 
 #### **verify_units_nogui.py** - Temperature Verification
 Confirms temperature units and conversions:
@@ -182,10 +207,12 @@ Output confirms:
 | Land | 40-150° | 15-255 | 10-255 |
 | Waves | Any | 0-30 | 180-255 |
 
-### Alignment Parameters
-For Autel 640T (can be adjusted in code):
-- **Scale**: 6.4× (horizontal), 6.0× (vertical)
-- **Offset**: Centered (0, 0)
+### Camera FOV and Alignment
+For Autel 640T:
+- **Thermal FOV**: ~70% of RGB FOV (centered)
+- **Coverage in RGB**: ~2867×2150 pixels
+- **Scale**: 4.48× (horizontal), 4.20× (vertical)
+- **Offset**: (614, 461) pixels from top-left
 
 ## 📁 Output Files
 
@@ -225,20 +252,32 @@ Compatible with QGIS, ArcGIS, and web mapping:
   "features": [
     {
       "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-109.445136, -27.163681]
+      },
       "properties": {
         "frame": 248,
-        "area_m2": 15.4,
-        "temp_anomaly": -2.3,
-        "confidence": 0.85
-      },
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [...]
+        "datetime": "2023:07:01 16:23:58",
+        "area_m2": 460.9,
+        "temperature_anomaly": -2.9,
+        "shore_distance": 1.0,
+        "altitude": 414.2
       }
     }
   ]
 }
 ```
+
+### CSV Format
+For data analysis in Excel, R, or Python:
+```csv
+frame,datetime,latitude,longitude,area_m2,temperature_anomaly,shore_distance,altitude
+248,2023:07:01 16:23:58,-27.163681,-109.445136,460.9,-2.9,1.0,414.2
+```
+
+### KML Format
+For Google Earth visualization with placemarks and metadata.
 
 ## 🔍 Troubleshooting
 
