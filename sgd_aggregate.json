@@ -1,0 +1,233 @@
+{
+  "metadata": {
+    "last_updated": "2025-09-06T07:46:17.571119",
+    "total_frames": 250,
+    "frames_processed": [
+      27
+    ],
+    "distance_threshold": 10.0
+  },
+  "sgd_locations": [
+    {
+      "frame": 5,
+      "datetime": "2023:07:01 16:18:05",
+      "latitude": -27.154558672312888,
+      "longitude": -109.44399482972992,
+      "area_m2": 14.686534401963607,
+      "temperature_anomaly": 0,
+      "shore_distance": 4.123105625617661,
+      "altitude": 414.57226,
+      "first_frame": 5,
+      "confirmed": true
+    },
+    {
+      "frame": 5,
+      "datetime": "2023:07:01 16:18:05",
+      "latitude": -27.154220225374818,
+      "longitude": -109.4437918430775,
+      "area_m2": 26.49298552676611,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.57226,
+      "first_frame": 5,
+      "confirmed": true
+    },
+    {
+      "frame": 5,
+      "datetime": "2023:07:01 16:18:05",
+      "latitude": -27.153824976630307,
+      "longitude": -109.44327287641077,
+      "area_m2": 54.425807223465156,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.57226,
+      "first_frame": 5,
+      "confirmed": true
+    },
+    {
+      "frame": 5,
+      "datetime": "2023:07:01 16:18:05",
+      "latitude": -27.153973252259213,
+      "longitude": -109.44106595499534,
+      "area_m2": 97.62225808364045,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.57226,
+      "first_frame": 5,
+      "confirmed": true
+    },
+    {
+      "frame": 22,
+      "datetime": "2023:07:01 16:18:28",
+      "latitude": -27.155026101434835,
+      "longitude": -109.44453742342507,
+      "area_m2": 102.50213180302312,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.54064,
+      "first_frame": 22,
+      "confirmed": true
+    },
+    {
+      "frame": 22,
+      "datetime": "2023:07:01 16:18:28",
+      "latitude": -27.154771024177528,
+      "longitude": -109.44389891085984,
+      "area_m2": 120.92948134064525,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.54064,
+      "first_frame": 22,
+      "confirmed": true
+    },
+    {
+      "frame": 22,
+      "datetime": "2023:07:01 16:18:28",
+      "latitude": -27.155513578504337,
+      "longitude": -109.44395437209872,
+      "area_m2": 30.52029767168666,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.54064,
+      "first_frame": 22,
+      "confirmed": true
+    },
+    {
+      "frame": 22,
+      "datetime": "2023:07:01 16:18:28",
+      "latitude": -27.15494317123977,
+      "longitude": -109.44365965589908,
+      "area_m2": 2847.6307588880936,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.54064,
+      "first_frame": 22,
+      "confirmed": true
+    },
+    {
+      "frame": 22,
+      "datetime": "2023:07:01 16:18:28",
+      "latitude": -27.154985424748144,
+      "longitude": -109.44345564761717,
+      "area_m2": 36.27884440219358,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.54064,
+      "first_frame": 22,
+      "confirmed": true
+    },
+    {
+      "frame": 22,
+      "datetime": "2023:07:01 16:18:28",
+      "latitude": -27.155034854466173,
+      "longitude": -109.44246914972092,
+      "area_m2": 52.402775247612944,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.54064,
+      "first_frame": 22,
+      "confirmed": true
+    },
+    {
+      "frame": 27,
+      "datetime": "2023:07:01 16:18:35",
+      "latitude": -27.15513434506057,
+      "longitude": -109.44355692272161,
+      "area_m2": 61.62558861331053,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.57138,
+      "first_frame": 27,
+      "confirmed": true
+    },
+    {
+      "frame": 27,
+      "datetime": "2023:07:01 16:18:35",
+      "latitude": -27.157002956024133,
+      "longitude": -109.44291473982194,
+      "area_m2": 78.6158209880083,
+      "temperature_anomaly": 0,
+      "shore_distance": 2.8284271247461903,
+      "altitude": 414.57138,
+      "first_frame": 27,
+      "confirmed": true
+    },
+    {
+      "frame": 27,
+      "datetime": "2023:07:01 16:18:35",
+      "latitude": -27.156666458159066,
+      "longitude": -109.44279923931421,
+      "area_m2": 305.8241827445598,
+      "temperature_anomaly": 0,
+      "shore_distance": 1.0,
+      "altitude": 414.57138,
+      "first_frame": 27,
+      "confirmed": true
+    },
+    {
+      "frame": 27,
+      "datetime": "2023:07:01 16:18:35",
+      "latitude": -27.157358296684247,
+      "longitude": -109.44282051140353,
+      "area_m2": 67.96092949879106,
+      "temperature_anomaly": 0,
+      "shore_distance": 1.0,
+      "altitude": 414.57138,
+      "first_frame": 27,
+      "confirmed": true
+    },
+    {
+      "frame": 27,
+      "datetime": "2023:07:01 16:18:35",
+      "latitude": -27.156195674996425,
+      "longitude": -109.44195846319033,
+      "area_m2": 1273.115547941336,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.57138,
+      "first_frame": 27,
+      "confirmed": true
+    },
+    {
+      "frame": 27,
+      "datetime": "2023:07:01 16:18:35",
+      "latitude": -27.154962378126122,
+      "longitude": -109.44121861681568,
+      "area_m2": 42.90753599711808,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.57138,
+      "first_frame": 27,
+      "confirmed": true
+    },
+    {
+      "frame": 27,
+      "datetime": "2023:07:01 16:18:35",
+      "latitude": -27.155586108072317,
+      "longitude": -109.44105088294305,
+      "area_m2": 72.856420183026,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.57138,
+      "first_frame": 27,
+      "confirmed": true
+    },
+    {
+      "frame": 27,
+      "datetime": "2023:07:01 16:18:35",
+      "latitude": -27.155780839202002,
+      "longitude": -109.44092942389643,
+      "area_m2": 73.14439022327512,
+      "temperature_anomaly": 0,
+      "shore_distance": 0.0,
+      "altitude": 414.57138,
+      "first_frame": 27,
+      "confirmed": true
+    }
+  ],
+  "statistics": {
+    "total_unique": 18,
+    "total_detections": 8,
+    "total_area_m2": 5359.542290778515
+  }
+}

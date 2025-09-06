@@ -8,6 +8,10 @@ Submarine Groundwater Discharge (SGD) occurs when freshwater from underground aq
 
 This toolkit processes paired thermal (640×512) and RGB (4096×3072) images from an Autel 640T drone to identify areas where cold groundwater emerges at the shoreline. The thermal camera has a narrower field of view (~70% of RGB FOV), which is properly handled for accurate alignment and georeferencing.
 
+### Field of View Alignment
+![Thermal-RGB Alignment](docs/images/thermal_alignment.png)
+*The thermal camera captures ~70% of the RGB camera's field of view. The toolkit automatically extracts and aligns the matching region.*
+
 ## Key Features
 
 - **Thermal Analysis**: Process Autel 640T thermal images (deciKelvin format)
@@ -16,6 +20,11 @@ This toolkit processes paired thermal (640×512) and RGB (4096×3072) images fro
 - **Georeferencing**: Extract GPS coordinates for detected SGD locations
 - **Aggregate Mapping**: Handle overlapping survey frames with deduplication
 - **Interactive Viewers**: Real-time parameter tuning and frame navigation
+
+## Detection Pipeline
+
+![Detection Pipeline](docs/images/detection_pipeline.png)
+*The SGD detection pipeline: 1) RGB input aligned to thermal FOV, 2) ML-based segmentation, 3) Thermal data processing, 4) Ocean isolation, 5) Cold anomaly detection, 6) Final SGD identification near shoreline*
 
 ## Primary Scripts
 
@@ -39,6 +48,9 @@ python sgd_viewer.py
 - Sliders: Adjust detection parameters
 - Mark SGD: Confirm current detections
 - Export Map: Save aggregate results to GeoJSON
+
+![SGD Viewer Interface](docs/images/sgd_viewer_interface.png)
+*Main SGD viewer interface showing multi-panel analysis with RGB, segmentation, thermal, ocean thermal, SGD detection, coverage map, and statistics*
 
 ### 2. `sgd_detector_integrated.py` - Core Detection System
 Standalone detector with multiple operation modes.
@@ -77,6 +89,9 @@ python segmentation_trainer.py
 
 Creates `segmentation_model.pkl` used by other scripts.
 
+![Segmentation Trainer](docs/images/segmentation_trainer.png)
+*Interactive training tool - click to label pixels as ocean (blue), land (green), or rock (gray), then train the ML model*
+
 ### 4. `test_segmentation.py` - Parameter Testing
 Test and visualize segmentation parameters on different images.
 
@@ -89,6 +104,9 @@ python test_segmentation.py
 - Real-time segmentation preview
 - Frame navigation for testing on multiple images
 - Side-by-side comparison of original and segmented
+
+![Test Segmentation](docs/images/test_segmentation.png)
+*Parameter testing interface with HSV channel visualization and adjustable thresholds for fine-tuning segmentation*
 
 ## Installation
 

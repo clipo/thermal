@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>SGD Locations</name>
+<Style id="sgdStyle">
+  <IconStyle>
+    <color>ff0000ff</color>
+    <scale>1.0</scale>
+  </IconStyle>
+</Style>
+<Placemark>
+  <name>SGD 1 (Frame 1)</name>
+  <description>
+    Area: 33.4 m²
+
+    Temperature anomaly: 0.0°C
+
+    Shore distance: 0.0 pixels
+
+    Altitude: 414.5 m
+  </description>
+  <styleUrl>#sgdStyle</styleUrl>
+  <Point>
+    <coordinates>-109.44132499380672,-27.15369237556549,0</coordinates>
+  </Point>
+</Placemark>
+<Placemark>
+  <name>SGD 2 (Frame 2)</name>
+  <description>
+    Area: 52.4 m²
+
+    Temperature anomaly: 0.0°C
+
+    Shore distance: 0.0 pixels
+
+    Altitude: 414.4 m
+  </description>
+  <styleUrl>#sgdStyle</styleUrl>
+  <Point>
+    <coordinates>-109.44127909516504,-27.153744087461952,0</coordinates>
+  </Point>
+</Placemark>
+<Placemark>
+  <name>SGD 3 (Frame 3)</name>
+  <description>
+    Area: 29.1 m²
+
+    Temperature anomaly: 0.0°C
+
+    Shore distance: 0.0 pixels
+
+    Altitude: 414.5 m
+  </description>
+  <styleUrl>#sgdStyle</styleUrl>
+  <Point>
+    <coordinates>-109.44341874090058,-27.15366214189089,0</coordinates>
+  </Point>
+</Placemark>
+<Placemark>
+  <name>SGD 4 (Frame 3)</name>
+  <description>
+    Area: 76.3 m²
+
+    Temperature anomaly: 0.0°C
+
+    Shore distance: 0.0 pixels
+
+    Altitude: 414.5 m
+  </description>
+  <styleUrl>#sgdStyle</styleUrl>
+  <Point>
+    <coordinates>-109.44121715341501,-27.153799684555754,0</coordinates>
+  </Point>
+</Placemark>
+</Document>
+</kml>

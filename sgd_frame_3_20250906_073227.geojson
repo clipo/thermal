@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "EPSG:4326"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.44341874090058,
+          -27.15366214189089
+        ]
+      },
+      "properties": {
+        "frame": 3,
+        "datetime": "2023:07:01 16:18:02",
+        "area_m2": 29.073772516588065,
+        "temperature_anomaly": 0,
+        "shore_distance": 0.0,
+        "altitude": 414.49154
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -109.44121715341501,
+          -27.153799684555754
+        ]
+      },
+      "properties": {
+        "frame": 3,
+        "datetime": "2023:07:01 16:18:02",
+        "area_m2": 76.28267046431522,
+        "temperature_anomaly": 0,
+        "shore_distance": 0.0,
+        "altitude": 414.49154
+      }
+    }
+  ]
+}

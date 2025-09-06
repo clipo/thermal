@@ -17,6 +17,11 @@ data/
 *.jpg
 *.png
 
+# Allow documentation images
+!docs/
+!docs/images/
+!docs/images/*.png
+
 # Output directories
 sgd_output/
 ocean_output/

@@ -1,0 +1,482 @@
+#!/usr/bin/env python3
+"""
+Interactive tool for collecting training data for segmentation.
+Click on image regions to label them as ocean, land, rock, or wave.
+Trains a classifier to automatically segment based on your labels.
+"""
+
+import matplotlib
+matplotlib.use('TkAgg')
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Button, RadioButtons
+from pathlib import Path
+from PIL import Image as PILImage
+from skimage import color
+import json
+import pickle
+from datetime import datetime
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+import warnings
+warnings.filterwarnings('ignore')
+
+class SegmentationTrainer:
+    """Interactive tool for training segmentation classifier"""
+    
+    def __init__(self):
+        self.base_path = Path("data/100MEDIA")
+        self.training_file = "segmentation_training_data.json"
+        self.model_file = "segmentation_model.pkl"
+        
+        # Find available frames
+        self.frames = []
+        for f in sorted(self.base_path.glob("MAX_*.JPG"))[:100]:
+            num = int(f.stem.split('_')[1])
+            if (self.base_path / f"IRX_{num:04d}.irg").exists():
+                self.frames.append(num)
+        
+        if not self.frames:
+            raise FileNotFoundError("No paired frames found!")
+        
+        print(f"Found {len(self.frames)} frames")
+        
+        # Initialize
+        self.current_frame_idx = 0
+        self.current_frame = self.frames[0]
+        self.current_label = 'ocean'  # Default label
+        
+        # Training data storage
+        self.training_data = self.load_training_data()
+        
+        # Classes
+        self.classes = ['ocean', 'land', 'rock', 'wave']
+        self.class_colors = {
+            'ocean': [0, 0.3, 1],
+            'land': [0, 0.7, 0],
+            'rock': [0.5, 0.3, 0.1],
+            'wave': [1, 1, 0.5]
+        }
+        
+        # Sampling parameters
+        self.sample_radius = 5  # Pixels around click point
+        
+        # Load initial frame
+        self.load_frame(self.current_frame)
+        
+        # Setup GUI
+        self.setup_gui()
+        self.update_display()
+    
+    def load_training_data(self):
+        """Load existing training data if available"""
+        if Path(self.training_file).exists():
+            with open(self.training_file, 'r') as f:
+                data = json.load(f)
+                print(f"Loaded {len(data)} existing training samples")
+                return data
+        return []
+    
+    def save_training_data(self):
+        """Save training data to file"""
+        with open(self.training_file, 'w') as f:
+            json.dump(self.training_data, f, indent=2)
+        print(f"Saved {len(self.training_data)} training samples")
+    
+    def load_frame(self, frame_number):
+        """Load and process a frame"""
+        # Load RGB image
+        rgb_path = self.base_path / f"MAX_{frame_number:04d}.JPG"
+        self.rgb_full = np.array(PILImage.open(rgb_path))
+        
+        # Extract thermal FOV region (center 70%)
+        self.thermal_fov_ratio = 0.7
+        h, w = self.rgb_full.shape[:2]
+        crop_h = int(h * self.thermal_fov_ratio)
+        crop_w = int(w * self.thermal_fov_ratio)
+        start_h = (h - crop_h) // 2
+        start_w = (w - crop_w) // 2
+        
+        self.rgb_aligned = self.rgb_full[start_h:start_h+crop_h, start_w:start_w+crop_w]
+        
+        # Resize for display
+        img_pil = PILImage.fromarray(self.rgb_aligned)
+        self.rgb_display = np.array(img_pil.resize((640, 512), PILImage.Resampling.BILINEAR))
+        
+        # Compute features
+        self.compute_features()
+        
+        self.current_frame = frame_number
+        
+        # Initialize label mask for this frame
+        self.label_mask = np.zeros(self.rgb_display.shape[:2], dtype=int)
+        self.has_labels = np.zeros(self.rgb_display.shape[:2], dtype=bool)
+    
+    def compute_features(self):
+        """Compute color features for each pixel"""
+        # Convert to different color spaces
+        self.hsv = color.rgb2hsv(self.rgb_display)
+        self.lab = color.rgb2lab(self.rgb_display)
+        
+        # RGB channels
+        r = self.rgb_display[:,:,0].astype(float)
+        g = self.rgb_display[:,:,1].astype(float)
+        b = self.rgb_display[:,:,2].astype(float)
+        
+        # Compute additional features
+        intensity = (r + g + b) / 3
+        
+        # Blue dominance
+        blue_dominance = np.zeros_like(b)
+        mask = (r > 0) | (g > 0)
+        blue_dominance[mask] = b[mask] / (np.maximum(r[mask], g[mask]) + 1)
+        
+        # Color variance
+        max_channel = np.maximum(r, np.maximum(g, b))
+        min_channel = np.minimum(r, np.minimum(g, b))
+        color_range = max_channel - min_channel
+        
+        # Store features
+        self.features = np.stack([
+            r / 255.0,                      # Red
+            g / 255.0,                      # Green
+            b / 255.0,                      # Blue
+            self.hsv[:,:,0],                # Hue
+            self.hsv[:,:,1],                # Saturation
+            self.hsv[:,:,2],                # Value
+            self.lab[:,:,0] / 100.0,        # L
+            self.lab[:,:,1] / 128.0,        # a
+            self.lab[:,:,2] / 128.0,        # b
+            intensity / 255.0,               # Intensity
+            blue_dominance,                  # Blue dominance
+            color_range / 255.0,            # Color variance
+        ], axis=2)
+        
+        print(f"Computed {self.features.shape[2]} features per pixel")
+    
+    def extract_pixel_features(self, x, y):
+        """Extract features for a pixel and its neighborhood"""
+        h, w = self.rgb_display.shape[:2]
+        
+        # Get neighborhood
+        x_min = max(0, x - self.sample_radius)
+        x_max = min(w, x + self.sample_radius + 1)
+        y_min = max(0, y - self.sample_radius)
+        y_max = min(h, y + self.sample_radius + 1)
+        
+        # Extract features from neighborhood
+        neighborhood_features = self.features[y_min:y_max, x_min:x_max, :]
+        
+        # Compute statistics
+        features = []
+        for i in range(neighborhood_features.shape[2]):
+            channel = neighborhood_features[:,:,i]
+            features.extend([
+                np.mean(channel),
+                np.std(channel),
+                np.min(channel),
+                np.max(channel)
+            ])
+        
+        return features
+    
+    def on_click(self, event):
+        """Handle mouse clicks for labeling"""
+        if event.inaxes != self.ax_image:
+            return
+        
+        x, y = int(event.xdata), int(event.ydata)
+        
+        if x < 0 or x >= self.rgb_display.shape[1] or y < 0 or y >= self.rgb_display.shape[0]:
+            return
+        
+        # Extract features for this location
+        features = self.extract_pixel_features(x, y)
+        
+        # Add to training data
+        sample = {
+            'frame': self.current_frame,
+            'x': x,
+            'y': y,
+            'label': self.current_label,
+            'features': features
+        }
+        
+        self.training_data.append(sample)
+        
+        # Mark this region as labeled
+        y_min = max(0, y - self.sample_radius)
+        y_max = min(self.rgb_display.shape[0], y + self.sample_radius + 1)
+        x_min = max(0, x - self.sample_radius)
+        x_max = min(self.rgb_display.shape[1], x + self.sample_radius + 1)
+        
+        label_idx = self.classes.index(self.current_label)
+        self.label_mask[y_min:y_max, x_min:x_max] = label_idx
+        self.has_labels[y_min:y_max, x_min:x_max] = True
+        
+        print(f"Added {self.current_label} sample at ({x}, {y}) - Total samples: {len(self.training_data)}")
+        
+        # Update display
+        self.update_display()
+        
+        # Auto-save every 10 samples
+        if len(self.training_data) % 10 == 0:
+            self.save_training_data()
+    
+    def update_display(self):
+        """Update the display"""
+        # Clear axes
+        self.ax_image.clear()
+        self.ax_labels.clear()
+        
+        # Show image
+        self.ax_image.imshow(self.rgb_display)
+        self.ax_image.set_title(f'Frame {self.current_frame} - Click to label as: {self.current_label.upper()}')
+        self.ax_image.axis('off')
+        
+        # Create label overlay
+        overlay = np.zeros((*self.label_mask.shape, 4))
+        for i, class_name in enumerate(self.classes):
+            mask = (self.label_mask == i) & self.has_labels
+            color = self.class_colors[class_name]
+            overlay[mask] = color + [0.5]  # Add alpha
+        
+        # Show labels
+        self.ax_labels.imshow(self.rgb_display)
+        self.ax_labels.imshow(overlay)
+        self.ax_labels.set_title('Labeled Regions')
+        self.ax_labels.axis('off')
+        
+        # Statistics
+        self.update_stats()
+        
+        plt.draw()
+    
+    def update_stats(self):
+        """Update statistics display"""
+        self.ax_stats.clear()
+        self.ax_stats.axis('off')
+        
+        # Count samples per class
+        class_counts = {c: 0 for c in self.classes}
+        for sample in self.training_data:
+            class_counts[sample['label']] += 1
+        
+        stats_text = f"Training Statistics\n"
+        stats_text += "=" * 30 + "\n"
+        stats_text += f"Total samples: {len(self.training_data)}\n\n"
+        stats_text += "Samples per class:\n"
+        for class_name in self.classes:
+            stats_text += f"  {class_name:8s}: {class_counts[class_name]:4d}\n"
+        
+        stats_text += f"\nCurrent frame: {self.current_frame}\n"
+        stats_text += f"Frame {self.current_frame_idx + 1}/{len(self.frames)}"
+        
+        self.ax_stats.text(0.1, 0.9, stats_text, transform=self.ax_stats.transAxes,
+                          fontsize=10, family='monospace', va='top')
+    
+    def set_label(self, label):
+        """Set current label for clicking"""
+        self.current_label = label
+        print(f"Now labeling: {label}")
+        self.update_display()
+    
+    def next_frame(self, event):
+        """Go to next frame"""
+        if self.current_frame_idx < len(self.frames) - 1:
+            self.current_frame_idx += 1
+            self.load_frame(self.frames[self.current_frame_idx])
+            self.update_display()
+    
+    def prev_frame(self, event):
+        """Go to previous frame"""
+        if self.current_frame_idx > 0:
+            self.current_frame_idx -= 1
+            self.load_frame(self.frames[self.current_frame_idx])
+            self.update_display()
+    
+    def train_classifier(self, event):
+        """Train a classifier on collected data"""
+        if len(self.training_data) < 40:
+            print(f"Need at least 40 samples, have {len(self.training_data)}")
+            return
+        
+        print("\nTraining classifier...")
+        
+        # Prepare data
+        X = np.array([s['features'] for s in self.training_data])
+        y = np.array([self.classes.index(s['label']) for s in self.training_data])
+        
+        # Split data
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
+        
+        # Train classifier
+        self.classifier = RandomForestClassifier(
+            n_estimators=100, 
+            max_depth=10,
+            random_state=42,
+            n_jobs=-1
+        )
+        
+        self.classifier.fit(X_train, y_train)
+        
+        # Evaluate
+        y_pred = self.classifier.predict(X_test)
+        print("\nClassifier Performance:")
+        print(classification_report(y_test, y_pred, 
+                                   target_names=self.classes))
+        
+        # Save model
+        with open(self.model_file, 'wb') as f:
+            pickle.dump(self.classifier, f)
+        print(f"Model saved to {self.model_file}")
+        
+        # Test on current frame
+        self.test_classifier(None)
+    
+    def test_classifier(self, event):
+        """Test classifier on current frame"""
+        if not hasattr(self, 'classifier'):
+            # Try to load existing model
+            if Path(self.model_file).exists():
+                with open(self.model_file, 'rb') as f:
+                    self.classifier = pickle.load(f)
+                print("Loaded existing model")
+            else:
+                print("No trained model available")
+                return
+        
+        print("Testing classifier on current frame...")
+        
+        # Prepare features for all pixels
+        h, w = self.rgb_display.shape[:2]
+        predictions = np.zeros((h, w), dtype=int)
+        
+        # Process in chunks for efficiency
+        chunk_size = 10
+        for y in range(0, h, chunk_size):
+            for x in range(0, w, chunk_size):
+                y_end = min(y + chunk_size, h)
+                x_end = min(x + chunk_size, w)
+                
+                # Extract features for chunk
+                chunk_features = []
+                for py in range(y, y_end):
+                    for px in range(x, x_end):
+                        features = self.extract_pixel_features(px, py)
+                        chunk_features.append(features)
+                
+                # Predict
+                if chunk_features:
+                    chunk_pred = self.classifier.predict(chunk_features)
+                    
+                    # Store predictions
+                    idx = 0
+                    for py in range(y, y_end):
+                        for px in range(x, x_end):
+                            predictions[py, px] = chunk_pred[idx]
+                            idx += 1
+        
+        # Display predictions
+        self.ax_pred.clear()
+        
+        # Create colored segmentation
+        segmentation = np.zeros((h, w, 3))
+        for i, class_name in enumerate(self.classes):
+            mask = predictions == i
+            segmentation[mask] = self.class_colors[class_name]
+        
+        self.ax_pred.imshow(segmentation)
+        self.ax_pred.set_title('ML Segmentation')
+        self.ax_pred.axis('off')
+        
+        plt.draw()
+        print("Segmentation complete!")
+    
+    def clear_frame_labels(self, event):
+        """Clear labels for current frame"""
+        # Remove samples for current frame
+        self.training_data = [s for s in self.training_data if s['frame'] != self.current_frame]
+        self.save_training_data()
+        
+        # Reset display
+        self.load_frame(self.current_frame)
+        self.update_display()
+        print(f"Cleared labels for frame {self.current_frame}")
+    
+    def setup_gui(self):
+        """Setup the GUI"""
+        self.fig = plt.figure(figsize=(18, 10))
+        
+        # Image displays
+        self.ax_image = plt.subplot(2, 3, 1)
+        self.ax_labels = plt.subplot(2, 3, 2)
+        self.ax_pred = plt.subplot(2, 3, 3)
+        self.ax_stats = plt.subplot(2, 3, 4)
+        
+        # Radio buttons for label selection
+        ax_radio = plt.axes([0.05, 0.3, 0.1, 0.15])
+        self.radio = RadioButtons(ax_radio, self.classes)
+        self.radio.on_clicked(self.set_label)
+        
+        # Navigation buttons
+        ax_prev = plt.axes([0.3, 0.02, 0.08, 0.04])
+        ax_next = plt.axes([0.39, 0.02, 0.08, 0.04])
+        self.btn_prev = Button(ax_prev, 'Prev')
+        self.btn_next = Button(ax_next, 'Next')
+        self.btn_prev.on_clicked(self.prev_frame)
+        self.btn_next.on_clicked(self.next_frame)
+        
+        # Action buttons
+        ax_train = plt.axes([0.5, 0.02, 0.08, 0.04])
+        ax_test = plt.axes([0.59, 0.02, 0.08, 0.04])
+        ax_clear = plt.axes([0.68, 0.02, 0.08, 0.04])
+        ax_save = plt.axes([0.77, 0.02, 0.08, 0.04])
+        
+        self.btn_train = Button(ax_train, 'Train')
+        self.btn_test = Button(ax_test, 'Test')
+        self.btn_clear = Button(ax_clear, 'Clear')
+        self.btn_save = Button(ax_save, 'Save')
+        
+        self.btn_train.on_clicked(self.train_classifier)
+        self.btn_test.on_clicked(self.test_classifier)
+        self.btn_clear.on_clicked(self.clear_frame_labels)
+        self.btn_save.on_clicked(lambda e: self.save_training_data())
+        
+        # Connect click handler
+        self.fig.canvas.mpl_connect('button_press_event', self.on_click)
+        
+        # Instructions
+        ax_inst = plt.subplot(2, 3, 6)
+        ax_inst.axis('off')
+        instructions = """
+INSTRUCTIONS:
+1. Select label type (ocean/land/rock/wave)
+2. Click on image regions to label them
+3. Navigate frames with Prev/Next
+4. Train classifier when ready
+5. Test to see ML segmentation
+
+Tips:
+- Label diverse examples
+- Include edge cases
+- Label from multiple frames
+- Need 40+ samples to train
+        """
+        ax_inst.text(0.1, 0.9, instructions, transform=ax_inst.transAxes,
+                    fontsize=9, family='monospace', va='top')
+    
+    def run(self):
+        """Run the trainer"""
+        print("\nSegmentation Trainer")
+        print("=" * 50)
+        print("Click on regions to label them for training")
+        print("Build a dataset then train the classifier")
+        plt.show()
+
+if __name__ == "__main__":
+    trainer = SegmentationTrainer()
+    trainer.run()
