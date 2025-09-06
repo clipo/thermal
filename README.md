@@ -49,6 +49,24 @@ python sgd_detector_integrated.py --help
 python segmentation_trainer.py --help
 ```
 
+### Specifying Data Directory
+All main scripts support the `--data` argument to specify which folder of images to process:
+
+```bash
+# Use default data directory (data/100MEDIA)
+python sgd_viewer.py
+
+# Process a different survey folder
+python sgd_viewer.py --data data/flight2
+
+# Process multiple survey folders with different models
+python sgd_viewer.py --data data/morning_flight --model morning_model.pkl
+python sgd_viewer.py --data data/afternoon_flight --model afternoon_model.pkl
+
+# Train segmentation on specific dataset
+python segmentation_trainer.py --data data/rocky_coast
+```
+
 ### Common Use Cases
 
 #### Different Environmental Conditions
@@ -90,7 +108,7 @@ python sgd_detector_integrated.py --mode single --frame 248
 The primary application for SGD detection and mapping across multiple frames.
 
 ```bash
-python sgd_viewer.py
+python sgd_viewer.py [--data PATH] [--model MODEL] [--aggregate FILE]
 ```
 
 **Features:**
@@ -114,7 +132,7 @@ python sgd_viewer.py
 Standalone detector with multiple operation modes.
 
 ```bash
-python sgd_detector_integrated.py
+python sgd_detector_integrated.py [--data PATH] [--model MODEL] [--mode MODE]
 ```
 
 **Options:**
@@ -132,7 +150,7 @@ python sgd_detector_integrated.py
 Interactive tool for creating training data and training the segmentation model.
 
 ```bash
-python segmentation_trainer.py
+python segmentation_trainer.py [--data PATH] [--model MODEL] [--training FILE]
 ```
 
 **Usage:**

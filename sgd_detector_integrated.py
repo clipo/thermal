@@ -589,19 +589,24 @@ Examples:
   # Interactive menu (default)
   python sgd_detector_integrated.py
   
+  # Use different data directory
+  python sgd_detector_integrated.py --data data/flight2
+  
   # Use custom ML model
   python sgd_detector_integrated.py --model cloudy_conditions.pkl
   
   # Disable ML, use rule-based segmentation
   python sgd_detector_integrated.py --no-ml
   
-  # Direct mode selection
-  python sgd_detector_integrated.py --mode single --frame 250
+  # Direct mode selection with custom data
+  python sgd_detector_integrated.py --mode single --frame 250 --data data/survey1
   python sgd_detector_integrated.py --mode batch --start 200 --end 300
   python sgd_detector_integrated.py --mode interactive
         """
     )
     
+    parser.add_argument('--data', type=str, default='data/100MEDIA',
+                       help='Path to data directory containing image files (default: data/100MEDIA)')
     parser.add_argument('--model', type=str, default='segmentation_model.pkl',
                        help='Path to ML segmentation model (default: segmentation_model.pkl)')
     parser.add_argument('--no-ml', action='store_true',
@@ -624,9 +629,10 @@ Examples:
     print("  Thermal: 640 x 512 pixels")
     print("  Thermal FOV is centered in RGB image")
     
-    # Initialize detector with specified model
+    # Initialize detector with specified model and data directory
     ml_model_path = None if args.no_ml else args.model
     detector = IntegratedSGDDetector(
+        base_path=args.data,
         use_ml=ml_model_path is not None,
         ml_model_path=ml_model_path if ml_model_path else "segmentation_model.pkl"
     )

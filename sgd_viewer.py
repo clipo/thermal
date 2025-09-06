@@ -22,13 +22,15 @@ import os
 class SGDAggregateViewer:
     """SGD viewer with deduplication and aggregate mapping"""
     
-    def __init__(self, aggregate_file="sgd_aggregate.json", 
+    def __init__(self, data_dir="data/100MEDIA",
+                 aggregate_file="sgd_aggregate.json", 
                  distance_threshold=10.0,
                  ml_model_path="segmentation_model.pkl"):
         """
         Initialize viewer with aggregate tracking.
         
         Args:
+            data_dir: Path to directory containing image files
             aggregate_file: Path to persistent aggregate data file
             distance_threshold: Meters - SGD within this distance are considered same location
             ml_model_path: Path to ML segmentation model (None to use rule-based)
@@ -36,12 +38,13 @@ class SGDAggregateViewer:
         print("SGD Aggregate Mapping Viewer")
         print("=" * 50)
         
-        # Initialize components with specified ML model
+        # Initialize components with specified ML model and data directory
         self.detector = IntegratedSGDDetector(
+            base_path=data_dir,
             use_ml=ml_model_path is not None,
             ml_model_path=ml_model_path
         )
-        self.georef = SGDGeoref(thermal_fov_ratio=0.7)
+        self.georef = SGDGeoref(base_path=data_dir, thermal_fov_ratio=0.7)
         
         # Aggregate tracking
         self.aggregate_file = aggregate_file
@@ -474,20 +477,25 @@ Examples:
   # Use default settings
   python sgd_viewer.py
   
+  # Use different data directory
+  python sgd_viewer.py --data /path/to/survey/images
+  
   # Use custom ML model for different conditions
   python sgd_viewer.py --model rocky_shore_model.pkl
   
   # Create new aggregate file for different survey
-  python sgd_viewer.py --aggregate survey2_aggregate.json
+  python sgd_viewer.py --data data/survey2 --aggregate survey2_aggregate.json
   
   # Disable ML segmentation (use rule-based)
   python sgd_viewer.py --no-ml
   
-  # Combine options
-  python sgd_viewer.py --model sunrise_model.pkl --aggregate morning_survey.json --distance 15
+  # Combine options for complete survey setup
+  python sgd_viewer.py --data /drone/flight3 --model sunrise_model.pkl --aggregate flight3.json
         """
     )
     
+    parser.add_argument('--data', type=str, default='data/100MEDIA',
+                       help='Path to data directory containing MAX_*.JPG and IRX_*.irg files (default: data/100MEDIA)')
     parser.add_argument('--model', type=str, default='segmentation_model.pkl',
                        help='Path to ML segmentation model (default: segmentation_model.pkl)')
     parser.add_argument('--no-ml', action='store_true',
@@ -507,12 +515,14 @@ Examples:
     else:
         print("Using rule-based segmentation (ML disabled)")
     
+    print(f"Data directory: {args.data}")
     print(f"Aggregate file: {args.aggregate}")
     print(f"Merge distance: {args.distance} meters")
     print()
     
     try:
         viewer = SGDAggregateViewer(
+            data_dir=args.data,
             aggregate_file=args.aggregate,
             distance_threshold=args.distance,
             ml_model_path=ml_model_path

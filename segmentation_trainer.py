@@ -498,11 +498,14 @@ Examples:
   # Use default model and training data
   python segmentation_trainer.py
   
+  # Use different data directory
+  python segmentation_trainer.py --data data/flight2
+  
   # Create a new model for specific conditions
   python segmentation_trainer.py --model rocky_shore_model.pkl --training rocky_shore_data.json
   
-  # Continue training an existing model
-  python segmentation_trainer.py --model sunrise_model.pkl --training sunrise_data.json
+  # Continue training an existing model with different data
+  python segmentation_trainer.py --model sunrise_model.pkl --training sunrise_data.json --data data/survey3
   
 Controls:
   - Left click: Label as Ocean
