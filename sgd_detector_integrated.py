@@ -16,11 +16,25 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
+# Import ML segmentation module
+try:
+    from ml_segmentation_fast import FastMLSegmenter
+    ML_AVAILABLE = True
+    print("Fast ML segmentation module loaded")
+except ImportError:
+    try:
+        from ml_segmentation import MLSegmenter as FastMLSegmenter
+        ML_AVAILABLE = True
+        print("Standard ML segmentation module loaded")
+    except ImportError:
+        ML_AVAILABLE = False
+        print("ML segmentation not available. Using rule-based segmentation.")
+
 
 class IntegratedSGDDetector:
     """SGD Detector with built-in RGB-thermal alignment"""
     
-    def __init__(self, temp_threshold=1.0, min_area=50, base_path="data/100MEDIA"):
+    def __init__(self, temp_threshold=1.0, min_area=50, base_path="data/100MEDIA", use_ml=True):
         """
         Initialize integrated SGD detector
         
@@ -28,27 +42,44 @@ class IntegratedSGDDetector:
         - temp_threshold: Temperature difference (°C) below ocean mean for SGD
         - min_area: Minimum area (pixels) for valid SGD plume
         - base_path: Path to data directory
+        - use_ml: Use ML segmentation if available (default True)
         """
         self.temp_threshold = temp_threshold
         self.min_area = min_area
         self.base_path = Path(base_path)
+        self.use_ml = use_ml
+        
+        # Initialize ML segmenter if requested and available
+        self.ml_segmenter = None
+        if self.use_ml and ML_AVAILABLE:
+            self.ml_segmenter = FastMLSegmenter()
+            if self.ml_segmenter.classifier is not None:
+                print("Using fast ML-based segmentation")
+            else:
+                print("ML model not found. Using rule-based segmentation.")
+                print("Train a model using segmentation_trainer.py for better results.")
+                self.ml_segmenter = None
         
         # Fixed alignment parameters for Autel 640T
         # RGB: 4096x3072, Thermal: 640x512
-        # Thermal FOV is centered subset of RGB
+        # IMPORTANT: Thermal has narrower FOV (~70% of RGB FOV)
         self.rgb_width = 4096
         self.rgb_height = 3072
         self.thermal_width = 640
         self.thermal_height = 512
         
-        # Calculate alignment (assuming centered thermal FOV)
-        # These can be fine-tuned if needed
-        self.scale_x = 6.4  # RGB/thermal width ratio
-        self.scale_y = 6.0  # RGB/thermal height ratio
+        # Thermal FOV is approximately 70% of RGB FOV (centered)
+        self.thermal_fov_ratio = 0.7
         
-        # Calculate offsets to center thermal in RGB
-        thermal_width_in_rgb = self.thermal_width * self.scale_x
-        thermal_height_in_rgb = self.thermal_height * self.scale_y
+        # Calculate how many RGB pixels the thermal FOV actually covers
+        thermal_width_in_rgb = self.rgb_width * self.thermal_fov_ratio  # ~2867 pixels
+        thermal_height_in_rgb = self.rgb_height * self.thermal_fov_ratio  # ~2150 pixels
+        
+        # Scale factors: how many RGB pixels per thermal pixel
+        self.scale_x = thermal_width_in_rgb / self.thermal_width  # ~4.48
+        self.scale_y = thermal_height_in_rgb / self.thermal_height  # ~4.20
+        
+        # Calculate offsets to center thermal FOV in RGB
         self.offset_x = (self.rgb_width - thermal_width_in_rgb) / 2
         self.offset_y = (self.rgb_height - thermal_height_in_rgb) / 2
         
@@ -56,10 +87,15 @@ class IntegratedSGDDetector:
         print(f"  Thermal FOV in RGB: {thermal_width_in_rgb:.0f} x {thermal_height_in_rgb:.0f} pixels")
         print(f"  Offset: ({self.offset_x:.0f}, {self.offset_y:.0f})")
         
-        # Color ranges for segmentation
-        self.ocean_hsv = {'h': (180, 250), 's': (20, 255), 'v': (20, 200)}
+        # Optimized color ranges for segmentation (tuned for Rapa Nui rocky shores)
+        self.ocean_hsv = {'h': (180, 250), 's': (20, 255), 'v': (30, 200)}
         self.land_hsv = {'h': (40, 150), 's': (15, 255), 'v': (10, 255)}
-        self.wave_hsv = {'s': (0, 30), 'v': (180, 255)}
+        self.wave_hsv = {'s': (0, 25), 'v': (150, 255)}  # Updated thresholds
+        
+        # Optimized thresholds for rock detection
+        self.dark_threshold = 82  # Brightness below this is considered dark/rocky
+        self.color_variance_threshold = 40  # Color variance for neutral detection
+        self.blue_ratio_threshold = 1.20  # Blue dominance threshold
     
     def extract_aligned_rgb(self, rgb_full):
         """Extract RGB region that corresponds to thermal FOV"""
@@ -125,55 +161,93 @@ class IntegratedSGDDetector:
         }
     
     def segment_ocean_land_waves(self, rgb_aligned):
-        """Segment aligned RGB into ocean, land, and waves"""
+        """Segment aligned RGB into ocean, land, and waves with ML or rule-based methods"""
+        
+        # Try ML segmentation first if available
+        if self.ml_segmenter is not None:
+            try:
+                # ML segmenter expects uint8
+                if rgb_aligned.dtype != np.uint8:
+                    rgb_input = (rgb_aligned * 255).astype(np.uint8) if rgb_aligned.max() <= 1 else rgb_aligned.astype(np.uint8)
+                else:
+                    rgb_input = rgb_aligned
+                
+                # Use ultra-fast segmentation for real-time processing
+                # Check if we have the fast version
+                if hasattr(self.ml_segmenter, 'segment_ultra_fast'):
+                    masks = self.ml_segmenter.segment_ultra_fast(rgb_input, downsample=3)
+                else:
+                    # Fall back to standard fast method
+                    masks = self.ml_segmenter.segment_fast(rgb_input, stride=3)
+                
+                if masks is not None:
+                    return masks
+                else:
+                    print("  ML segmentation failed, falling back to rule-based")
+            except Exception as e:
+                print(f"  ML segmentation error: {e}, falling back to rule-based")
+        
+        # Fall back to rule-based segmentation
         # Convert to HSV
         hsv = color.rgb2hsv(rgb_aligned)
         h = hsv[:, :, 0] * 360
         s = hsv[:, :, 1] * 255
         v = hsv[:, :, 2] * 255
         
-        # Ocean detection (blue water)
-        ocean_mask = (
-            (h >= self.ocean_hsv['h'][0]) & (h <= self.ocean_hsv['h'][1]) &
-            (s >= self.ocean_hsv['s'][0]) & (s <= self.ocean_hsv['s'][1]) &
-            (v >= self.ocean_hsv['v'][0]) & (v <= self.ocean_hsv['v'][1])
-        )
+        # Get RGB channels
+        r = rgb_aligned[:,:,0].astype(float)
+        g = rgb_aligned[:,:,1].astype(float)
+        b = rgb_aligned[:,:,2].astype(float)
         
-        # Land detection (green/brown)
-        land_mask = (
-            (h >= self.land_hsv['h'][0]) & (h <= self.land_hsv['h'][1]) &
-            (s >= self.land_hsv['s'][0])
-        )
+        # Calculate color characteristics
+        max_channel = np.maximum(r, np.maximum(g, b))
+        min_channel = np.minimum(r, np.minimum(g, b))
+        color_range = max_channel - min_channel
         
-        # Dark areas are also land
-        land_mask = land_mask | (v < 30)
+        # Blue dominance (how much more blue than other channels)
+        blue_dominance = np.zeros_like(b)
+        mask = (r > 0) & (g > 0)
+        blue_dominance[mask] = b[mask] / np.maximum(r[mask], g[mask])
         
-        # Wave detection (white foam)
+        # 1. WAVE DETECTION FIRST (white foam - high brightness, low saturation)
         wave_mask = (
-            (s <= self.wave_hsv['s'][1]) &
-            (v >= self.wave_hsv['v'][0])
+            (s < self.wave_hsv['s'][1]) &  # Low saturation (white/gray)
+            (v > self.wave_hsv['v'][0])    # High brightness
         )
         
-        # Clean up conflicts
-        land_mask = land_mask & ~wave_mask
-        ocean_mask = ocean_mask & ~wave_mask & ~land_mask
+        # 2. ROCKY SHORE DETECTION (dark, non-blue areas)
+        # Rocks are dark but NOT distinctly blue
+        dark_mask = (v < self.dark_threshold)  # Dark areas
+        not_blue_dominant = blue_dominance < self.blue_ratio_threshold  # Not strongly blue
         
-        # Fill undefined areas
-        undefined = ~(ocean_mask | land_mask | wave_mask)
-        if undefined.sum() > 0:
-            # Simple color-based assignment
-            b = rgb_aligned[:,:,2]
-            g = rgb_aligned[:,:,1]
-            
-            # More blue -> ocean
-            ocean_mask = ocean_mask | (undefined & (b > g * 1.2))
-            # More green -> land
-            land_mask = land_mask | (undefined & (g > b * 1.2))
+        # Dark areas that aren't blue = rocks/shore
+        rock_mask = dark_mask & not_blue_dominant
         
-        # Morphological cleanup
+        # 3. OCEAN DETECTION (blue water, excluding waves and rocks)
+        ocean_mask = (
+            # Traditional blue water
+            ((h >= 180) & (h <= 250) &  # Blue hue range
+             (s >= 30) &  # Some saturation (not white)
+             (v >= 40) & (v <= 200))  # Not too dark or bright
+            |
+            # Dark blue water (shadows, deep water)
+            (dark_mask & (blue_dominance > 1.3) & (b > 30))
+        )
+        
+        # Make sure ocean doesn't include waves or rocks
+        ocean_mask = ocean_mask & ~wave_mask & ~rock_mask
+        
+        # 4. LAND (everything else, including vegetation and rocks)
+        land_mask = ~(ocean_mask | wave_mask)
+        
+        # Clean up small regions
         ocean_mask = morphology.remove_small_objects(ocean_mask, min_size=100)
         land_mask = morphology.remove_small_objects(land_mask, min_size=100)
-        wave_mask = morphology.remove_small_objects(wave_mask, min_size=50)
+        wave_mask = morphology.remove_small_objects(wave_mask, min_size=25)
+        
+        # Fill small holes
+        ocean_mask = morphology.remove_small_holes(ocean_mask, area_threshold=200)
+        land_mask = morphology.remove_small_holes(land_mask, area_threshold=200)
         
         return {
             'ocean': ocean_mask,
@@ -395,8 +469,9 @@ class IntegratedSGDDetector:
         
         return fig
     
-    def batch_process(self, frame_numbers=None, output_dir="sgd_output", max_frames=10):
-        """Process multiple frames"""
+    def batch_process(self, frame_numbers=None, output_dir="sgd_output", max_frames=10, 
+                     georeference=True):
+        """Process multiple frames with optional georeferencing"""
         if frame_numbers is None:
             # Find available frames
             rgb_files = sorted(self.base_path.glob("MAX_*.JPG"))[:max_frames]
@@ -411,6 +486,17 @@ class IntegratedSGDDetector:
         output_path = Path(output_dir)
         output_path.mkdir(exist_ok=True)
         
+        # Initialize georeferencer if requested
+        georef = None
+        if georeference:
+            try:
+                from sgd_georef_simple import SimpleGeoref
+                georef = SimpleGeoref(self.base_path)
+                print("✅ Georeferencing enabled")
+            except ImportError:
+                print("⚠️ Georeferencing module not found, continuing without GPS")
+                georeference = False
+        
         for frame_num in frame_numbers:
             try:
                 result = self.process_frame(frame_num, visualize=False)
@@ -421,8 +507,22 @@ class IntegratedSGDDetector:
                 fig.savefig(output_path / f"sgd_frame_{frame_num:04d}.png", dpi=150)
                 plt.close()
                 
+                # Add georeferencing if available
+                if georeference and georef and len(result['plume_info']) > 0:
+                    georef.process_sgd_frame(frame_num, result['plume_info'])
+                
             except Exception as e:
                 print(f"Error processing frame {frame_num}: {e}")
+        
+        # Export georeferenced data if available
+        if georeference and georef and len(georef.sgd_locations) > 0:
+            print(f"\n📍 Exporting {len(georef.sgd_locations)} georeferenced SGD locations...")
+            georef.export_to_geojson(str(output_path / "sgd_locations.geojson"))
+            georef.export_to_csv(str(output_path / "sgd_locations.csv"))
+            georef.export_to_kml(str(output_path / "sgd_locations.kml"))
+            print("  ✅ Created sgd_locations.geojson (for GIS)")
+            print("  ✅ Created sgd_locations.csv (spreadsheet)")
+            print("  ✅ Created sgd_locations.kml (for Google Earth)")
         
         # Create summary
         self.create_summary(results, output_path)
@@ -523,7 +623,7 @@ def main():
         fig = plt.figure(figsize=(20, 12))
         
         # Create grid for main visualizations (leave bottom space for controls)
-        gs = fig.add_gridspec(2, 4, bottom=0.15, top=0.95, hspace=0.3, wspace=0.3)
+        gs = fig.add_gridspec(2, 4, bottom=0.20, top=0.92, hspace=0.3, wspace=0.3)
         axes = []
         for i in range(2):
             for j in range(4):
@@ -632,38 +732,38 @@ def main():
             fig.canvas.draw_idle()
         
         # Navigation buttons
-        ax_prev = plt.axes([0.05, 0.08, 0.08, 0.03])
+        ax_prev = plt.axes([0.10, 0.12, 0.08, 0.04])
         btn_prev = Button(ax_prev, '← Previous')
         
-        ax_next = plt.axes([0.14, 0.08, 0.08, 0.03])
+        ax_next = plt.axes([0.19, 0.12, 0.08, 0.04])
         btn_next = Button(ax_next, 'Next →')
         
-        ax_first = plt.axes([0.23, 0.08, 0.08, 0.03])
+        ax_first = plt.axes([0.28, 0.12, 0.08, 0.04])
         btn_first = Button(ax_first, 'First')
         
-        ax_last = plt.axes([0.32, 0.08, 0.08, 0.03])
+        ax_last = plt.axes([0.37, 0.12, 0.08, 0.04])
         btn_last = Button(ax_last, 'Last')
         
         # Save button
-        ax_save = plt.axes([0.92, 0.08, 0.07, 0.03])
+        ax_save = plt.axes([0.85, 0.12, 0.08, 0.04])
         btn_save = Button(ax_save, 'Save Fig')
         
         # Frame slider (for quick navigation)
-        ax_frame = plt.axes([0.05, 0.04, 0.35, 0.02])
+        ax_frame = plt.axes([0.10, 0.07, 0.35, 0.03])
         slider_frame = Slider(ax_frame, 'Frame', 0, len(frames)-1, 
                             valinit=0, valstep=1)
         
         # Parameter sliders
-        ax_temp = plt.axes([0.5, 0.08, 0.2, 0.02])
+        ax_temp = plt.axes([0.55, 0.12, 0.25, 0.03])
         slider_temp = Slider(ax_temp, 'Temp Δ (°C)', 0.5, 3.0, 
                            valinit=1.0, valstep=0.1)
         
-        ax_area = plt.axes([0.5, 0.04, 0.2, 0.02])
+        ax_area = plt.axes([0.55, 0.07, 0.25, 0.03])
         slider_area = Slider(ax_area, 'Min Area (px)', 10, 200, 
                            valinit=50, valstep=10)
         
         # Frame info text
-        ax_info = plt.axes([0.75, 0.04, 0.15, 0.05])
+        ax_info = plt.axes([0.47, 0.12, 0.06, 0.04])
         ax_info.axis('off')
         frame_info = ax_info.text(0.5, 0.5, f'Frame {current["frame_idx"]+1}/{len(frames)}', 
                                   ha='center', va='center', fontsize=12)
