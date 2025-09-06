@@ -373,49 +373,47 @@ class IntegratedSGDDetector:
         
         return result
     
-    def visualize_detection(self, result):
-        """Visualize SGD detection results"""
-        fig, axes = plt.subplots(2, 4, figsize=(18, 9))
-        
+    def _update_axes(self, axes, result):
+        """Helper method to update axes with detection results"""
         # Show alignment box on full RGB
-        axes[0, 0].imshow(result['data']['rgb_full'])
+        axes[0].imshow(result['data']['rgb_full'])
         rect = Rectangle(
             (self.offset_x, self.offset_y),
             self.thermal_width * self.scale_x,
             self.thermal_height * self.scale_y,
             linewidth=2, edgecolor='red', facecolor='none'
         )
-        axes[0, 0].add_patch(rect)
-        axes[0, 0].set_title('Full RGB with Thermal FOV')
-        axes[0, 0].axis('off')
+        axes[0].add_patch(rect)
+        axes[0].set_title('Full RGB with Thermal FOV')
+        axes[0].axis('off')
         
         # Aligned RGB
-        axes[0, 1].imshow(result['data']['rgb_aligned'])
-        axes[0, 1].set_title('Aligned RGB (Thermal FOV)')
-        axes[0, 1].axis('off')
+        axes[1].imshow(result['data']['rgb_aligned'])
+        axes[1].set_title('Aligned RGB (Thermal FOV)')
+        axes[1].axis('off')
         
         # Segmentation
         mask_display = np.zeros((*result['masks']['ocean'].shape, 3))
         mask_display[result['masks']['ocean']] = [0, 0.3, 1]
         mask_display[result['masks']['land']] = [0, 0.5, 0]
         mask_display[result['masks']['waves']] = [1, 1, 1]
-        axes[0, 2].imshow(mask_display)
-        axes[0, 2].set_title('Segmentation')
-        axes[0, 2].axis('off')
+        axes[2].imshow(mask_display)
+        axes[2].set_title('Segmentation')
+        axes[2].axis('off')
         
         # Thermal
-        im1 = axes[0, 3].imshow(result['data']['thermal'], cmap='RdYlBu_r')
-        axes[0, 3].set_title('Thermal Data')
-        axes[0, 3].axis('off')
-        plt.colorbar(im1, ax=axes[0, 3], fraction=0.046)
+        im1 = axes[3].imshow(result['data']['thermal'], cmap='RdYlBu_r')
+        axes[3].set_title('Thermal Data')
+        axes[3].axis('off')
+        plt.colorbar(im1, ax=axes[3], fraction=0.046)
         
         # Ocean thermal
         ocean_thermal = result['data']['thermal'].copy()
         ocean_thermal[~result['masks']['ocean']] = np.nan
-        im2 = axes[1, 0].imshow(ocean_thermal, cmap='viridis')
-        axes[1, 0].set_title('Ocean Thermal')
-        axes[1, 0].axis('off')
-        plt.colorbar(im2, ax=axes[1, 0], fraction=0.046)
+        im2 = axes[4].imshow(ocean_thermal, cmap='viridis')
+        axes[4].set_title('Ocean Thermal')
+        axes[4].axis('off')
+        plt.colorbar(im2, ax=axes[4], fraction=0.046)
         
         # SGD detection
         sgd_display = np.zeros((*result['sgd_mask'].shape, 3))
@@ -425,9 +423,9 @@ class IntegratedSGDDetector:
         shoreline, _ = self.detect_shoreline(result['masks'])
         sgd_display[shoreline] = [1, 1, 0]  # Yellow for shore
         
-        axes[1, 1].imshow(sgd_display)
-        axes[1, 1].set_title(f'SGD Plumes ({len(result["plume_info"])} detected)')
-        axes[1, 1].axis('off')
+        axes[5].imshow(sgd_display)
+        axes[5].set_title(f'SGD Plumes ({len(result["plume_info"])} detected)')
+        axes[5].axis('off')
         
         # Overlay on thermal
         thermal_norm = (result['data']['thermal'] - np.nanmin(result['data']['thermal'])) / \
@@ -435,9 +433,9 @@ class IntegratedSGDDetector:
         overlay = plt.cm.RdYlBu_r(thermal_norm)[:,:,:3]
         overlay[result['sgd_mask']] = [0, 1, 0]  # Green for SGD
         
-        axes[1, 2].imshow(overlay)
-        axes[1, 2].set_title('Thermal + SGD Overlay')
-        axes[1, 2].axis('off')
+        axes[6].imshow(overlay)
+        axes[6].set_title('Thermal + SGD Overlay')
+        axes[6].axis('off')
         
         # Statistics
         stats_text = f"Frame {result['frame_number']} Statistics:\n\n"
@@ -462,9 +460,19 @@ class IntegratedSGDDetector:
             stats_text += f"Temp anomaly: {result['characteristics']['temp_anomaly']:.1f}°C\n"
             stats_text += f"Total area: {result['characteristics']['area_m2']:.1f} m²"
         
-        axes[1, 3].text(0.05, 0.5, stats_text, transform=axes[1, 3].transAxes,
-                       fontsize=10, verticalalignment='center')
-        axes[1, 3].axis('off')
+        axes[7].text(0.05, 0.5, stats_text, transform=axes[7].transAxes,
+                    fontsize=10, verticalalignment='center')
+        axes[7].axis('off')
+    
+    def visualize_detection(self, result):
+        """Visualize SGD detection results"""
+        fig, axes = plt.subplots(2, 4, figsize=(18, 9))
+        
+        # Flatten axes array for easier indexing
+        axes_flat = axes.flatten()
+        
+        # Use helper to update axes
+        self._update_axes(axes_flat, result)
         
         plt.suptitle(f'SGD Detection - Frame {result["frame_number"]:04d}', fontsize=14)
         plt.tight_layout()
@@ -648,12 +656,169 @@ Examples:
         choice = input("\nChoice (1-3): ").strip()
     
     if choice == '1':
+        # Single frame mode with navigation controls
+        print("\nSingle frame analysis with navigation...")
+        
+        # Find available frames
+        frames = []
+        for f in sorted(detector.base_path.glob("MAX_*.JPG"))[:100]:
+            num = int(f.stem.split('_')[1])
+            if (detector.base_path / f"IRX_{num:04d}.irg").exists():
+                frames.append(num)
+        
+        if not frames:
+            print("No data found!")
+            return
+        
         # Use command-line frame if in direct mode, otherwise prompt
         if args.mode == 'single':
-            frame = args.frame
+            initial_frame = args.frame
         else:
-            frame = int(input("Enter frame number (default 248): ") or "248")
-        result = detector.process_frame(frame, visualize=True)
+            initial_frame = int(input(f"Enter frame number (available: {frames[0]}-{frames[-1]}, default 248): ") or "248")
+        
+        # Find closest available frame
+        initial_idx = 0
+        for i, f in enumerate(frames):
+            if f >= initial_frame:
+                initial_idx = i
+                break
+        
+        print(f"Found {len(frames)} frames: {frames[0]} to {frames[-1]}")
+        print(f"Starting at frame {frames[initial_idx]}")
+        
+        from matplotlib.widgets import Button
+        
+        # Process initial frame
+        result = detector.process_frame(frames[initial_idx], visualize=False)
+        
+        # Create figure with controls
+        fig = detector.visualize_detection(result)
+        
+        # State variables
+        current = {'frame_idx': initial_idx}
+        
+        def update_display():
+            """Update display with current frame"""
+            frame_num = frames[current['frame_idx']]
+            try:
+                result = detector.process_frame(frame_num, visualize=False)
+                # Clear figure and recreate
+                fig.clear()
+                # Recreate subplots
+                axes = []
+                for i in range(2):
+                    for j in range(4):
+                        axes.append(fig.add_subplot(2, 4, i*4 + j + 1))
+                
+                # Update visualizations (simplified version of visualize_detection)
+                detector._update_axes(axes, result)
+                
+                fig.suptitle(f'SGD Detection - Frame {frame_num:04d} ({current["frame_idx"]+1}/{len(frames)})', fontsize=14)
+                fig.canvas.draw_idle()
+            except Exception as e:
+                print(f"Error processing frame {frame_num}: {e}")
+        
+        # Navigation buttons - stacked at bottom
+        btn_height = 0.03
+        btn_width = 0.06
+        btn_spacing = 0.01
+        bottom_margin = 0.02
+        
+        # Row 1 - Fine navigation
+        row1_y = bottom_margin + btn_height + 0.005
+        ax_prev = plt.axes([0.15, row1_y, btn_width, btn_height])
+        btn_prev = Button(ax_prev, '← Prev')
+        
+        ax_next = plt.axes([0.22, row1_y, btn_width, btn_height])
+        btn_next = Button(ax_next, 'Next →')
+        
+        # Row 2 - Medium jumps
+        row2_y = bottom_margin
+        ax_minus5 = plt.axes([0.15, row2_y, btn_width, btn_height])
+        btn_minus5 = Button(ax_minus5, '← -5')
+        
+        ax_plus5 = plt.axes([0.22, row2_y, btn_width, btn_height])
+        btn_plus5 = Button(ax_plus5, '+5 →')
+        
+        # Row 1 - Large jumps
+        ax_minus10 = plt.axes([0.30, row1_y, btn_width, btn_height])
+        btn_minus10 = Button(ax_minus10, '← -10')
+        
+        ax_plus10 = plt.axes([0.37, row1_y, btn_width, btn_height])
+        btn_plus10 = Button(ax_plus10, '+10 →')
+        
+        # Row 2 - Extra large jumps
+        ax_minus25 = plt.axes([0.30, row2_y, btn_width, btn_height])
+        btn_minus25 = Button(ax_minus25, '← -25')
+        
+        ax_plus25 = plt.axes([0.37, row2_y, btn_width, btn_height])
+        btn_plus25 = Button(ax_plus25, '+25 →')
+        
+        # First/Last buttons
+        ax_first = plt.axes([0.45, row1_y, btn_width, btn_height])
+        btn_first = Button(ax_first, 'First')
+        
+        ax_last = plt.axes([0.52, row1_y, btn_width, btn_height])
+        btn_last = Button(ax_last, 'Last')
+        
+        # Save button
+        ax_save = plt.axes([0.85, row1_y, btn_width, btn_height])
+        btn_save = Button(ax_save, 'Save')
+        
+        # Frame info
+        ax_info = plt.axes([0.60, row1_y, 0.15, btn_height])
+        ax_info.axis('off')
+        frame_info = ax_info.text(0.5, 0.5, f'Frame {current["frame_idx"]+1}/{len(frames)}',
+                                  ha='center', va='center', fontsize=10)
+        
+        # Button callbacks
+        def navigate(step):
+            new_idx = current['frame_idx'] + step
+            if 0 <= new_idx < len(frames):
+                current['frame_idx'] = new_idx
+                frame_info.set_text(f'Frame {current["frame_idx"]+1}/{len(frames)}')
+                update_display()
+        
+        btn_prev.on_clicked(lambda e: navigate(-1))
+        btn_next.on_clicked(lambda e: navigate(1))
+        btn_minus5.on_clicked(lambda e: navigate(-5))
+        btn_plus5.on_clicked(lambda e: navigate(5))
+        btn_minus10.on_clicked(lambda e: navigate(-10))
+        btn_plus10.on_clicked(lambda e: navigate(10))
+        btn_minus25.on_clicked(lambda e: navigate(-25))
+        btn_plus25.on_clicked(lambda e: navigate(25))
+        
+        btn_first.on_clicked(lambda e: navigate(-current['frame_idx']))
+        btn_last.on_clicked(lambda e: navigate(len(frames) - 1 - current['frame_idx']))
+        
+        def save_figure(event):
+            frame_num = frames[current['frame_idx']]
+            filename = f'sgd_frame_{frame_num:04d}.png'
+            fig.savefig(filename, dpi=150, bbox_inches='tight')
+            print(f"Saved to {filename}")
+        
+        btn_save.on_clicked(save_figure)
+        
+        # Keyboard shortcuts
+        def on_key(event):
+            if event.key == 'right':
+                navigate(1)
+            elif event.key == 'left':
+                navigate(-1)
+            elif event.key == 'home':
+                navigate(-current['frame_idx'])
+            elif event.key == 'end':
+                navigate(len(frames) - 1 - current['frame_idx'])
+            elif event.key == 's':
+                save_figure(None)
+        
+        fig.canvas.mpl_connect('key_press_event', on_key)
+        
+        print("\nControls:")
+        print("  Navigation: Prev/Next (±1), ±5, ±10, ±25, First/Last")
+        print("  Keyboard: ← → (navigate), Home/End (first/last), S (save)")
+        
+        plt.show()
         
     elif choice == '2':
         # Use command-line range if in direct mode, otherwise prompt
@@ -794,67 +959,87 @@ Examples:
             
             fig.canvas.draw_idle()
         
-        # Navigation buttons
-        ax_prev = plt.axes([0.10, 0.12, 0.08, 0.04])
-        btn_prev = Button(ax_prev, '← Previous')
+        # Navigation buttons - enhanced layout stacked at bottom
+        btn_height = 0.03
+        btn_width = 0.06
+        bottom_margin = 0.02
         
-        ax_next = plt.axes([0.19, 0.12, 0.08, 0.04])
+        # Row 1 (upper) - Fine navigation and endpoints
+        row1_y = bottom_margin + btn_height + 0.005
+        
+        ax_prev = plt.axes([0.10, row1_y, btn_width, btn_height])
+        btn_prev = Button(ax_prev, '← Prev')
+        
+        ax_next = plt.axes([0.17, row1_y, btn_width, btn_height])
         btn_next = Button(ax_next, 'Next →')
         
-        ax_first = plt.axes([0.28, 0.12, 0.08, 0.04])
+        ax_minus10 = plt.axes([0.25, row1_y, btn_width, btn_height])
+        btn_minus10 = Button(ax_minus10, '← -10')
+        
+        ax_plus10 = plt.axes([0.32, row1_y, btn_width, btn_height])
+        btn_plus10 = Button(ax_plus10, '+10 →')
+        
+        ax_first = plt.axes([0.40, row1_y, btn_width, btn_height])
         btn_first = Button(ax_first, 'First')
         
-        ax_last = plt.axes([0.37, 0.12, 0.08, 0.04])
+        ax_last = plt.axes([0.47, row1_y, btn_width, btn_height])
         btn_last = Button(ax_last, 'Last')
         
-        # Save button
-        ax_save = plt.axes([0.85, 0.12, 0.08, 0.04])
-        btn_save = Button(ax_save, 'Save Fig')
+        # Row 2 (lower) - Medium and large jumps
+        row2_y = bottom_margin
         
-        # Frame slider (for quick navigation)
-        ax_frame = plt.axes([0.10, 0.07, 0.35, 0.03])
-        slider_frame = Slider(ax_frame, 'Frame', 0, len(frames)-1, 
-                            valinit=0, valstep=1)
+        ax_minus5 = plt.axes([0.10, row2_y, btn_width, btn_height])
+        btn_minus5 = Button(ax_minus5, '← -5')
         
-        # Parameter sliders
-        ax_temp = plt.axes([0.55, 0.12, 0.25, 0.03])
+        ax_plus5 = plt.axes([0.17, row2_y, btn_width, btn_height])
+        btn_plus5 = Button(ax_plus5, '+5 →')
+        
+        ax_minus25 = plt.axes([0.25, row2_y, btn_width, btn_height])
+        btn_minus25 = Button(ax_minus25, '← -25')
+        
+        ax_plus25 = plt.axes([0.32, row2_y, btn_width, btn_height])
+        btn_plus25 = Button(ax_plus25, '+25 →')
+        
+        # Save button (on row 1)
+        ax_save = plt.axes([0.85, row1_y, btn_width, btn_height])
+        btn_save = Button(ax_save, 'Save')
+        
+        # Parameter sliders (moved higher to make room for nav buttons)
+        ax_temp = plt.axes([0.55, row1_y, 0.20, btn_height])
         slider_temp = Slider(ax_temp, 'Temp Δ (°C)', 0.5, 3.0, 
                            valinit=1.0, valstep=0.1)
         
-        ax_area = plt.axes([0.55, 0.07, 0.25, 0.03])
+        ax_area = plt.axes([0.55, row2_y, 0.20, btn_height])
         slider_area = Slider(ax_area, 'Min Area (px)', 10, 200, 
                            valinit=50, valstep=10)
         
         # Frame info text
-        ax_info = plt.axes([0.47, 0.12, 0.06, 0.04])
+        ax_info = plt.axes([0.76, row1_y, 0.08, btn_height])
         ax_info.axis('off')
         frame_info = ax_info.text(0.5, 0.5, f'Frame {current["frame_idx"]+1}/{len(frames)}', 
-                                  ha='center', va='center', fontsize=12)
+                                  ha='center', va='center', fontsize=10)
         
-        # Button callbacks
-        def next_frame(event):
-            if current['frame_idx'] < len(frames) - 1:
-                current['frame_idx'] += 1
-                slider_frame.set_val(current['frame_idx'])
+        # Button callbacks with jump navigation
+        def navigate(step):
+            new_idx = current['frame_idx'] + step
+            if 0 <= new_idx < len(frames):
+                current['frame_idx'] = new_idx
                 frame_info.set_text(f'Frame {current["frame_idx"]+1}/{len(frames)}')
                 update_display()
+        
+        def next_frame(event):
+            navigate(1)
         
         def prev_frame(event):
-            if current['frame_idx'] > 0:
-                current['frame_idx'] -= 1
-                slider_frame.set_val(current['frame_idx'])
-                frame_info.set_text(f'Frame {current["frame_idx"]+1}/{len(frames)}')
-                update_display()
+            navigate(-1)
         
         def first_frame(event):
             current['frame_idx'] = 0
-            slider_frame.set_val(current['frame_idx'])
             frame_info.set_text(f'Frame {current["frame_idx"]+1}/{len(frames)}')
             update_display()
         
         def last_frame(event):
             current['frame_idx'] = len(frames) - 1
-            slider_frame.set_val(current['frame_idx'])
             frame_info.set_text(f'Frame {current["frame_idx"]+1}/{len(frames)}')
             update_display()
         
@@ -865,11 +1050,6 @@ Examples:
             print(f"Saved to {filename}")
         
         # Slider callbacks
-        def update_frame_slider(val):
-            current['frame_idx'] = int(slider_frame.val)
-            frame_info.set_text(f'Frame {current["frame_idx"]+1}/{len(frames)}')
-            update_display()
-        
         def update_temp(val):
             current['temp_threshold'] = slider_temp.val
             update_display()
@@ -881,11 +1061,16 @@ Examples:
         # Connect callbacks
         btn_next.on_clicked(next_frame)
         btn_prev.on_clicked(prev_frame)
+        btn_minus5.on_clicked(lambda e: navigate(-5))
+        btn_plus5.on_clicked(lambda e: navigate(5))
+        btn_minus10.on_clicked(lambda e: navigate(-10))
+        btn_plus10.on_clicked(lambda e: navigate(10))
+        btn_minus25.on_clicked(lambda e: navigate(-25))
+        btn_plus25.on_clicked(lambda e: navigate(25))
         btn_first.on_clicked(first_frame)
         btn_last.on_clicked(last_frame)
         btn_save.on_clicked(save_figure)
         
-        slider_frame.on_changed(update_frame_slider)
         slider_temp.on_changed(update_temp)
         slider_area.on_changed(update_area)
         
@@ -905,7 +1090,7 @@ Examples:
         fig.canvas.mpl_connect('key_press_event', on_key)
         
         print("\nControls:")
-        print("  Buttons: Previous, Next, First, Last, Save")
+        print("  Navigation: Prev/Next (±1), ±5, ±10, ±25, First/Last")
         print("  Keyboard: ← → (navigate), Home/End (first/last), S (save)")
         print("  Sliders: Adjust temperature threshold and minimum area")
         

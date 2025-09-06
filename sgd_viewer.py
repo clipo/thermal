@@ -103,23 +103,62 @@ class SGDAggregateViewer:
         self.axes.append(self.fig.add_subplot(gs[1, 2]))  # Coverage map
         self.axes.append(self.fig.add_subplot(gs[1, 3]))  # Statistics
         
-        # Control buttons - adjusted positions for visibility
-        ax_prev = plt.axes([0.10, 0.12, 0.08, 0.04])
-        ax_next = plt.axes([0.19, 0.12, 0.08, 0.04])
-        ax_mark = plt.axes([0.30, 0.12, 0.10, 0.04])
-        ax_save = plt.axes([0.41, 0.12, 0.10, 0.04])
-        ax_export = plt.axes([0.52, 0.12, 0.12, 0.04])
+        # Control buttons - enhanced navigation stacked at bottom
+        btn_height = 0.03
+        btn_width = 0.06
+        bottom_margin = 0.02
         
-        self.btn_prev = Button(ax_prev, 'Previous')
-        self.btn_next = Button(ax_next, 'Next')
+        # Row 1 (upper) - Fine navigation and main actions
+        row1_y = bottom_margin + 2*btn_height + 0.01
+        
+        ax_prev = plt.axes([0.08, row1_y, btn_width, btn_height])
+        ax_next = plt.axes([0.15, row1_y, btn_width, btn_height])
+        ax_minus10 = plt.axes([0.23, row1_y, btn_width, btn_height])
+        ax_plus10 = plt.axes([0.30, row1_y, btn_width, btn_height])
+        ax_first = plt.axes([0.38, row1_y, btn_width, btn_height])
+        ax_last = plt.axes([0.45, row1_y, btn_width, btn_height])
+        
+        # Action buttons on the right
+        ax_mark = plt.axes([0.65, row1_y, 0.08, btn_height])
+        ax_save = plt.axes([0.74, row1_y, 0.08, btn_height])
+        ax_export = plt.axes([0.83, row1_y, 0.08, btn_height])
+        
+        # Row 2 (middle) - Medium and large jumps
+        row2_y = bottom_margin + btn_height + 0.005
+        
+        ax_minus5 = plt.axes([0.08, row2_y, btn_width, btn_height])
+        ax_plus5 = plt.axes([0.15, row2_y, btn_width, btn_height])
+        ax_minus25 = plt.axes([0.23, row2_y, btn_width, btn_height])
+        ax_plus25 = plt.axes([0.30, row2_y, btn_width, btn_height])
+        
+        # Frame counter
+        ax_info = plt.axes([0.53, row1_y, 0.10, btn_height])
+        ax_info.axis('off')
+        self.frame_info = ax_info.text(0.5, 0.5, f'Frame 1/{len(self.frames)}',
+                                       ha='center', va='center', fontsize=10)
+        
+        # Create buttons
+        self.btn_prev = Button(ax_prev, '← Prev')
+        self.btn_next = Button(ax_next, 'Next →')
+        self.btn_minus5 = Button(ax_minus5, '← -5')
+        self.btn_plus5 = Button(ax_plus5, '+5 →')
+        self.btn_minus10 = Button(ax_minus10, '← -10')
+        self.btn_plus10 = Button(ax_plus10, '+10 →')
+        self.btn_minus25 = Button(ax_minus25, '← -25')
+        self.btn_plus25 = Button(ax_plus25, '+25 →')
+        self.btn_first = Button(ax_first, 'First')
+        self.btn_last = Button(ax_last, 'Last')
+        
         self.btn_mark = Button(ax_mark, 'Mark SGD')
-        self.btn_save = Button(ax_save, 'Save State')
-        self.btn_export = Button(ax_export, 'Export Map')
+        self.btn_save = Button(ax_save, 'Save')
+        self.btn_export = Button(ax_export, 'Export')
         
-        # Parameter controls - sliders below buttons
-        ax_temp = plt.axes([0.10, 0.06, 0.25, 0.03])
-        ax_area = plt.axes([0.40, 0.06, 0.25, 0.03])
-        ax_dist = plt.axes([0.70, 0.06, 0.25, 0.03])
+        # Row 3 (bottom) - Parameter sliders
+        row3_y = bottom_margin
+        
+        ax_temp = plt.axes([0.08, row3_y, 0.20, btn_height])
+        ax_area = plt.axes([0.38, row3_y, 0.20, btn_height])
+        ax_dist = plt.axes([0.68, row3_y, 0.20, btn_height])
         
         self.slider_temp = Slider(ax_temp, 'Temp (°C)', 0.5, 3.0, valinit=self.temp_threshold)
         self.slider_area = Slider(ax_area, 'Min Area', 10, 200, valinit=self.min_area, valstep=10)
@@ -128,6 +167,14 @@ class SGDAggregateViewer:
         # Connect callbacks
         self.btn_prev.on_clicked(self.prev_frame)
         self.btn_next.on_clicked(self.next_frame)
+        self.btn_minus5.on_clicked(lambda e: self.navigate(-5))
+        self.btn_plus5.on_clicked(lambda e: self.navigate(5))
+        self.btn_minus10.on_clicked(lambda e: self.navigate(-10))
+        self.btn_plus10.on_clicked(lambda e: self.navigate(10))
+        self.btn_minus25.on_clicked(lambda e: self.navigate(-25))
+        self.btn_plus25.on_clicked(lambda e: self.navigate(25))
+        self.btn_first.on_clicked(lambda e: self.first_frame())
+        self.btn_last.on_clicked(lambda e: self.last_frame())
         self.btn_mark.on_clicked(self.mark_sgd)
         self.btn_save.on_clicked(self.save_aggregate)
         self.btn_export.on_clicked(self.export_aggregate_map)
@@ -140,8 +187,8 @@ class SGDAggregateViewer:
         self.fig.canvas.mpl_connect('key_press_event', self.on_key)
         
         # Add labels for control sections
-        self.fig.text(0.05, 0.14, 'Navigation:', fontsize=9, fontweight='bold')
-        self.fig.text(0.05, 0.08, 'Parameters:', fontsize=9, fontweight='bold')
+        self.fig.text(0.02, row1_y + 0.01, 'Nav:', fontsize=8, fontweight='bold')
+        self.fig.text(0.02, row3_y + 0.01, 'Params:', fontsize=8, fontweight='bold')
     
     def calculate_distance(self, lat1, lon1, lat2, lon2):
         """Calculate distance between two points in meters"""
@@ -411,14 +458,31 @@ class SGDAggregateViewer:
         print(f"  - {csv_file}")
         print(f"  - {kml_file}")
     
-    def next_frame(self, event):
-        if self.current_idx < len(self.frames) - 1:
-            self.current_idx += 1
+    def navigate(self, step):
+        """Navigate by step frames"""
+        new_idx = self.current_idx + step
+        if 0 <= new_idx < len(self.frames):
+            self.current_idx = new_idx
+            self.frame_info.set_text(f'Frame {self.current_idx+1}/{len(self.frames)}')
             self.update_display()
     
+    def next_frame(self, event):
+        self.navigate(1)
+    
     def prev_frame(self, event):
-        if self.current_idx > 0:
-            self.current_idx -= 1
+        self.navigate(-1)
+    
+    def first_frame(self):
+        if self.current_idx != 0:
+            self.current_idx = 0
+            self.frame_info.set_text(f'Frame {self.current_idx+1}/{len(self.frames)}')
+            self.update_display()
+    
+    def last_frame(self):
+        last_idx = len(self.frames) - 1
+        if self.current_idx != last_idx:
+            self.current_idx = last_idx
+            self.frame_info.set_text(f'Frame {self.current_idx+1}/{len(self.frames)}')
             self.update_display()
     
     def update_temp(self, val):
@@ -436,9 +500,13 @@ class SGDAggregateViewer:
     
     def on_key(self, event):
         if event.key == 'right':
-            self.next_frame(None)
+            self.navigate(1)
         elif event.key == 'left':
-            self.prev_frame(None)
+            self.navigate(-1)
+        elif event.key == 'home':
+            self.first_frame()
+        elif event.key == 'end':
+            self.last_frame()
         elif event.key == 'm':
             self.mark_sgd(None)
         elif event.key == 's':
@@ -451,16 +519,19 @@ class SGDAggregateViewer:
         print("\n" + "="*60)
         print("AGGREGATE SGD MAPPING CONTROLS:")
         print("  Navigation:")
-        print("    - Previous/Next buttons or Left/Right arrows")
+        print("    - Prev/Next (±1), ±5, ±10, ±25, First/Last buttons")
+        print("    - Keyboard: ← → arrows, Home/End keys")
         print("  Mark & Save:")
         print("    - 'Mark SGD' button or 'M' key: Confirm new SGD")
-        print("    - 'Save State' button or 'S' key: Save progress")
-        print("    - 'Export Map' button or 'E' key: Export aggregate map")
+        print("    - 'Save' button or 'S' key: Save progress")
+        print("    - 'Export' button or 'E' key: Export aggregate map")
         print("  Visual Indicators:")
         print("    - GREEN highlights: New SGD locations")
         print("    - YELLOW highlights: Previously detected SGD")
-        print("  Merge Distance Slider:")
-        print("    - SGD within this distance are considered same location")
+        print("  Parameter Sliders:")
+        print("    - Temp (°C): Temperature threshold for SGD")
+        print("    - Min Area: Minimum plume size")
+        print("    - Merge Dist: Distance to merge SGD locations")
         print("="*60)
         
         plt.show()
