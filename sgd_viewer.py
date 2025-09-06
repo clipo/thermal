@@ -477,13 +477,11 @@ class SGDAggregateViewer:
         
         # Prepare georef with all locations
         if POLYGON_SUPPORT:
-            # Use polygon export
+            # Use polygon export with KML support
             self.georef.sgd_polygons = self.unique_sgd_locations
             geojson_file = self.georef.export_geojson_polygons(f"{base_name}_polygons.geojson")
             csv_file = self.georef.export_csv_with_areas(f"{base_name}_areas.csv")
-            # KML export would need polygon support too (not implemented yet)
-            kml_file = f"{base_name}_polygons.kml"
-            print("Note: KML polygon export not yet implemented")
+            kml_file = self.georef.export_kml_polygons(f"{base_name}_polygons.kml")
         else:
             self.georef.sgd_locations = self.unique_sgd_locations
             geojson_file = self.georef.export_geojson(f"{base_name}.geojson")

@@ -340,6 +340,117 @@ class SGDPolygonGeoref:
         
         print(f"Exported {len(self.sgd_polygons)} SGD areas to {output_path}")
         return output_path
+    
+    def export_kml_polygons(self, output_path="sgd_polygons.kml"):
+        """Export SGD locations as KML with polygon support for Google Earth"""
+        kml = ['<?xml version="1.0" encoding="UTF-8"?>']
+        kml.append('<kml xmlns="http://www.opengis.net/kml/2.2">')
+        kml.append('<Document>')
+        kml.append('<name>SGD Detection Polygons</name>')
+        kml.append('<description>Submarine Groundwater Discharge plume outlines</description>')
+        
+        # Define styles for polygons and points
+        # Style for polygon SGD
+        kml.append('<Style id="sgdPolygonStyle">')
+        kml.append('  <LineStyle>')
+        kml.append('    <color>ff0000ff</color>')  # Red outline
+        kml.append('    <width>2</width>')
+        kml.append('  </LineStyle>')
+        kml.append('  <PolyStyle>')
+        kml.append('    <color>7f0000ff</color>')  # Semi-transparent red fill
+        kml.append('  </PolyStyle>')
+        kml.append('</Style>')
+        
+        # Style for point SGD (fallback)
+        kml.append('<Style id="sgdPointStyle">')
+        kml.append('  <IconStyle>')
+        kml.append('    <color>ff0000ff</color>')
+        kml.append('    <scale>1.2</scale>')
+        kml.append('    <Icon>')
+        kml.append('      <href>http://maps.google.com/mapfiles/kml/shapes/water.png</href>')
+        kml.append('    </Icon>')
+        kml.append('  </IconStyle>')
+        kml.append('</Style>')
+        
+        # Add each SGD location
+        for i, loc in enumerate(self.sgd_polygons):
+            kml.append('<Placemark>')
+            kml.append(f'  <name>SGD {i+1} (Frame {loc["frame"]})</name>')
+            
+            # Create description with all metadata
+            desc = []
+            desc.append(f'Frame: {loc["frame"]}')
+            desc.append(f'Date/Time: {loc["datetime"]}')
+            desc.append(f'Area: {loc["area_m2"]:.1f} m²')
+            desc.append(f'Area (pixels): {loc["area_pixels"]}')
+            desc.append(f'Temperature anomaly: {loc.get("temperature_anomaly", 0):.1f}°C')
+            desc.append(f'Shore distance: {loc["shore_distance"]:.1f} m')
+            desc.append(f'Altitude: {loc["altitude"]:.1f} m')
+            desc.append(f'Eccentricity: {loc.get("eccentricity", 0):.3f}')
+            
+            kml.append(f'  <description><![CDATA[{chr(10).join(desc)}]]></description>')
+            
+            if loc['polygon'] and len(loc['polygon']) > 2:
+                # Add as polygon
+                kml.append('  <styleUrl>#sgdPolygonStyle</styleUrl>')
+                kml.append('  <Polygon>')
+                kml.append('    <extrude>0</extrude>')
+                kml.append('    <altitudeMode>clampToGround</altitudeMode>')
+                kml.append('    <outerBoundaryIs>')
+                kml.append('      <LinearRing>')
+                kml.append('        <coordinates>')
+                
+                # Add polygon coordinates (KML uses lon,lat,altitude format)
+                coord_strings = []
+                for coord in loc['polygon']:
+                    coord_strings.append(f'          {coord[0]},{coord[1]},0')
+                kml.append('\n'.join(coord_strings))
+                
+                kml.append('        </coordinates>')
+                kml.append('      </LinearRing>')
+                kml.append('    </outerBoundaryIs>')
+                kml.append('  </Polygon>')
+            else:
+                # Add as point (fallback)
+                kml.append('  <styleUrl>#sgdPointStyle</styleUrl>')
+                kml.append('  <Point>')
+                kml.append('    <coordinates>')
+                kml.append(f'      {loc["centroid"]["longitude"]},{loc["centroid"]["latitude"]},0')
+                kml.append('    </coordinates>')
+                kml.append('  </Point>')
+            
+            kml.append('</Placemark>')
+        
+        # Add a folder with summary statistics
+        kml.append('<Folder>')
+        kml.append('  <name>Summary Statistics</name>')
+        kml.append('  <description>')
+        total_area = sum(loc['area_m2'] for loc in self.sgd_polygons)
+        polygon_count = sum(1 for loc in self.sgd_polygons if loc['polygon'])
+        point_count = len(self.sgd_polygons) - polygon_count
+        kml.append(f'    Total SGD locations: {len(self.sgd_polygons)}')
+        kml.append(f'    Polygons: {polygon_count}')
+        kml.append(f'    Points: {point_count}')
+        kml.append(f'    Total area: {total_area:.1f} m²')
+        kml.append('  </description>')
+        kml.append('</Folder>')
+        
+        kml.append('</Document>')
+        kml.append('</kml>')
+        
+        # Write KML file
+        with open(output_path, 'w') as f:
+            f.write('\n'.join(kml))
+        
+        print(f"Exported {len(self.sgd_polygons)} SGD locations to {output_path}")
+        polygon_count = sum(1 for loc in self.sgd_polygons if loc['polygon'])
+        point_count = len(self.sgd_polygons) - polygon_count
+        print(f"  - {polygon_count} polygons with outlines")
+        print(f"  - {point_count} points (fallback)")
+        print(f"  - Total area: {sum(loc['area_m2'] for loc in self.sgd_polygons):.1f} m²")
+        print(f"  - Open in Google Earth to visualize")
+        
+        return output_path
 
 
 def main():
