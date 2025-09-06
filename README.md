@@ -2,6 +2,18 @@
 
 A Python toolkit for detecting submarine groundwater discharge (cold freshwater seeps) in coastal waters using thermal and RGB imagery from Autel 640T UAV.
 
+## Table of Contents
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Primary Scripts](#primary-scripts)
+- [Machine Learning Segmentation](#machine-learning-segmentation)
+- [Command-Line Usage](#command-line-usage)
+- [Technical Details](#technical-details)
+- [Troubleshooting](#troubleshooting)
+- [Citation](#citation)
+
 ## Overview
 
 Submarine Groundwater Discharge (SGD) occurs when freshwater from underground aquifers seeps into the ocean along the coastline. This freshwater is typically cooler than seawater and creates detectable thermal anomalies. This toolkit automatically identifies these cold plumes in thermal drone imagery.
@@ -25,6 +37,50 @@ This toolkit processes paired thermal (640×512) and RGB (4096×3072) images fro
 
 ![Detection Pipeline](docs/images/detection_pipeline.png)
 *The SGD detection pipeline: 1) RGB input aligned to thermal FOV, 2) ML-based segmentation, 3) Thermal data processing, 4) Ocean isolation, 5) Cold anomaly detection, 6) Final SGD identification near shoreline*
+
+## Command-Line Usage
+
+### Help for Any Script
+```bash
+python sgd_viewer.py --help
+python sgd_detector_integrated.py --help  
+python segmentation_trainer.py --help
+```
+
+### Common Use Cases
+
+#### Different Environmental Conditions
+```bash
+# Rocky shores with high contrast
+python sgd_viewer.py --model rocky_shore_model.pkl
+
+# Sunrise/sunset with challenging lighting
+python sgd_viewer.py --model sunrise_model.pkl --aggregate morning_survey.json
+
+# Overcast conditions with low contrast
+python sgd_detector_integrated.py --model cloudy_model.pkl --mode interactive
+```
+
+#### Managing Multiple Surveys
+```bash
+# North coast survey
+python sgd_viewer.py --aggregate north_coast.json --distance 15
+
+# South coast with different model
+python sgd_viewer.py --model south_model.pkl --aggregate south_coast.json
+
+# Test survey with rule-based segmentation
+python sgd_viewer.py --no-ml --aggregate test_survey.json
+```
+
+#### Batch Processing
+```bash
+# Process frames 200-300 with custom model
+python sgd_detector_integrated.py --model custom.pkl --mode batch --start 200 --end 300
+
+# Single frame analysis
+python sgd_detector_integrated.py --mode single --frame 248
+```
 
 ## Primary Scripts
 
@@ -128,19 +184,28 @@ thermal/
 
 ## Quick Start
 
-1. **Prepare Data**: Place Autel 640T imagery in `data/100MEDIA/`
+### 1. Prepare Your Data
+Place Autel 640T imagery in `data/100MEDIA/` with paired files:
+- `MAX_XXXX.JPG` - RGB images 
+- `IRX_XXXX.irg` - Thermal data
 
-2. **Train Segmentation Model** (if needed):
-   ```bash
-   python segmentation_trainer.py
-   ```
+### 2. Train Segmentation Model (First Time)
+```bash
+python segmentation_trainer.py
+```
+Label pixels by clicking: Ocean (left), Land (right), Rock (middle)
 
-3. **Run SGD Detection**:
-   ```bash
-   python sgd_viewer.py
-   ```
+### 3. Run SGD Detection
+```bash
+# Default mode with interactive viewer
+python sgd_viewer.py
 
-4. **Export Results**: Click "Export Map" to save GeoJSON
+# Or use specific model for conditions
+python sgd_viewer.py --model rocky_shore_model.pkl
+```
+
+### 4. Export Results
+Click "Export Map" button to save GeoJSON for GIS import
 
 ## Machine Learning Segmentation
 
@@ -404,34 +469,121 @@ This flexibility allows you to:
 
 ## Tips for Best Results
 
-1. **Segmentation Quality**: Train model on representative images with varied conditions
-2. **Temperature Threshold**: Start with 1.0°C, adjust based on conditions
-3. **Minimum Area**: 50 pixels works well, increase to reduce false positives
-4. **Flight Planning**: Maintain consistent altitude for accurate area calculations
-5. **Survey Overlap**: 90% overlap ensures complete coverage
+1. **Model Selection**:
+   - Use condition-specific models for better accuracy
+   - Train separate models for different shore types
+   - Keep default model for general conditions
+
+2. **Segmentation Quality**:
+   - Label at least 100-200 pixels per class
+   - Focus on ambiguous areas (wet rocks, shallow water)
+   - Train on images from different times of day
+
+3. **Detection Parameters**:
+   - Temperature threshold: Start with 1.0°C
+   - Minimum area: 50 pixels (increase for fewer false positives)
+   - Merge distance: 10m default (adjust based on resolution)
+
+4. **Flight Planning**:
+   - Maintain consistent altitude (50-100m typical)
+   - Plan for 80-90% overlap between frames
+   - Fly during calm conditions for best thermal contrast
+
+5. **Survey Organization**:
+   - Use separate aggregate files for each survey
+   - Name models descriptively (location_condition.pkl)
+   - Document environmental conditions in filenames
 
 ## Troubleshooting
 
+### Installation Issues
+```bash
+# Missing dependencies
+pip install -r requirements.txt
+
+# Matplotlib backend issues
+export MPLBACKEND=TkAgg
+```
+
 ### No Controls Visible
-- Ensure matplotlib backend supports interactive widgets
-- Try: `export MPLBACKEND=TkAgg` before running
+- Update matplotlib: `pip install --upgrade matplotlib`
+- Check backend: `python -c "import matplotlib; print(matplotlib.get_backend())"`
+- Try TkAgg backend: `export MPLBACKEND=TkAgg`
 
-### Segmentation Issues
-- Retrain model with more labeled examples
-- Adjust HSV thresholds in test_segmentation.py
-- Check if segmentation_model.pkl exists
+### Segmentation Problems
+```bash
+# Check if model exists
+ls *.pkl
 
-### GPS Not Found
-- Verify EXIF data in images
-- Check GPS was enabled during flight
+# Train new model for current conditions
+python segmentation_trainer.py --model conditions_model.pkl
+
+# Test segmentation quality
+python test_segmentation.py
+
+# Use rule-based if ML fails
+python sgd_viewer.py --no-ml
+```
+
+### GPS/Georeferencing Issues
+- Verify EXIF: `exiftool MAX_0248.JPG | grep GPS`
+- Check drone GPS was enabled
+- Ensure images haven't been edited (strips EXIF)
+
+### Performance Issues
+```bash
+# Reduce processing load
+python sgd_detector_integrated.py --mode batch --end 10
+
+# Use faster rule-based segmentation
+python sgd_viewer.py --no-ml
+```
+
+## Project Structure
+
+```
+thermal/
+├── data/
+│   └── 100MEDIA/           # Drone imagery
+│       ├── MAX_XXXX.JPG    # RGB images
+│       └── IRX_XXXX.irg    # Thermal data
+├── docs/
+│   └── images/             # Documentation screenshots
+├── Main Scripts
+│   ├── sgd_viewer.py       # Primary production tool
+│   ├── sgd_detector_integrated.py  # Core detector
+│   ├── segmentation_trainer.py     # ML training tool
+│   └── test_segmentation.py        # Parameter testing
+├── ML Components
+│   ├── ml_segmentation_fast.py     # Fast inference
+│   ├── segmentation_model.pkl      # Default model
+│   └── segmentation_training_data.json  # Training data
+├── Supporting Tools
+│   ├── thermal_viewer.py           # Thermal exploration
+│   ├── sgd_georef.py              # GPS georeferencing
+│   └── generate_screenshots.py     # Documentation generator
+└── Output Files
+    ├── sgd_aggregate.json          # SGD location database
+    └── *.geojson, *.csv, *.kml    # Export formats
+```
 
 ## Citation
 
 If you use this toolkit in your research, please cite:
 ```
-SGD Detection Toolkit
+SGD Detection Toolkit for Thermal UAV Imagery
 https://github.com/clipo/thermal
 ```
+
+## Contributing
+
+Contributions welcome! Areas for improvement:
+- Additional ML models for different environments
+- Support for other thermal camera formats
+- Real-time processing capabilities
+- Web-based viewer interface
+
+Please submit pull requests or open issues for discussion.
 
 ## License
 
@@ -441,3 +593,7 @@ MIT License - See LICENSE file for details
 
 For issues and questions, please open an issue on GitHub:
 https://github.com/clipo/thermal/issues
+
+## Acknowledgments
+
+Developed with assistance from Claude AI for thermal image analysis and machine learning implementation.
