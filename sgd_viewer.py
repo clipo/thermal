@@ -12,7 +12,12 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button
 from matplotlib.patches import Circle
 from sgd_detector_integrated import IntegratedSGDDetector
-from sgd_georef import SGDGeoref
+try:
+    from sgd_georef_polygons import SGDPolygonGeoref
+    POLYGON_SUPPORT = True
+except ImportError:
+    from sgd_georef import SGDGeoref
+    POLYGON_SUPPORT = False
 from pathlib import Path
 import numpy as np
 from datetime import datetime
@@ -44,7 +49,13 @@ class SGDAggregateViewer:
             use_ml=ml_model_path is not None,
             ml_model_path=ml_model_path
         )
-        self.georef = SGDGeoref(base_path=data_dir, thermal_fov_ratio=0.7)
+        # Use polygon georeferencing if available
+        if POLYGON_SUPPORT:
+            self.georef = SGDPolygonGeoref(base_path=data_dir)
+            print("✓ Using enhanced polygon georeferencing")
+        else:
+            self.georef = SGDGeoref(base_path=data_dir, thermal_fov_ratio=0.7)
+            print("○ Using point georeferencing (polygon module not found)")
         
         # Aggregate tracking
         self.aggregate_file = aggregate_file
@@ -231,13 +242,29 @@ class SGDAggregateViewer:
         self.current_existing_sgd = []
         
         if self.current_result['plume_info']:
-            # Get georeferenced locations
-            temp_georef = SGDGeoref(thermal_fov_ratio=0.7)
-            locations = temp_georef.process_frame(frame_num, self.current_result['plume_info'])
+            # Get georeferenced locations with polygons if available
+            if POLYGON_SUPPORT:
+                temp_georef = SGDPolygonGeoref(base_path=self.detector.base_path)
+                locations = temp_georef.process_frame_with_polygons(frame_num, self.current_result['plume_info'])
+            else:
+                temp_georef = SGDGeoref(base_path=self.detector.base_path, thermal_fov_ratio=0.7)
+                locations = temp_georef.process_frame(frame_num, self.current_result['plume_info'])
             
             for loc in locations:
                 # Check if near existing SGD
-                nearby_idx = self.find_nearby_sgd(loc['latitude'], loc['longitude'])
+                # Handle both point and polygon formats
+                if 'centroid' in loc:
+                    lat = loc['centroid']['latitude']
+                    lon = loc['centroid']['longitude']
+                else:
+                    lat = loc['latitude']
+                    lon = loc['longitude']
+                
+                nearby_idx = self.find_nearby_sgd(lat, lon)
+                
+                # Update location with lat/lon for consistency
+                loc['latitude'] = lat
+                loc['longitude'] = lon
                 
                 if nearby_idx is not None:
                     self.current_existing_sgd.append((loc, nearby_idx))
@@ -446,12 +473,19 @@ class SGDAggregateViewer:
         base_name = f"sgd_map_aggregate_{timestamp}"
         
         # Prepare georef with all locations
-        self.georef.sgd_locations = self.unique_sgd_locations
-        
-        # Export all formats
-        geojson_file = self.georef.export_geojson(f"{base_name}.geojson")
-        csv_file = self.georef.export_csv(f"{base_name}.csv")
-        kml_file = self.georef.export_kml(f"{base_name}.kml")
+        if POLYGON_SUPPORT:
+            # Use polygon export
+            self.georef.sgd_polygons = self.unique_sgd_locations
+            geojson_file = self.georef.export_geojson_polygons(f"{base_name}_polygons.geojson")
+            csv_file = self.georef.export_csv_with_areas(f"{base_name}_areas.csv")
+            # KML export would need polygon support too (not implemented yet)
+            kml_file = f"{base_name}_polygons.kml"
+            print("Note: KML polygon export not yet implemented")
+        else:
+            self.georef.sgd_locations = self.unique_sgd_locations
+            geojson_file = self.georef.export_geojson(f"{base_name}.geojson")
+            csv_file = self.georef.export_csv(f"{base_name}.csv")
+            kml_file = self.georef.export_kml(f"{base_name}.kml")
         
         print(f"\nExported aggregate map with {len(self.unique_sgd_locations)} unique SGD:")
         print(f"  - {geojson_file}")

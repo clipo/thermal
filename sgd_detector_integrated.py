@@ -315,13 +315,22 @@ class IntegratedSGDDetector:
                 sgd_mask = sgd_mask | plume
                 
                 props = measure.regionprops(plume.astype(int))[0]
+                
+                # Extract contour of the plume
+                from skimage import measure as sk_measure
+                contours = sk_measure.find_contours(plume.astype(float), 0.5)
+                # Get the longest contour (main outline)
+                plume_contour = contours[0] if contours else []
+                
                 plume_info.append({
                     'id': i,
                     'area_pixels': plume.sum(),
                     'min_shore_distance': min_shore_distance,
                     'centroid': props.centroid,
                     'bbox': props.bbox,
-                    'eccentricity': props.eccentricity
+                    'eccentricity': props.eccentricity,
+                    'contour': plume_contour.tolist() if len(plume_contour) > 0 else [],
+                    'mask': plume  # Store the binary mask for this plume
                 })
         
         # Calculate characteristics
