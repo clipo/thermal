@@ -11,7 +11,10 @@ A Python toolkit for detecting submarine groundwater discharge (cold freshwater 
 - [Primary Scripts](#primary-scripts)
 - [Machine Learning Segmentation](#machine-learning-segmentation)
 - [Why Raw Thermal Data is Essential](#why-raw-thermal-data-is-essential)
+- [Recent Enhancements](#recent-enhancements)
 - [Technical Details](#technical-details)
+- [Output Formats](#output-formats)
+- [Tips for Best Results](#tips-for-best-results)
 - [Troubleshooting](#troubleshooting)
 - [Project Structure](#project-structure)
 - [Citation](#citation)
@@ -31,9 +34,12 @@ This toolkit processes paired thermal (640×512) and RGB (4096×3072) images fro
 - **Thermal Analysis**: Process Autel 640T thermal images (deciKelvin format)
 - **Ocean Segmentation**: ML-based segmentation to isolate ocean from land and waves
 - **SGD Detection**: Identify cold freshwater plumes near shorelines
-- **Georeferencing**: Extract GPS coordinates for detected SGD locations
+- **Polygon Export**: Export actual plume outlines as georeferenced polygons
+- **Multi-Format Export**: GeoJSON, KML (Google Earth), and CSV formats
+- **Georeferencing**: Extract GPS coordinates with accurate area calculations
 - **Aggregate Mapping**: Handle overlapping survey frames with deduplication
-- **Interactive Viewers**: Real-time parameter tuning and frame navigation
+- **Interactive Viewers**: Real-time parameter tuning and enhanced navigation (±1, ±5, ±10, ±25 frames)
+- **New Aggregate**: Start fresh surveys while preserving previous data
 
 ## Detection Pipeline
 
@@ -120,12 +126,16 @@ python sgd_viewer.py [--data PATH] [--model MODEL] [--aggregate FILE]
 - Mark and save confirmed SGD locations
 
 **Controls:**
-- Navigation: ← → arrows, ±5, ±10, ±25, First/Last buttons
-- Sliders: Adjust detection parameters
-- Mark SGD (M key): Confirm current detections
-- Save (S key): Save progress
-- Export (E key): Export aggregate results to GeoJSON with polygons
-- New Agg (N key): Start new aggregate file (backs up existing data)
+- **Navigation**: 
+  - Buttons: Prev/Next (±1), ±5, ±10, ±25, First/Last
+  - Keyboard: ← → arrows, Home/End keys
+- **Detection**:
+  - Mark SGD (M key): Confirm current SGD detections
+  - Parameter sliders: Temperature threshold, minimum area, merge distance
+- **Data Management**:
+  - Save (S key): Save current progress
+  - Export (E key): Export to GeoJSON, KML, and CSV with polygons
+  - New Agg (N key): Start new aggregate file (auto-backs up existing data)
 
 ![SGD Viewer Interface](docs/images/sgd_viewer_interface.png)
 *Main SGD viewer interface showing multi-panel analysis with RGB, segmentation, thermal, ocean thermal, SGD detection, coverage map, and statistics*
@@ -207,27 +217,37 @@ thermal/
 ## Quick Start
 
 ### 1. Prepare Your Data
-Place Autel 640T imagery in `data/100MEDIA/` with paired files:
+Place Autel 640T imagery in a folder (e.g., `data/survey1/`) with paired files:
 - `MAX_XXXX.JPG` - RGB images 
-- `IRX_XXXX.irg` - Thermal data
+- `IRX_XXXX.irg` - Raw thermal data (NOT the IRX JPEGs)
 
-### 2. Train Segmentation Model (First Time)
+### 2. Train Segmentation Model (Optional but Recommended)
 ```bash
-python segmentation_trainer.py
+python segmentation_trainer.py --data data/survey1
 ```
-Label pixels by clicking: Ocean (left), Land (right), Rock (middle)
+Label pixels by clicking: Ocean (left), Land (right), Rock (middle). Press 'T' to train.
 
-### 3. Run SGD Detection
+### 3. Run SGD Detection and Mapping
 ```bash
-# Default mode with interactive viewer
-python sgd_viewer.py
+# For your survey folder
+python sgd_viewer.py --data data/survey1
 
-# Or use specific model for conditions
-python sgd_viewer.py --model rocky_shore_model.pkl
+# With custom model and aggregate file
+python sgd_viewer.py --data data/survey1 --model rocky_shore.pkl --aggregate survey1.json
 ```
 
-### 4. Export Results
-Click "Export Map" button to save GeoJSON for GIS import
+### 4. Detection Workflow
+1. **Navigate**: Use buttons or arrow keys (±1, ±5, ±10, ±25, First/Last)
+2. **Adjust**: Fine-tune detection with parameter sliders
+3. **Mark**: Press 'M' to confirm SGD locations (shown in green)
+4. **Save**: Press 'S' to save progress
+5. **Export**: Press 'E' to generate GeoJSON, KML, and CSV files
+6. **New Survey**: Press 'N' to start fresh (auto-backs up data)
+
+### 5. View Results
+- **GeoJSON** (`*_polygons.geojson`): Open in QGIS or ArcGIS
+- **KML** (`*_polygons.kml`): Open in Google Earth - see plume polygons on satellite imagery
+- **CSV** (`*_areas.csv`): Import to Excel for analysis
 
 ## Machine Learning Segmentation
 
@@ -527,7 +547,9 @@ Without these steps, cold rocks, shadows, and land features would create false p
 
 ## Output Formats
 
-### GeoJSON Export (with Polygon Support)
+### Export Formats
+
+#### 1. GeoJSON (Polygon Support)
 ```json
 {
   "type": "FeatureCollection",
@@ -541,7 +563,7 @@ Without these steps, cold rocks, shadows, and land features would create false p
     },
     "properties": {
       "temperature_anomaly": -2.1,
-      "area_m2": 15.3,
+      "area_m2": 125.5,
       "area_pixels": 150,
       "shore_distance": 2.5,
       "frame": 248
@@ -550,10 +572,60 @@ Without these steps, cold rocks, shadows, and land features would create false p
 }
 ```
 
-The system now exports actual plume outlines as georeferenced polygons, providing:
+#### 2. KML (Google Earth)
+- Polygon plumes with semi-transparent red fill
+- Point plumes with water icon (fallback)
+- Rich metadata in placemark descriptions
+- Summary statistics folder
+- Direct import to Google Earth Pro or Google Earth Web
+
+#### 3. CSV (Data Analysis)
+```csv
+frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly,shore_distance
+248,2024-01-15 10:30:00,18.48943,-109.71357,125.5,150,-1.8,2.5
+```
+
+**Benefits of Polygon Export**:
+- Accurate area calculations from actual plume boundaries
+- Visual representation of plume shape and extent
+- Compatible with all major GIS software (QGIS, ArcGIS)
+- Suitable for scientific publication and analysis
+
+## Recent Enhancements
+
+### Enhanced Navigation Controls
+All viewers now feature extended navigation controls:
+- Jump buttons: ±5, ±10, ±25 frames for quick browsing
+- First/Last buttons for dataset endpoints
+- Improved button layout with controls stacked at bottom
+- Frame counter shows current position
+
+### Polygon Export for Accurate Analysis
+SGD plumes are now exported as georeferenced polygons:
+- Actual plume boundaries extracted using contour detection
 - Accurate area calculations from polygon geometry
-- Visual representation of plume extent
-- Compatible with GIS software for spatial analysis
+- Preserves both outline and centroid information
+- Fallback to points when polygon extraction fails
+
+### Multi-Format Export
+Single export command generates three formats:
+- **GeoJSON**: Industry-standard format for GIS software
+- **KML**: Direct visualization in Google Earth with styled polygons
+- **CSV**: Tabular data for spreadsheet analysis
+
+### New Aggregate Management
+Start fresh surveys without losing previous work:
+- "New Agg" button (N key) to reset aggregate file
+- Automatic timestamped backup of existing data
+- Preserves configuration settings
+- Useful for multiple survey areas or sessions
+
+### Data Directory Selection
+Process different image folders without code changes:
+```bash
+python sgd_viewer.py --data data/survey2
+python sgd_detector_integrated.py --data /path/to/images
+```
 
 ## Tips for Best Results
 
