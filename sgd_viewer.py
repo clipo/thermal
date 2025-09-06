@@ -22,19 +22,25 @@ import os
 class SGDAggregateViewer:
     """SGD viewer with deduplication and aggregate mapping"""
     
-    def __init__(self, aggregate_file="sgd_aggregate.json", distance_threshold=10.0):
+    def __init__(self, aggregate_file="sgd_aggregate.json", 
+                 distance_threshold=10.0,
+                 ml_model_path="segmentation_model.pkl"):
         """
         Initialize viewer with aggregate tracking.
         
         Args:
             aggregate_file: Path to persistent aggregate data file
             distance_threshold: Meters - SGD within this distance are considered same location
+            ml_model_path: Path to ML segmentation model (None to use rule-based)
         """
         print("SGD Aggregate Mapping Viewer")
         print("=" * 50)
         
-        # Initialize components
-        self.detector = IntegratedSGDDetector()
+        # Initialize components with specified ML model
+        self.detector = IntegratedSGDDetector(
+            use_ml=ml_model_path is not None,
+            ml_model_path=ml_model_path
+        )
         self.georef = SGDGeoref(thermal_fov_ratio=0.7)
         
         # Aggregate tracking
@@ -457,11 +463,59 @@ class SGDAggregateViewer:
         plt.show()
 
 def main():
-    """Main entry point"""
+    """Main entry point with command-line argument support"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='SGD Detection Viewer with Aggregate Mapping',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Use default settings
+  python sgd_viewer.py
+  
+  # Use custom ML model for different conditions
+  python sgd_viewer.py --model rocky_shore_model.pkl
+  
+  # Create new aggregate file for different survey
+  python sgd_viewer.py --aggregate survey2_aggregate.json
+  
+  # Disable ML segmentation (use rule-based)
+  python sgd_viewer.py --no-ml
+  
+  # Combine options
+  python sgd_viewer.py --model sunrise_model.pkl --aggregate morning_survey.json --distance 15
+        """
+    )
+    
+    parser.add_argument('--model', type=str, default='segmentation_model.pkl',
+                       help='Path to ML segmentation model (default: segmentation_model.pkl)')
+    parser.add_argument('--no-ml', action='store_true',
+                       help='Disable ML segmentation, use rule-based instead')
+    parser.add_argument('--aggregate', type=str, default='sgd_aggregate.json',
+                       help='Path to aggregate data file (default: sgd_aggregate.json)')
+    parser.add_argument('--distance', type=float, default=10.0,
+                       help='Merge distance in meters for duplicate SGD (default: 10.0)')
+    
+    args = parser.parse_args()
+    
+    # Determine ML model path
+    ml_model_path = None if args.no_ml else args.model
+    
+    if ml_model_path:
+        print(f"Using ML model: {ml_model_path}")
+    else:
+        print("Using rule-based segmentation (ML disabled)")
+    
+    print(f"Aggregate file: {args.aggregate}")
+    print(f"Merge distance: {args.distance} meters")
+    print()
+    
     try:
         viewer = SGDAggregateViewer(
-            aggregate_file="sgd_aggregate.json",
-            distance_threshold=10.0  # 10 meters default
+            aggregate_file=args.aggregate,
+            distance_threshold=args.distance,
+            ml_model_path=ml_model_path
         )
         viewer.run()
     except Exception as e:

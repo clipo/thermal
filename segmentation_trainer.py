@@ -25,10 +25,19 @@ warnings.filterwarnings('ignore')
 class SegmentationTrainer:
     """Interactive tool for training segmentation classifier"""
     
-    def __init__(self):
-        self.base_path = Path("data/100MEDIA")
-        self.training_file = "segmentation_training_data.json"
-        self.model_file = "segmentation_model.pkl"
+    def __init__(self, base_path="data/100MEDIA",
+                 model_file="segmentation_model.pkl",
+                 training_file="segmentation_training_data.json"):
+        """Initialize trainer
+        
+        Args:
+            base_path: Path to data directory
+            model_file: Path to save/load ML model
+            training_file: Path to save/load training data
+        """
+        self.base_path = Path(base_path)
+        self.training_file = training_file
+        self.model_file = model_file
         
         # Find available frames
         self.frames = []
@@ -477,6 +486,56 @@ Tips:
         print("Build a dataset then train the classifier")
         plt.show()
 
-if __name__ == "__main__":
-    trainer = SegmentationTrainer()
+def main():
+    """Main entry point with command-line arguments"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Interactive Segmentation Training Tool',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Use default model and training data
+  python segmentation_trainer.py
+  
+  # Create a new model for specific conditions
+  python segmentation_trainer.py --model rocky_shore_model.pkl --training rocky_shore_data.json
+  
+  # Continue training an existing model
+  python segmentation_trainer.py --model sunrise_model.pkl --training sunrise_data.json
+  
+Controls:
+  - Left click: Label as Ocean
+  - Right click: Label as Land
+  - Middle click: Label as Rock
+  - Shift+click: Label as Wave
+  - T key: Train classifier
+  - S key: Save model
+  - C key: Clear current frame
+  - Space: Next frame
+        """
+    )
+    
+    parser.add_argument('--model', type=str, default='segmentation_model.pkl',
+                       help='Path to save/load ML model (default: segmentation_model.pkl)')
+    parser.add_argument('--training', type=str, default='segmentation_training_data.json',
+                       help='Path to save/load training data (default: segmentation_training_data.json)')
+    parser.add_argument('--data', type=str, default='data/100MEDIA',
+                       help='Path to data directory (default: data/100MEDIA)')
+    
+    args = parser.parse_args()
+    
+    print(f"Model file: {args.model}")
+    print(f"Training data: {args.training}")
+    print(f"Data directory: {args.data}")
+    print()
+    
+    trainer = SegmentationTrainer(
+        base_path=args.data,
+        model_file=args.model,
+        training_file=args.training
+    )
     trainer.run()
+
+if __name__ == "__main__":
+    main()

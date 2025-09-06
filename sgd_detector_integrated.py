@@ -34,7 +34,8 @@ except ImportError:
 class IntegratedSGDDetector:
     """SGD Detector with built-in RGB-thermal alignment"""
     
-    def __init__(self, temp_threshold=1.0, min_area=50, base_path="data/100MEDIA", use_ml=True):
+    def __init__(self, temp_threshold=1.0, min_area=50, base_path="data/100MEDIA", 
+                 use_ml=True, ml_model_path="segmentation_model.pkl"):
         """
         Initialize integrated SGD detector
         
@@ -43,20 +44,22 @@ class IntegratedSGDDetector:
         - min_area: Minimum area (pixels) for valid SGD plume
         - base_path: Path to data directory
         - use_ml: Use ML segmentation if available (default True)
+        - ml_model_path: Path to ML model file (default "segmentation_model.pkl")
         """
         self.temp_threshold = temp_threshold
         self.min_area = min_area
         self.base_path = Path(base_path)
         self.use_ml = use_ml
+        self.ml_model_path = ml_model_path
         
         # Initialize ML segmenter if requested and available
         self.ml_segmenter = None
         if self.use_ml and ML_AVAILABLE:
-            self.ml_segmenter = FastMLSegmenter()
+            self.ml_segmenter = FastMLSegmenter(model_path=ml_model_path)
             if self.ml_segmenter.classifier is not None:
-                print("Using fast ML-based segmentation")
+                print(f"Using fast ML-based segmentation with model: {ml_model_path}")
             else:
-                print("ML model not found. Using rule-based segmentation.")
+                print(f"ML model not found at {ml_model_path}. Using rule-based segmentation.")
                 print("Train a model using segmentation_trainer.py for better results.")
                 self.ml_segmenter = None
         
@@ -575,7 +578,45 @@ class IntegratedSGDDetector:
 
 
 def main():
-    """Main entry point"""
+    """Main entry point with command-line argument support"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Integrated SGD Detector with ML Segmentation',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Interactive menu (default)
+  python sgd_detector_integrated.py
+  
+  # Use custom ML model
+  python sgd_detector_integrated.py --model cloudy_conditions.pkl
+  
+  # Disable ML, use rule-based segmentation
+  python sgd_detector_integrated.py --no-ml
+  
+  # Direct mode selection
+  python sgd_detector_integrated.py --mode single --frame 250
+  python sgd_detector_integrated.py --mode batch --start 200 --end 300
+  python sgd_detector_integrated.py --mode interactive
+        """
+    )
+    
+    parser.add_argument('--model', type=str, default='segmentation_model.pkl',
+                       help='Path to ML segmentation model (default: segmentation_model.pkl)')
+    parser.add_argument('--no-ml', action='store_true',
+                       help='Disable ML segmentation, use rule-based instead')
+    parser.add_argument('--mode', choices=['single', 'batch', 'interactive'],
+                       help='Operating mode (if not specified, shows menu)')
+    parser.add_argument('--frame', type=int, default=248,
+                       help='Frame number for single mode (default: 248)')
+    parser.add_argument('--start', type=int, default=1,
+                       help='Start frame for batch mode (default: 1)')
+    parser.add_argument('--end', type=int, default=100,
+                       help='End frame for batch mode (default: 100)')
+    
+    args = parser.parse_args()
+    
     print("Integrated SGD Detector")
     print("=" * 50)
     print("\nBuilt-in alignment for Autel 640T:")
@@ -583,21 +624,37 @@ def main():
     print("  Thermal: 640 x 512 pixels")
     print("  Thermal FOV is centered in RGB image")
     
-    detector = IntegratedSGDDetector()
+    # Initialize detector with specified model
+    ml_model_path = None if args.no_ml else args.model
+    detector = IntegratedSGDDetector(
+        use_ml=ml_model_path is not None,
+        ml_model_path=ml_model_path if ml_model_path else "segmentation_model.pkl"
+    )
     
-    print("\nOptions:")
-    print("1. Single frame analysis")
-    print("2. Batch process frames")
-    print("3. Interactive parameter tuning")
-    
-    choice = input("\nChoice (1-3): ").strip()
+    # Direct mode execution if specified
+    if args.mode:
+        choice = {'single': '1', 'batch': '2', 'interactive': '3'}[args.mode]
+    else:
+        print("\nOptions:")
+        print("1. Single frame analysis")
+        print("2. Batch process frames")
+        print("3. Interactive parameter tuning")
+        choice = input("\nChoice (1-3): ").strip()
     
     if choice == '1':
-        frame = int(input("Enter frame number (default 248): ") or "248")
+        # Use command-line frame if in direct mode, otherwise prompt
+        if args.mode == 'single':
+            frame = args.frame
+        else:
+            frame = int(input("Enter frame number (default 248): ") or "248")
         result = detector.process_frame(frame, visualize=True)
         
     elif choice == '2':
-        max_frames = int(input("Max frames to process (default 10): ") or "10")
+        # Use command-line range if in direct mode, otherwise prompt
+        if args.mode == 'batch':
+            max_frames = args.end - args.start + 1
+        else:
+            max_frames = int(input("Max frames to process (default 10): ") or "10")
         results = detector.batch_process(max_frames=max_frames)
         
     else:

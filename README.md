@@ -309,6 +309,57 @@ if not model_path.exists():
     return self.rule_based_segmentation(rgb_image)
 ```
 
+### Managing Multiple Models
+
+The toolkit now supports using different ML models for different conditions:
+
+#### Creating Condition-Specific Models
+```bash
+# Train model for rocky shores
+python segmentation_trainer.py --model rocky_shore_model.pkl --training rocky_shore_data.json
+
+# Train model for sunrise/sunset lighting
+python segmentation_trainer.py --model sunrise_model.pkl --training sunrise_data.json
+
+# Train model for cloudy conditions
+python segmentation_trainer.py --model cloudy_model.pkl --training cloudy_data.json
+```
+
+#### Using Specific Models in Detection
+```bash
+# Use rocky shore model for SGD detection
+python sgd_viewer.py --model rocky_shore_model.pkl
+
+# Use sunrise model with custom aggregate file
+python sgd_viewer.py --model sunrise_model.pkl --aggregate morning_survey.json
+
+# Disable ML segmentation entirely (use rule-based)
+python sgd_viewer.py --no-ml
+
+# Direct mode with custom model
+python sgd_detector_integrated.py --model cloudy_model.pkl --mode interactive
+```
+
+#### Managing Aggregate Files
+Different surveys or locations can maintain separate aggregate files:
+
+```bash
+# Survey 1: North coast
+python sgd_viewer.py --aggregate north_coast.json --distance 15
+
+# Survey 2: South coast with different model
+python sgd_viewer.py --model south_model.pkl --aggregate south_coast.json
+
+# Test survey with wider merge distance
+python sgd_viewer.py --aggregate test_survey.json --distance 20
+```
+
+This flexibility allows you to:
+- Maintain separate models for different environmental conditions
+- Keep survey data organized by location or date
+- Test different models without affecting production data
+- Adjust duplicate detection distance based on survey resolution
+
 ## Technical Details
 
 ### Image Alignment
