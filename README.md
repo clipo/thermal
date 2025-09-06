@@ -7,11 +7,13 @@ A Python toolkit for detecting submarine groundwater discharge (cold freshwater 
 - [Key Features](#key-features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Command-Line Usage](#command-line-usage)
 - [Primary Scripts](#primary-scripts)
 - [Machine Learning Segmentation](#machine-learning-segmentation)
-- [Command-Line Usage](#command-line-usage)
+- [Why Raw Thermal Data is Essential](#why-raw-thermal-data-is-essential)
 - [Technical Details](#technical-details)
 - [Troubleshooting](#troubleshooting)
+- [Project Structure](#project-structure)
 - [Citation](#citation)
 
 ## Overview
@@ -424,6 +426,64 @@ This flexibility allows you to:
 - Keep survey data organized by location or date
 - Test different models without affecting production data
 - Adjust duplicate detection distance based on survey resolution
+
+## Why Raw Thermal Data is Essential
+
+### The Problem with IRX Processed Images
+
+The Autel 640T drone produces two types of thermal files:
+- **IRX_XXXX.jpg**: Processed thermal images with enhanced contrast
+- **IRX_XXXX.irg**: Raw thermal data with actual temperature values
+
+**Critical Issue**: The IRX JPEG images cannot be used for SGD detection because they apply **local contrast enhancement** that destroys absolute temperature information.
+
+![IRX vs Raw Thermal Comparison](docs/images/irx_vs_raw_thermal.png)
+*Comparison showing how IRX processing destroys temperature information through local contrast enhancement and histogram equalization*
+
+### Why IRX Processing Makes SGD Detection Impossible
+
+1. **Local Contrast Enhancement**
+   - Dark pixels in one area don't represent the same temperature as dark pixels in another area
+   - The enhancement is applied locally, not globally
+   - Same gray value ≠ same temperature across the image
+
+2. **Histogram Equalization**
+   - Spreads pixel values across the full 0-255 range
+   - Destroys the natural temperature distribution
+   - Makes minor temperature variations appear dramatic
+   - Creates false patterns that don't exist in actual temperature data
+
+3. **Loss of Quantitative Information**
+   - Cannot measure actual temperature differences
+   - Cannot detect subtle 1-2°C anomalies that indicate SGD
+   - Visual appearance is misleading for scientific analysis
+
+### Demonstration: SGD Detection Failure with IRX
+
+![SGD Detection Comparison](docs/images/sgd_detection_comparison.png)
+*IRX processed images fail to detect SGD because contrast enhancement creates false positives on land and rocks, while raw thermal data successfully identifies true cold anomalies in ocean water*
+
+### The Solution: Raw Thermal Data (.irg files)
+
+Our toolkit uses raw thermal data because it:
+- **Preserves absolute temperature values** in deciKelvin (K × 10)
+- **Maintains quantitative relationships** between pixels
+- **Allows detection of subtle anomalies** (1-2°C differences)
+- **Enables ocean isolation** to focus on water temperatures
+- **Provides reliable SGD detection** based on actual temperature
+
+### Key Insight: Ocean Isolation is Critical
+
+Even with raw thermal data, we must:
+1. **Segment ocean from land** using RGB imagery
+2. **Mask out non-water areas** to avoid false positives
+3. **Calculate ocean median temperature** as baseline
+4. **Detect anomalies relative to ocean baseline** not global image
+
+This is why the toolkit's multi-step pipeline is essential:
+- RGB segmentation → Ocean mask → Thermal analysis → SGD detection
+
+Without these steps, cold rocks, shadows, and land features would create false positives, making accurate SGD detection impossible.
 
 ## Technical Details
 
