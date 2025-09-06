@@ -17,22 +17,22 @@ def load_irg_data(irg_path):
     with open(irg_path, 'rb') as f:
         irg_data = f.read()
     
-    # Skip header and extract raw thermal values
-    offset = 0x280
     width, height = 640, 512
     
-    thermal_raw = []
-    for i in range(height):
-        for j in range(width):
-            idx = offset + (i * width + j) * 2
-            if idx + 1 < len(irg_data):
-                value = struct.unpack('<H', irg_data[idx:idx+2])[0]
-                thermal_raw.append(value)
+    # Calculate header size based on file size
+    pixel_data_size = width * height * 2  # 2 bytes per pixel
+    header_size = len(irg_data) - pixel_data_size
     
-    thermal_raw = np.array(thermal_raw).reshape((height, width))
+    # Extract thermal data after header
+    if header_size > 0:
+        raw_thermal = np.frombuffer(irg_data[header_size:], dtype=np.uint16)
+    else:
+        raw_thermal = np.frombuffer(irg_data[:pixel_data_size], dtype=np.uint16)
+    
+    raw_thermal = raw_thermal.reshape((height, width))
     
     # Convert from deciKelvin to Celsius
-    thermal_celsius = thermal_raw / 10.0 - 273.15
+    thermal_celsius = (raw_thermal / 10.0) - 273.15
     
     return thermal_celsius
 
@@ -45,7 +45,13 @@ def create_comparison_figure():
     
     # Load IRX processed image
     irx_path = base_path / f"IRX_{frame_num:04d}.jpg"
-    irx_image = np.array(Image.open(irx_path))
+    irx_image_color = np.array(Image.open(irx_path))
+    
+    # Convert to grayscale if needed
+    if len(irx_image_color.shape) == 3:
+        irx_image = np.mean(irx_image_color, axis=2).astype(np.uint8)
+    else:
+        irx_image = irx_image_color
     
     # Load raw thermal data
     irg_path = base_path / f"IRX_{frame_num:04d}.irg"
@@ -79,8 +85,11 @@ def create_comparison_figure():
     ax2 = fig.add_subplot(gs[0, 1])
     ax3 = fig.add_subplot(gs[0, 2])
     
-    # Display IRX processed
-    ax1.imshow(irx_image, cmap='gray')
+    # Display IRX processed (show original color if available)
+    if len(irx_image_color.shape) == 3:
+        ax1.imshow(irx_image_color)  # Show with pseudo-color
+    else:
+        ax1.imshow(irx_image, cmap='gray')
     ax1.set_title('IRX Processed Image\n(Local Contrast Enhanced)', fontweight='bold')
     ax1.axis('off')
     
@@ -96,9 +105,11 @@ def create_comparison_figure():
     ax3.axis('off')
     
     # Row 2: Zoomed regions showing the problem
-    # Select two regions with similar appearance in IRX but different temps
-    region1_coords = (200, 250, 100, 100)  # x, y, w, h - ocean area
-    region2_coords = (400, 300, 100, 100)  # different ocean area
+    # Select regions that demonstrate the issue
+    # Region 1: Ocean area (should be relatively uniform temp)
+    region1_coords = (100, 200, 80, 80)  # x, y, w, h
+    # Region 2: Land/shore area (different actual temp but might look similar in IRX)
+    region2_coords = (450, 100, 80, 80)
     
     ax4 = fig.add_subplot(gs[1, 0])
     ax5 = fig.add_subplot(gs[1, 1])
@@ -111,33 +122,49 @@ def create_comparison_figure():
     # Region 1 - IRX
     region1_irx = irx_image[y1:y1+h1, x1:x1+w1]
     ax4.imshow(region1_irx, cmap='gray', vmin=0, vmax=255)
-    ax4.set_title(f'IRX Region 1\nMean pixel value: {region1_irx.mean():.1f}')
+    mean_irx1 = np.mean(region1_irx)
+    ax4.set_title(f'IRX Region 1 (Ocean)\nPixel value: {mean_irx1:.0f}')
     ax4.axis('off')
     
-    # Region 1 - Raw thermal
-    region1_thermal = thermal_raw[y1:y1+h1, x1:x1+w1]
-    im5 = ax5.imshow(region1_thermal, cmap='RdYlBu_r', vmin=23, vmax=26)
-    ax5.set_title(f'Raw Thermal Region 1\nMean temp: {np.nanmean(region1_thermal):.2f}°C')
+    # Region 2 - IRX  
+    region2_irx = irx_image[y2:y2+h2, x2:x2+w2]
+    ax5.imshow(region2_irx, cmap='gray', vmin=0, vmax=255)
+    mean_irx2 = np.mean(region2_irx)
+    ax5.set_title(f'IRX Region 2 (Land)\nPixel value: {mean_irx2:.0f}')
     ax5.axis('off')
     
-    # Region 2 comparison
-    region2_irx = irx_image[y2:y2+h2, x2:x2+w2]
+    # Get thermal data for regions
+    region1_thermal = thermal_raw[y1:y1+h1, x1:x1+w1]
     region2_thermal = thermal_raw[y2:y2+h2, x2:x2+w2]
     
-    # Create comparison plot
-    ax6.bar(['Region 1\nIRX', 'Region 2\nIRX'], 
-            [region1_irx.mean(), region2_irx.mean()],
-            color=['gray', 'gray'], alpha=0.7, label='IRX Pixel Values')
-    ax6_twin = ax6.twinx()
-    ax6_twin.bar(['Region 1\nTemp', 'Region 2\nTemp'], 
-                 [np.nanmean(region1_thermal), np.nanmean(region2_thermal)],
-                 color=['red', 'blue'], alpha=0.7, label='Actual Temperature')
+    # Show the actual temperatures
+    temp1 = np.nanmean(region1_thermal)
+    temp2 = np.nanmean(region2_thermal)
     
-    ax6.set_ylabel('IRX Pixel Value', color='gray')
-    ax6_twin.set_ylabel('Temperature (°C)', color='red')
-    ax6.set_title('Similar IRX Values ≠ Similar Temperatures')
-    ax6.tick_params(axis='y', labelcolor='gray')
-    ax6_twin.tick_params(axis='y', labelcolor='red')
+    # Create comparison showing the problem
+    ax6.text(0.5, 0.85, 'THE PROBLEM:', transform=ax6.transAxes,
+             ha='center', fontsize=12, fontweight='bold')
+    
+    comparison_text = f"""
+    Region 1 (Ocean):
+    IRX Value: {mean_irx1:.0f}
+    Actual Temp: {temp1:.1f}°C
+    
+    Region 2 (Land):
+    IRX Value: {mean_irx2:.0f}
+    Actual Temp: {temp2:.1f}°C
+    
+    {'Similar IRX values' if abs(mean_irx1 - mean_irx2) < 30 else 'Different IRX values'}
+    but {abs(temp1 - temp2):.1f}°C difference!
+    
+    IRX enhancement destroys
+    temperature information
+    """
+    
+    ax6.text(0.5, 0.4, comparison_text, transform=ax6.transAxes,
+             ha='center', va='center', fontsize=10, 
+             bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.3))
+    ax6.axis('off')
     
     # Row 3: Histograms and analysis
     ax7 = fig.add_subplot(gs[2, 0])
