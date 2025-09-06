@@ -105,11 +105,11 @@ def create_comparison_figure():
     ax3.axis('off')
     
     # Row 2: Zoomed regions showing the problem
-    # Select regions that demonstrate the issue
-    # Region 1: Shore/transition area with more variation
-    region1_coords = (280, 240, 100, 100)  # x, y, w, h - near center where there's variation
-    # Region 2: Different area with similar IRX appearance
-    region2_coords = (380, 280, 100, 100)  # Different location but may have similar pixel values
+    # Select regions with HIGH variation (found by analysis)
+    # Region 1: High variation area (shoreline/transition)
+    region1_coords = (400, 340, 80, 80)  # x, y, w, h - highest variation area (std>30)
+    # Region 2: Another high variation area but different location
+    region2_coords = (360, 240, 80, 80)  # Different location with high variation
     
     ax4 = fig.add_subplot(gs[1, 0])
     ax5 = fig.add_subplot(gs[1, 1])
