@@ -130,9 +130,10 @@ class SGDAggregateViewer:
         ax_last = plt.axes([0.45, row1_y, btn_width, btn_height])
         
         # Action buttons on the right
-        ax_mark = plt.axes([0.65, row1_y, 0.08, btn_height])
-        ax_save = plt.axes([0.74, row1_y, 0.08, btn_height])
-        ax_export = plt.axes([0.83, row1_y, 0.08, btn_height])
+        ax_mark = plt.axes([0.56, row1_y, 0.07, btn_height])
+        ax_save = plt.axes([0.64, row1_y, 0.06, btn_height])
+        ax_export = plt.axes([0.71, row1_y, 0.06, btn_height])
+        ax_new = plt.axes([0.78, row1_y, 0.07, btn_height])
         
         # Row 2 (middle) - Medium and large jumps
         row2_y = bottom_margin + btn_height + 0.005
@@ -142,11 +143,11 @@ class SGDAggregateViewer:
         ax_minus25 = plt.axes([0.23, row2_y, btn_width, btn_height])
         ax_plus25 = plt.axes([0.30, row2_y, btn_width, btn_height])
         
-        # Frame counter
-        ax_info = plt.axes([0.53, row1_y, 0.10, btn_height])
+        # Frame counter (adjusted position)
+        ax_info = plt.axes([0.47, row1_y, 0.08, btn_height])
         ax_info.axis('off')
         self.frame_info = ax_info.text(0.5, 0.5, f'Frame 1/{len(self.frames)}',
-                                       ha='center', va='center', fontsize=10)
+                                       ha='center', va='center', fontsize=9)
         
         # Create buttons
         self.btn_prev = Button(ax_prev, '← Prev')
@@ -163,6 +164,7 @@ class SGDAggregateViewer:
         self.btn_mark = Button(ax_mark, 'Mark SGD')
         self.btn_save = Button(ax_save, 'Save')
         self.btn_export = Button(ax_export, 'Export')
+        self.btn_new = Button(ax_new, 'New Agg')
         
         # Row 3 (bottom) - Parameter sliders
         row3_y = bottom_margin
@@ -189,6 +191,7 @@ class SGDAggregateViewer:
         self.btn_mark.on_clicked(self.mark_sgd)
         self.btn_save.on_clicked(self.save_aggregate)
         self.btn_export.on_clicked(self.export_aggregate_map)
+        self.btn_new.on_clicked(self.new_aggregate)
         
         self.slider_temp.on_changed(self.update_temp)
         self.slider_area.on_changed(self.update_area)
@@ -492,6 +495,68 @@ class SGDAggregateViewer:
         print(f"  - {csv_file}")
         print(f"  - {kml_file}")
     
+    def new_aggregate(self, event):
+        """Start a new aggregate file, clearing all existing data"""
+        from datetime import datetime
+        
+        # Ask for confirmation (using simple print since we don't have GUI dialog)
+        print("\n" + "="*50)
+        print("NEW AGGREGATE FILE")
+        print("="*50)
+        print("This will clear all existing SGD locations and start fresh.")
+        print("The current data will be saved with a timestamp.")
+        
+        # Save current data with timestamp if there's any
+        if self.unique_sgd_locations:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_file = f"sgd_aggregate_backup_{timestamp}.json"
+            
+            # Save backup
+            data = {
+                'metadata': {
+                    'last_updated': datetime.now().isoformat(),
+                    'total_frames': len(self.frames),
+                    'frames_processed': list(self.frames_processed),
+                    'distance_threshold': self.distance_threshold
+                },
+                'sgd_locations': self.unique_sgd_locations,
+                'statistics': {
+                    'total_unique': len(self.unique_sgd_locations),
+                    'total_detections': self.total_detections,
+                    'total_area_m2': sum(s['area_m2'] for s in self.unique_sgd_locations)
+                }
+            }
+            
+            with open(backup_file, 'w') as f:
+                json.dump(data, f, indent=2)
+            
+            print(f"✓ Current data backed up to: {backup_file}")
+        
+        # Clear all aggregate data
+        self.unique_sgd_locations = []
+        self.frames_processed = set()
+        self.total_detections = 0
+        self.frame_sgd_map = {}
+        self.current_new_sgd = []
+        self.current_existing_sgd = []
+        
+        # Save empty aggregate file
+        self.save_aggregate(None)
+        
+        # Reset georeferencer
+        if POLYGON_SUPPORT:
+            self.georef.sgd_polygons = []
+        else:
+            self.georef.sgd_locations = []
+        
+        print(f"✓ Started new aggregate file: {self.aggregate_file}")
+        print(f"✓ All SGD locations cleared")
+        print(f"✓ Ready to mark new SGD locations")
+        print("="*50)
+        
+        # Update display
+        self.update_display()
+    
     def navigate(self, step):
         """Navigate by step frames"""
         new_idx = self.current_idx + step
@@ -547,6 +612,8 @@ class SGDAggregateViewer:
             self.save_aggregate(None)
         elif event.key == 'e':
             self.export_aggregate_map(None)
+        elif event.key == 'n':
+            self.new_aggregate(None)
     
     def run(self):
         """Run the viewer"""
@@ -559,6 +626,7 @@ class SGDAggregateViewer:
         print("    - 'Mark SGD' button or 'M' key: Confirm new SGD")
         print("    - 'Save' button or 'S' key: Save progress")
         print("    - 'Export' button or 'E' key: Export aggregate map")
+        print("    - 'New Agg' button or 'N' key: Start new aggregate file")
         print("  Visual Indicators:")
         print("    - GREEN highlights: New SGD locations")
         print("    - YELLOW highlights: Previously detected SGD")

@@ -120,10 +120,12 @@ python sgd_viewer.py [--data PATH] [--model MODEL] [--aggregate FILE]
 - Mark and save confirmed SGD locations
 
 **Controls:**
-- Arrow keys or buttons: Navigate frames
+- Navigation: ← → arrows, ±5, ±10, ±25, First/Last buttons
 - Sliders: Adjust detection parameters
-- Mark SGD: Confirm current detections
-- Export Map: Save aggregate results to GeoJSON
+- Mark SGD (M key): Confirm current detections
+- Save (S key): Save progress
+- Export (E key): Export aggregate results to GeoJSON with polygons
+- New Agg (N key): Start new aggregate file (backs up existing data)
 
 ![SGD Viewer Interface](docs/images/sgd_viewer_interface.png)
 *Main SGD viewer interface showing multi-panel analysis with RGB, segmentation, thermal, ocean thermal, SGD detection, coverage map, and statistics*
@@ -525,25 +527,33 @@ Without these steps, cold rocks, shadows, and land features would create false p
 
 ## Output Formats
 
-### GeoJSON Export
+### GeoJSON Export (with Polygon Support)
 ```json
 {
   "type": "FeatureCollection",
   "features": [{
     "type": "Feature",
     "geometry": {
-      "type": "Point",
-      "coordinates": [longitude, latitude]
+      "type": "Polygon",
+      "coordinates": [[
+        [lon1, lat1], [lon2, lat2], [lon3, lat3], ...
+      ]]
     },
     "properties": {
       "temperature_anomaly": -2.1,
       "area_m2": 15.3,
-      "confidence": 0.85,
+      "area_pixels": 150,
+      "shore_distance": 2.5,
       "frame": 248
     }
   }]
 }
 ```
+
+The system now exports actual plume outlines as georeferenced polygons, providing:
+- Accurate area calculations from polygon geometry
+- Visual representation of plume extent
+- Compatible with GIS software for spatial analysis
 
 ## Tips for Best Results
 
