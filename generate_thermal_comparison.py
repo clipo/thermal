@@ -106,10 +106,10 @@ def create_comparison_figure():
     
     # Row 2: Zoomed regions showing the problem
     # Select regions that demonstrate the issue
-    # Region 1: Ocean area (should be relatively uniform temp)
-    region1_coords = (100, 200, 80, 80)  # x, y, w, h
-    # Region 2: Land/shore area (different actual temp but might look similar in IRX)
-    region2_coords = (450, 100, 80, 80)
+    # Region 1: Shore/transition area with more variation
+    region1_coords = (280, 240, 100, 100)  # x, y, w, h - near center where there's variation
+    # Region 2: Different area with similar IRX appearance
+    region2_coords = (380, 280, 100, 100)  # Different location but may have similar pixel values
     
     ax4 = fig.add_subplot(gs[1, 0])
     ax5 = fig.add_subplot(gs[1, 1])
@@ -119,18 +119,36 @@ def create_comparison_figure():
     x1, y1, w1, h1 = region1_coords
     x2, y2, w2, h2 = region2_coords
     
-    # Region 1 - IRX
-    region1_irx = irx_image[y1:y1+h1, x1:x1+w1]
-    ax4.imshow(region1_irx, cmap='gray', vmin=0, vmax=255)
-    mean_irx1 = np.mean(region1_irx)
-    ax4.set_title(f'IRX Region 1 (Ocean)\nPixel value: {mean_irx1:.0f}')
+    # Region 1 - IRX (show actual color from IRX)
+    if len(irx_image_color.shape) == 3:
+        region1_irx_color = irx_image_color[y1:y1+h1, x1:x1+w1]
+        ax4.imshow(region1_irx_color)
+        # Calculate mean from grayscale for comparison
+        region1_irx = irx_image[y1:y1+h1, x1:x1+w1]
+        mean_irx1 = np.mean(region1_irx)
+        std_irx1 = np.std(region1_irx)
+    else:
+        region1_irx = irx_image[y1:y1+h1, x1:x1+w1]
+        ax4.imshow(region1_irx, cmap='jet')  # Use jet colormap like thermal images
+        mean_irx1 = np.mean(region1_irx)
+        std_irx1 = np.std(region1_irx)
+    ax4.set_title(f'IRX Region 1 (Ocean)\nPixel mean: {mean_irx1:.0f} ± {std_irx1:.0f}')
     ax4.axis('off')
     
-    # Region 2 - IRX  
-    region2_irx = irx_image[y2:y2+h2, x2:x2+w2]
-    ax5.imshow(region2_irx, cmap='gray', vmin=0, vmax=255)
-    mean_irx2 = np.mean(region2_irx)
-    ax5.set_title(f'IRX Region 2 (Land)\nPixel value: {mean_irx2:.0f}')
+    # Region 2 - IRX (show actual color from IRX)
+    if len(irx_image_color.shape) == 3:
+        region2_irx_color = irx_image_color[y2:y2+h2, x2:x2+w2]
+        ax5.imshow(region2_irx_color)
+        # Calculate mean from grayscale for comparison
+        region2_irx = irx_image[y2:y2+h2, x2:x2+w2]
+        mean_irx2 = np.mean(region2_irx)
+        std_irx2 = np.std(region2_irx)
+    else:
+        region2_irx = irx_image[y2:y2+h2, x2:x2+w2]
+        ax5.imshow(region2_irx, cmap='jet')
+        mean_irx2 = np.mean(region2_irx)
+        std_irx2 = np.std(region2_irx)
+    ax5.set_title(f'IRX Region 2 (Land)\nPixel mean: {mean_irx2:.0f} ± {std_irx2:.0f}')
     ax5.axis('off')
     
     # Get thermal data for regions
