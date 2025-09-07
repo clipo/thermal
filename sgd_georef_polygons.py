@@ -69,10 +69,10 @@ class SGDPolygonGeoref:
                         gps_tag_name = GPSTAGS.get(gps_tag, gps_tag)
                         
                         if gps_tag_name == 'GPSLatitude':
-                            lat = gps_value[0] + gps_value[1]/60 + gps_value[2]/3600
+                            lat = float(gps_value[0]) + float(gps_value[1])/60 + float(gps_value[2])/3600
                             gps_info['lat'] = lat
                         elif gps_tag_name == 'GPSLongitude':
-                            lon = gps_value[0] + gps_value[1]/60 + gps_value[2]/3600
+                            lon = float(gps_value[0]) + float(gps_value[1])/60 + float(gps_value[2])/3600
                             gps_info['lon'] = -lon  # West is negative
                         elif gps_tag_name == 'GPSAltitude':
                             gps_info['altitude'] = float(gps_value)
@@ -145,6 +145,11 @@ class SGDPolygonGeoref:
                           rgb_center_lat, rgb_center_lon, 
                           altitude, heading=None):
         """Convert thermal pixel coordinates to lat/lon"""
+        # Ensure coordinates are float (not Fraction)
+        rgb_center_lat = float(rgb_center_lat)
+        rgb_center_lon = float(rgb_center_lon)
+        altitude = float(altitude)
+        
         # Map thermal pixel to RGB coordinates
         rgb_x = self.offset_x + thermal_x * self.scale_x
         rgb_y = self.offset_y + thermal_y * self.scale_y
@@ -199,6 +204,11 @@ class SGDPolygonGeoref:
     def contour_to_polygon(self, contour, rgb_center_lat, rgb_center_lon, 
                           altitude, heading=None):
         """Convert thermal contour to georeferenced polygon"""
+        # Ensure coordinates are float (not Fraction)
+        rgb_center_lat = float(rgb_center_lat)
+        rgb_center_lon = float(rgb_center_lon)
+        altitude = float(altitude)
+        
         polygon_coords = []
         
         for point in contour:
