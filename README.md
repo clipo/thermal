@@ -2,6 +2,8 @@
 
 A Python toolkit for detecting submarine groundwater discharge (cold freshwater seeps) in coastal waters using thermal and RGB imagery from Autel 640T UAV.
 
+> **📍 Main Script**: Use `sgd_viewer.py` for all survey processing and mapping. This is the production tool with full features including data persistence, georeferencing, and export capabilities.
+
 ## Table of Contents
 - [Overview](#overview)
 - [Key Features](#key-features)
@@ -110,32 +112,49 @@ python sgd_detector_integrated.py --mode single --frame 248
 
 ## Primary Scripts
 
+**IMPORTANT**: `sgd_viewer.py` is the main production tool for processing surveys. Use `sgd_detector_integrated.py` only for testing and analysis.
+
+### Script Comparison
+
+| Feature | `sgd_viewer.py` (MAIN TOOL) | `sgd_detector_integrated.py` (ANALYSIS) |
+|---------|------------------------------|------------------------------------------|
+| **Purpose** | Complete survey mapping | Algorithm testing & parameter tuning |
+| **Data persistence** | ✅ Saves to `sgd_aggregate.json` | ❌ No saving between sessions |
+| **Multi-frame handling** | ✅ Aggregates & deduplicates | ❌ Analyzes frames individually |
+| **Export to GIS/KML** | ✅ One-click export (E key) | ❌ No export functionality |
+| **Georeferencing** | ✅ Automatic with polygons | ❌ No georeferencing |
+| **Best for** | **Production work** | Development & debugging |
+
 ### Which Script Should I Use?
 
-| Task | Script | Command |
-|------|--------|---------|
-| **Process entire survey & map SGDs** | `sgd_viewer.py` | `python sgd_viewer.py --data data/survey1` |
-| **Analyze single frame in detail** | `sgd_detector_integrated.py` | `python sgd_detector_integrated.py --mode single --frame 248` |
-| **Train ocean segmentation model** | `segmentation_trainer.py` | `python segmentation_trainer.py --data data/survey1` |
+| Task | Use This Script | Command |
+|------|-----------------|---------|
+| **Process entire drone survey** | `sgd_viewer.py` | `python sgd_viewer.py --data data/survey1` |
+| **Map SGDs for publication** | `sgd_viewer.py` | `python sgd_viewer.py` |
+| **Export to GIS/Google Earth** | `sgd_viewer.py` | Run viewer, press 'E' |
+| **Manage multiple surveys** | `sgd_viewer.py` | Press 'N' for new aggregate |
 | **Test detection parameters** | `sgd_detector_integrated.py` | `python sgd_detector_integrated.py --mode interactive` |
-| **Export SGDs to GIS** | `sgd_viewer.py` | Run viewer, press 'E' to export |
+| **Analyze why detection failed** | `sgd_detector_integrated.py` | `python sgd_detector_integrated.py --mode single --frame 248` |
+| **Train segmentation model** | `segmentation_trainer.py` | `python segmentation_trainer.py --data data/survey1` |
 
-We provide two main scripts depending on your workflow needs:
-
-### 1. `sgd_viewer.py` - Production Mapping Tool (RECOMMENDED)
-The main application for systematic SGD survey and mapping across entire datasets.
+### 1. `sgd_viewer.py` - Main Production Tool ⭐
+**This is the primary script you should use for SGD surveys.**
 
 ```bash
+# Standard usage - process your survey
+python sgd_viewer.py --data data/your_survey
+
+# Advanced options
 python sgd_viewer.py [--data PATH] [--model MODEL] [--aggregate FILE]
 ```
 
-**Features:**
-- Interactive viewer with navigation controls
-- Real-time parameter adjustment (temperature threshold, minimum area)
-- Aggregate mapping with deduplication (handles 90% frame overlap)
-- GPS extraction and georeferencing
-- Export SGD locations to GeoJSON for GIS applications
-- Mark and save confirmed SGD locations
+**Key Features:**
+- **Persistent database**: Saves all SGD locations to `sgd_aggregate.json`
+- **Smart aggregation**: Handles 90% frame overlap, merges nearby detections
+- **Complete georeferencing**: Extracts GPS + orientation for accurate mapping
+- **Multi-format export**: GeoJSON (GIS), KML (Google Earth), CSV (Excel)
+- **Survey management**: Start new surveys while preserving old data
+- **Production ready**: Processes hundreds of frames efficiently
 
 **Controls:**
 - **Navigation**: 
@@ -152,24 +171,25 @@ python sgd_viewer.py [--data PATH] [--model MODEL] [--aggregate FILE]
 ![SGD Viewer Interface](docs/images/sgd_viewer_interface.png)
 *Main SGD viewer interface showing multi-panel analysis with RGB, segmentation, thermal, ocean thermal, SGD detection, coverage map, and statistics*
 
-### 2. `sgd_detector_integrated.py` - Interactive Analysis Tool
-For detailed analysis, parameter tuning, and algorithm development.
+### 2. `sgd_detector_integrated.py` - Testing & Analysis Tool
+**Use this only for parameter testing and debugging - not for production surveys.**
 
 ```bash
-python sgd_detector_integrated.py [--data PATH] [--model MODEL] [--mode MODE]
+# Interactive parameter tuning
+python sgd_detector_integrated.py --mode interactive
+
+# Analyze specific frame
+python sgd_detector_integrated.py --mode single --frame 248
 ```
 
-**Use Cases:**
-- Detailed single-frame analysis
-- Parameter optimization and testing
-- Algorithm development and debugging
-- Batch processing without aggregation
-
-**Operating Modes:**
-1. **Interactive** (default): Real-time parameter adjustment with visual feedback
-2. **Single frame**: Analyze one specific frame
-3. **Batch**: Process multiple frames sequentially
-- Shoreline proximity analysis
+**Limited Features:**
+- ❌ No data persistence (doesn't save between sessions)
+- ❌ No georeferencing or GPS extraction  
+- ❌ No export capabilities
+- ❌ No multi-frame aggregation
+- ✅ Good for testing parameters
+- ✅ Good for understanding why detection failed
+- ✅ Good for algorithm development
 
 ### 3. `segmentation_trainer.py` - ML Training Tool
 Interactive tool for creating training data and training the segmentation model.
@@ -234,19 +254,21 @@ Place Autel 640T imagery in a folder with paired files:
 - `MAX_XXXX.JPG` - RGB images 
 - `IRX_XXXX.irg` - Raw thermal data (**NOT the IRX JPEGs - they lack temperature data**)
 
-### 2. Train Ocean Segmentation (Recommended for rocky shores)
+### 2. Train Ocean Segmentation (Optional but recommended for rocky shores)
 ```bash
 python segmentation_trainer.py --data data/your_survey
 ```
 Click to label: Ocean (left-click), Land (right-click), Rock (middle-click). Press 'T' to train.
 
-### 3. Run SGD Survey Mapping
+### 3. Run SGD Survey Mapping with `sgd_viewer.py` ⭐
 ```bash
-# Standard usage - process entire survey
+# THIS IS THE MAIN COMMAND - Run your survey
 python sgd_viewer.py --data data/your_survey
 
-# With custom trained model
-python sgd_viewer.py --data data/your_survey --model your_model.pkl
+# The viewer will:
+# - Process all frames in your survey
+# - Save detections to sgd_aggregate.json
+# - Allow you to export to GIS formats
 ```
 
 ### 4. Detection Workflow
