@@ -1,0 +1,4 @@
+frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly,shore_distance,altitude,eccentricity,has_polygon
+248,2024-01-15 10:30:00,18.48943,-109.71357,125.50,150,-1.80,2.5,400.0,0.750,yes
+250,2024-01-15 10:31:00,18.48952,-109.71368,85.30,100,-2.10,1.2,400.0,0.650,yes
+252,2024-01-15 10:31:30,18.4896,-109.71345,45.00,55,-1.50,3.0,400.0,0.500,no

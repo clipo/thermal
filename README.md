@@ -110,8 +110,20 @@ python sgd_detector_integrated.py --mode single --frame 248
 
 ## Primary Scripts
 
-### 1. `sgd_viewer.py` - Main Production Tool
-The primary application for SGD detection and mapping across multiple frames.
+### Which Script Should I Use?
+
+| Task | Script | Command |
+|------|--------|---------|
+| **Process entire survey & map SGDs** | `sgd_viewer.py` | `python sgd_viewer.py --data data/survey1` |
+| **Analyze single frame in detail** | `sgd_detector_integrated.py` | `python sgd_detector_integrated.py --mode single --frame 248` |
+| **Train ocean segmentation model** | `segmentation_trainer.py` | `python segmentation_trainer.py --data data/survey1` |
+| **Test detection parameters** | `sgd_detector_integrated.py` | `python sgd_detector_integrated.py --mode interactive` |
+| **Export SGDs to GIS** | `sgd_viewer.py` | Run viewer, press 'E' to export |
+
+We provide two main scripts depending on your workflow needs:
+
+### 1. `sgd_viewer.py` - Production Mapping Tool (RECOMMENDED)
+The main application for systematic SGD survey and mapping across entire datasets.
 
 ```bash
 python sgd_viewer.py [--data PATH] [--model MODEL] [--aggregate FILE]
@@ -140,22 +152,23 @@ python sgd_viewer.py [--data PATH] [--model MODEL] [--aggregate FILE]
 ![SGD Viewer Interface](docs/images/sgd_viewer_interface.png)
 *Main SGD viewer interface showing multi-panel analysis with RGB, segmentation, thermal, ocean thermal, SGD detection, coverage map, and statistics*
 
-### 2. `sgd_detector_integrated.py` - Core Detection System
-Standalone detector with multiple operation modes.
+### 2. `sgd_detector_integrated.py` - Interactive Analysis Tool
+For detailed analysis, parameter tuning, and algorithm development.
 
 ```bash
 python sgd_detector_integrated.py [--data PATH] [--model MODEL] [--mode MODE]
 ```
 
-**Options:**
-1. Single frame analysis - Process one frame
-2. Batch process - Process multiple frames
-3. Interactive parameter tuning - Test parameters
+**Use Cases:**
+- Detailed single-frame analysis
+- Parameter optimization and testing
+- Algorithm development and debugging
+- Batch processing without aggregation
 
-**Features:**
-- ML-based ocean/land/wave segmentation
-- Thermal-RGB alignment (accounts for 70% FOV)
-- Cold plume detection algorithms
+**Operating Modes:**
+1. **Interactive** (default): Real-time parameter adjustment with visual feedback
+2. **Single frame**: Analyze one specific frame
+3. **Batch**: Process multiple frames sequentially
 - Shoreline proximity analysis
 
 ### 3. `segmentation_trainer.py` - ML Training Tool
@@ -217,23 +230,23 @@ thermal/
 ## Quick Start
 
 ### 1. Prepare Your Data
-Place Autel 640T imagery in a folder (e.g., `data/survey1/`) with paired files:
+Place Autel 640T imagery in a folder with paired files:
 - `MAX_XXXX.JPG` - RGB images 
-- `IRX_XXXX.irg` - Raw thermal data (NOT the IRX JPEGs)
+- `IRX_XXXX.irg` - Raw thermal data (**NOT the IRX JPEGs - they lack temperature data**)
 
-### 2. Train Segmentation Model (Optional but Recommended)
+### 2. Train Ocean Segmentation (Recommended for rocky shores)
 ```bash
-python segmentation_trainer.py --data data/survey1
+python segmentation_trainer.py --data data/your_survey
 ```
-Label pixels by clicking: Ocean (left), Land (right), Rock (middle). Press 'T' to train.
+Click to label: Ocean (left-click), Land (right-click), Rock (middle-click). Press 'T' to train.
 
-### 3. Run SGD Detection and Mapping
+### 3. Run SGD Survey Mapping
 ```bash
-# For your survey folder
-python sgd_viewer.py --data data/survey1
+# Standard usage - process entire survey
+python sgd_viewer.py --data data/your_survey
 
-# With custom model and aggregate file
-python sgd_viewer.py --data data/survey1 --model rocky_shore.pkl --aggregate survey1.json
+# With custom trained model
+python sgd_viewer.py --data data/your_survey --model your_model.pkl
 ```
 
 ### 4. Detection Workflow
@@ -743,28 +756,35 @@ python sgd_viewer.py --no-ml
 
 ```
 thermal/
-├── data/
-│   └── 100MEDIA/           # Drone imagery
-│       ├── MAX_XXXX.JPG    # RGB images
-│       └── IRX_XXXX.irg    # Thermal data
-├── docs/
-│   └── images/             # Documentation screenshots
-├── Main Scripts
-│   ├── sgd_viewer.py       # Primary production tool
-│   ├── sgd_detector_integrated.py  # Core detector
-│   ├── segmentation_trainer.py     # ML training tool
-│   └── test_segmentation.py        # Parameter testing
-├── ML Components
-│   ├── ml_segmentation_fast.py     # Fast inference
-│   ├── segmentation_model.pkl      # Default model
-│   └── segmentation_training_data.json  # Training data
-├── Supporting Tools
-│   ├── thermal_viewer.py           # Thermal exploration
-│   ├── sgd_georef.py              # GPS georeferencing
-│   └── generate_screenshots.py     # Documentation generator
-└── Output Files
-    ├── sgd_aggregate.json          # SGD location database
-    └── *.geojson, *.csv, *.kml    # Export formats
+├── Main Production Scripts
+│   ├── sgd_viewer.py               # Primary survey mapping tool (USE THIS)
+│   ├── sgd_detector_integrated.py  # Interactive analysis & tuning
+│   └── segmentation_trainer.py     # Train ML segmentation models
+│
+├── Core Modules
+│   ├── sgd_georef_polygons.py     # Georeferencing with polygon support
+│   └── ml_segmentation_fast.py     # Optimized ML segmentation (0.08s/frame)
+│
+├── Data Organization
+│   └── data/
+│       └── 100MEDIA/               # Example dataset
+│           ├── MAX_XXXX.JPG       # RGB images (4096×3072)
+│           └── IRX_XXXX.irg       # Raw thermal (640×512, deciKelvin)
+│
+├── Models & Configuration
+│   ├── segmentation_model.pkl      # Default ML model
+│   ├── sgd_aggregate.json         # Persistent SGD database
+│   └── segmentation_training_data.json  # Training annotations
+│
+├── Output Formats
+│   ├── sgd_polygons.geojson       # GIS-compatible polygons
+│   ├── sgd_polygons.kml           # Google Earth visualization
+│   └── sgd_areas.csv              # Spreadsheet analysis
+│
+└── archive/                        # Older versions and utilities
+    ├── old_versions/              # Previous implementations
+    ├── tests/                     # Test scripts
+    └── utilities/                 # Analysis tools
 ```
 
 ## Citation
