@@ -36,12 +36,13 @@ This toolkit processes paired thermal (640×512) and RGB (4096×3072) images fro
 - **Thermal Analysis**: Process Autel 640T thermal images (deciKelvin format)
 - **Ocean Segmentation**: ML-based segmentation to isolate ocean from land and waves
 - **SGD Detection**: Identify cold freshwater plumes near shorelines
+- **Wave Area Toggle**: Optionally include breaking waves/foam in SGD search
 - **Polygon Export**: Export actual plume outlines as georeferenced polygons
 - **Multi-Format Export**: GeoJSON, KML (Google Earth), and CSV formats
-- **Georeferencing**: Extract GPS coordinates with accurate area calculations
+- **Georeferencing**: Automatic GPS + orientation extraction for accurate mapping
 - **Aggregate Mapping**: Handle overlapping survey frames with deduplication
-- **Interactive Viewers**: Real-time parameter tuning and enhanced navigation (±1, ±5, ±10, ±25 frames)
-- **New Aggregate**: Start fresh surveys while preserving previous data
+- **Interactive Navigation**: Enhanced controls (±1, ±5, ±10, ±25 frames)
+- **Survey Management**: Start fresh surveys while preserving previous data
 
 ## Detection Pipeline
 
@@ -162,6 +163,7 @@ python sgd_viewer.py [--data PATH] [--model MODEL] [--aggregate FILE]
   - Keyboard: ← → arrows, Home/End keys
 - **Detection**:
   - Mark SGD (M key): Confirm current SGD detections
+  - Waves (W key): Toggle inclusion of wave areas in SGD search
   - Parameter sliders: Temperature threshold, minimum area, merge distance
 - **Data Management**:
   - Save (S key): Save current progress
@@ -213,22 +215,6 @@ Creates `segmentation_model.pkl` used by other scripts.
 ![Segmentation Trainer](docs/images/segmentation_trainer.png)
 *Interactive training tool - click to label pixels as ocean (blue), land (green), or rock (gray), then train the ML model*
 
-### 4. `test_segmentation.py` - Parameter Testing
-Test and visualize segmentation parameters on different images.
-
-```bash
-python test_segmentation.py
-```
-
-**Features:**
-- Interactive sliders for HSV thresholds
-- Real-time segmentation preview
-- Frame navigation for testing on multiple images
-- Side-by-side comparison of original and segmented
-
-![Test Segmentation](docs/images/test_segmentation.png)
-*Parameter testing interface with HSV channel visualization and adjustable thresholds for fine-tuning segmentation*
-
 ## Installation
 
 ### Requirements
@@ -274,10 +260,11 @@ python sgd_viewer.py --data data/your_survey
 ### 4. Detection Workflow
 1. **Navigate**: Use buttons or arrow keys (±1, ±5, ±10, ±25, First/Last)
 2. **Adjust**: Fine-tune detection with parameter sliders
-3. **Mark**: Press 'M' to confirm SGD locations (shown in green)
-4. **Save**: Press 'S' to save progress
-5. **Export**: Press 'E' to generate GeoJSON, KML, and CSV files
-6. **New Survey**: Press 'N' to start fresh (auto-backs up data)
+3. **Toggle Waves**: Press 'W' to include/exclude wave areas in search
+4. **Mark**: Press 'M' to confirm SGD locations (shown in green)
+5. **Save**: Press 'S' to save progress
+6. **Export**: Press 'E' to generate GeoJSON, KML, and CSV files
+7. **New Survey**: Press 'N' to start fresh (auto-backs up data)
 
 ### 5. View Results
 - **GeoJSON** (`*_polygons.geojson`): Open in QGIS or ArcGIS
@@ -650,6 +637,20 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 
 ## Recent Enhancements
 
+### Wave Area Inclusion Toggle (NEW)
+Toggle whether to include breaking waves and foam areas in SGD detection:
+- **Toggle button**: "Waves" button shows checkmark when active
+- **Keyboard shortcut**: Press 'W' to quickly toggle on/off
+- **Why use it**: SGDs can emerge in surf zones where waves are breaking
+- **Impact**: Can find additional SGDs in turbulent water areas
+- **Visual feedback**: Button turns blue when active, gray when inactive
+- **Real-time update**: Detection refreshes immediately when toggled
+
+Use cases:
+- **Rocky shores**: SGDs may be visible in wave splash zones
+- **High surf**: Cold plumes can persist even in foam/whitecaps  
+- **Tidal zones**: Some SGDs only visible during certain wave conditions
+
 ### Automatic Orientation/Heading Correction
 The toolkit now extracts and applies drone orientation for accurate georeferencing:
 - **Dual source extraction**: 
@@ -717,7 +718,13 @@ python sgd_detector_integrated.py --data /path/to/images
    - Minimum area: 50 pixels (increase for fewer false positives)
    - Merge distance: 10m default (adjust based on resolution)
 
-4. **Flight Planning**:
+4. **Wave Area Toggle**:
+   - **Enable for**: Rocky shores, surf zones, tidal areas
+   - **Disable for**: Calm waters, protected bays
+   - **Test both**: Some SGDs only visible in turbulent water
+   - **Monitor results**: Watch for false positives in foam
+
+5. **Flight Planning**:
    - Maintain consistent altitude (50-100m typical)
    - Plan for 80-90% overlap between frames
    - Fly during calm conditions for best thermal contrast
@@ -753,8 +760,8 @@ ls *.pkl
 # Train new model for current conditions
 python segmentation_trainer.py --model conditions_model.pkl
 
-# Test segmentation quality
-python test_segmentation.py
+# Test segmentation quality visually
+python sgd_detector_integrated.py --mode interactive
 
 # Use rule-based if ML fails
 python sgd_viewer.py --no-ml
