@@ -42,8 +42,8 @@ class SGDPolygonGeoref:
         # Storage for georeferenced locations
         self.sgd_polygons = []
     
-    def extract_gps(self, image_path):
-        """Extract GPS metadata from image"""
+    def extract_gps(self, image_path, verbose=False):
+        """Extract GPS and orientation metadata from image"""
         try:
             img = Image.open(image_path)
             exifdata = img._getexif()
@@ -53,10 +53,17 @@ class SGDPolygonGeoref:
             
             gps_info = {}
             
-            # Process GPS tags
+            # Process all EXIF tags first to get orientation
             for tag, value in exifdata.items():
                 tag_name = TAGS.get(tag, tag)
                 
+                # Standard orientation tag (1-8 values)
+                if tag_name == 'Orientation':
+                    gps_info['exif_orientation'] = value
+                    if verbose:
+                        print(f"  EXIF Orientation tag: {value}")
+                
+                # Process GPS tags
                 if tag_name == 'GPSInfo':
                     for gps_tag, gps_value in value.items():
                         gps_tag_name = GPSTAGS.get(gps_tag, gps_tag)
@@ -70,12 +77,32 @@ class SGDPolygonGeoref:
                         elif gps_tag_name == 'GPSAltitude':
                             gps_info['altitude'] = float(gps_value)
                         elif gps_tag_name == 'GPSImgDirection':
+                            # This is the compass heading when image was taken
                             gps_info['heading'] = float(gps_value)
+                            if verbose:
+                                print(f"  GPS Image Direction (heading): {gps_value}°")
+                        elif gps_tag_name == 'GPSImgDirectionRef':
+                            # T = True North, M = Magnetic North
+                            gps_info['heading_ref'] = gps_value
+                            if verbose:
+                                print(f"  Heading Reference: {gps_value}")
+                        elif gps_tag_name == 'GPSTrack':
+                            # Direction of movement
+                            gps_info['track'] = float(gps_value)
+                            if verbose:
+                                print(f"  GPS Track (movement direction): {gps_value}°")
             
             # Get timestamp
             datetime_str = exifdata.get(306) or exifdata.get(36867)
             if datetime_str:
                 gps_info['datetime'] = datetime_str
+            
+            # Log what we found
+            if verbose and 'lat' in gps_info:
+                print(f"  Location: ({gps_info['lat']:.6f}, {gps_info['lon']:.6f})")
+                print(f"  Altitude: {gps_info.get('altitude', 'N/A')} m")
+                if 'heading' not in gps_info:
+                    print("  ⚠️ No heading data found - georeferencing may be less accurate")
             
             return gps_info if 'lat' in gps_info else None
             
@@ -113,14 +140,21 @@ class SGDPolygonGeoref:
         offset_y_meters = -offset_y_pixels * gsd  # Y is inverted
         
         # Apply heading rotation if provided
-        if heading is not None and heading != 0:
-            heading_rad = np.radians(heading)
+        # Heading is the direction the camera was pointing (0° = North, 90° = East, etc.)
+        if heading is not None:
+            # Convert heading to radians
+            # Note: We rotate by negative heading because we're converting from 
+            # camera coordinates to world coordinates
+            heading_rad = np.radians(-heading)
             cos_h = np.cos(heading_rad)
             sin_h = np.sin(heading_rad)
+            
+            # Rotate offsets from camera frame to world frame
             rotated_x = offset_x_meters * cos_h - offset_y_meters * sin_h
             rotated_y = offset_x_meters * sin_h + offset_y_meters * cos_h
             offset_x_meters = rotated_x
             offset_y_meters = rotated_y
+        # If no heading, assume north-facing (0°)
         
         # Convert to degrees
         meters_per_degree_lat = 111320.0
@@ -177,20 +211,25 @@ class SGDPolygonGeoref:
         
         return area
     
-    def process_frame_with_polygons(self, frame_number, plume_info_list):
+    def process_frame_with_polygons(self, frame_number, plume_info_list, verbose=False):
         """
         Georeference detected SGD plumes with polygon outlines.
         
         Args:
             frame_number: Frame number
             plume_info_list: List of plume dictionaries from detector (with contours)
+            verbose: Print orientation information
         
         Returns:
             List of georeferenced polygon features
         """
         # Get GPS from RGB image
         rgb_path = self.base_path / f"MAX_{frame_number:04d}.JPG"
-        gps_info = self.extract_gps(str(rgb_path))
+        
+        if verbose:
+            print(f"\nProcessing frame {frame_number}:")
+        
+        gps_info = self.extract_gps(str(rgb_path), verbose=verbose)
         
         if not gps_info or 'lat' not in gps_info:
             print(f"No GPS data for frame {frame_number}")
@@ -199,6 +238,12 @@ class SGDPolygonGeoref:
         georeferenced = []
         altitude = gps_info.get('altitude', 400)
         heading = gps_info.get('heading')
+        
+        if verbose:
+            if heading is not None:
+                print(f"  ✓ Applying rotation correction: {heading:.1f}°")
+            else:
+                print("  ⚠️ No heading data - assuming north-facing (0°)")
         
         for plume in plume_info_list:
             # Get contour if available

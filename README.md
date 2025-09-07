@@ -527,10 +527,25 @@ Without these steps, cold rocks, shadows, and land features would create false p
 
 ## Technical Details
 
-### Image Alignment
+### Image Alignment & Orientation
 - Thermal FOV is ~70% of RGB FOV (centered)
 - Automatic extraction of matching RGB region
 - Proper scaling for pixel-perfect alignment
+
+#### Orientation/Heading Correction
+The system automatically handles drone orientation for accurate georeferencing:
+- **GPS Image Direction** (heading) is extracted from EXIF metadata
+- **Rotation correction** is applied based on compass heading (0° = North, 90° = East)
+- **Automatic handling**: No manual configuration needed
+- **Fallback**: If no heading data exists, north-facing (0°) is assumed
+
+**Why this matters**: Without orientation correction, SGD locations would be incorrectly placed when the drone isn't facing north. A plume on the right side of the image will be georeferenced differently if the drone is facing east vs. west.
+
+**EXIF data used**:
+- `GPSImgDirection`: Compass heading when image was taken
+- `GPSImgDirectionRef`: Reference (True North or Magnetic North)
+- `Orientation`: EXIF orientation tag for image rotation
+- `GPSAltitude`: Height for ground distance calculations
 
 ### Temperature Processing
 - Raw thermal values in deciKelvin
@@ -648,6 +663,8 @@ python sgd_detector_integrated.py --data /path/to/images
    - Maintain consistent altitude (50-100m typical)
    - Plan for 80-90% overlap between frames
    - Fly during calm conditions for best thermal contrast
+   - **Enable GPS heading recording** in drone settings for accurate georeferencing
+   - Consider flight patterns (lawn mower) that maintain consistent orientation
 
 5. **Survey Organization**:
    - Use separate aggregate files for each survey
