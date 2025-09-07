@@ -534,18 +534,25 @@ Without these steps, cold rocks, shadows, and land features would create false p
 
 #### Orientation/Heading Correction
 The system automatically handles drone orientation for accurate georeferencing:
-- **GPS Image Direction** (heading) is extracted from EXIF metadata
+- **Dual-source heading extraction**:
+  - `GPSImgDirection`: Standard EXIF compass heading (if available)
+  - `Camera:Yaw`: XMP metadata from Autel 640T (fallback)
 - **Rotation correction** is applied based on compass heading (0° = North, 90° = East)
 - **Automatic handling**: No manual configuration needed
+- **Critical for accuracy**: Position errors of 50-100+ meters without correction
 - **Fallback**: If no heading data exists, north-facing (0°) is assumed
 
 **Why this matters**: Without orientation correction, SGD locations would be incorrectly placed when the drone isn't facing north. A plume on the right side of the image will be georeferenced differently if the drone is facing east vs. west.
 
-**EXIF data used**:
-- `GPSImgDirection`: Compass heading when image was taken
-- `GPSImgDirectionRef`: Reference (True North or Magnetic North)
-- `Orientation`: EXIF orientation tag for image rotation
-- `GPSAltitude`: Height for ground distance calculations
+**Metadata sources**:
+- **EXIF tags**:
+  - `GPSImgDirection`: Compass heading when image was taken
+  - `GPSImgDirectionRef`: Reference (True North or Magnetic North)
+  - `GPSAltitude`: Height for ground distance calculations
+- **XMP tags** (Autel 640T specific):
+  - `Camera:Yaw`: Drone orientation (-180° to 180°)
+  - `Camera:Pitch`: Gimbal pitch angle
+  - `Camera:Roll`: Gimbal roll angle
 
 ### Temperature Processing
 - Raw thermal values in deciKelvin
@@ -607,6 +614,22 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 - Suitable for scientific publication and analysis
 
 ## Recent Enhancements
+
+### Automatic Orientation/Heading Correction
+The toolkit now extracts and applies drone orientation for accurate georeferencing:
+- **Dual source extraction**: 
+  - EXIF GPSImgDirection (standard GPS heading tag)
+  - XMP Camera:Yaw (Autel 640T specific metadata)
+- **Automatic rotation correction**: Transforms coordinates based on drone heading
+- **Critical for accuracy**: Without heading correction, SGD locations can be off by 50-100+ meters
+- **Verbose feedback**: Shows heading source and warns when unavailable
+- **Fallback handling**: Assumes north-facing (0°) when no heading data exists
+
+Example impact:
+```
+Drone heading: 277.6° (from XMP:Camera:Yaw)
+Position error if heading ignored: 95.8 meters
+```
 
 ### Enhanced Navigation Controls
 All viewers now feature extended navigation controls:

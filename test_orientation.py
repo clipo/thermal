@@ -123,14 +123,54 @@ def test_orientation_handling():
     rgb_path = Path("data/100MEDIA") / f"MAX_{test_frame:04d}.JPG"
     
     if rgb_path.exists():
-        print(f"\nExtracting EXIF from frame {test_frame}:")
+        print(f"\nExtracting EXIF/XMP from frame {test_frame}:")
         gps_info = georef.extract_gps(str(rgb_path), verbose=True)
         
         if gps_info:
             if 'heading' in gps_info:
-                print(f"\n✓ Heading data found and will be used for accurate georeferencing")
+                source = gps_info.get('heading_source', 'EXIF')
+                print(f"\n✓ Heading data found: {gps_info['heading']:.1f}° (from {source})")
+                print("  This will be used for accurate georeferencing")
+                
+                # Test with actual heading
+                print(f"\nTesting with actual heading from image:")
+                print("-" * 40)
+                
+                # Test point
+                test_x, test_y = 400, 200
+                
+                # Convert lat/lon to float if they're fractions
+                lat = float(gps_info['lat'])
+                lon = float(gps_info['lon'])
+                altitude = float(gps_info.get('altitude', 400))
+                
+                # With heading correction
+                lat_with, lon_with = georef.thermal_to_latlon(
+                    test_x, test_y,
+                    lat, lon,
+                    altitude,
+                    gps_info['heading']
+                )
+                
+                # Without heading (assume north)
+                lat_without, lon_without = georef.thermal_to_latlon(
+                    test_x, test_y,
+                    lat, lon,
+                    altitude,
+                    0  # North-facing
+                )
+                
+                # Calculate difference
+                lat_diff_m = (lat_with - lat_without) * 111320
+                lon_diff_m = (lon_with - lon_without) * 111320 * np.cos(np.radians(lat))
+                distance_m = np.sqrt(lat_diff_m**2 + lon_diff_m**2)
+                
+                print(f"  Pixel ({test_x}, {test_y}):")
+                print(f"    With heading correction: ({lat_with:.6f}, {lon_with:.6f})")
+                print(f"    Without (assuming north): ({lat_without:.6f}, {lon_without:.6f})")
+                print(f"    Position error: {distance_m:.1f} meters")
             else:
-                print(f"\n⚠️ No heading data in EXIF - georeferencing assumes north-facing")
+                print(f"\n⚠️ No heading data in EXIF/XMP - georeferencing assumes north-facing")
                 print("   This may cause position errors if drone was not facing north")
     else:
         print(f"Sample image not found at {rgb_path}")
@@ -142,7 +182,9 @@ def test_orientation_handling():
     print("✓ Different headings produce different georeferenced positions")
     print("✓ The same thermal pixel maps to different locations based on drone orientation")
     print("\nIMPORTANT:")
-    print("- GPS Image Direction (heading) from EXIF is automatically used")
+    print("- Heading data is automatically extracted from:")
+    print("  1. EXIF GPSImgDirection (if available)")
+    print("  2. XMP Camera:Yaw (Autel 640T fallback)")
     print("- If no heading data exists, north-facing (0°) is assumed")
     print("- Accurate heading is critical for precise SGD location mapping")
     

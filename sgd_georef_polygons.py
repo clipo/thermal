@@ -43,7 +43,7 @@ class SGDPolygonGeoref:
         self.sgd_polygons = []
     
     def extract_gps(self, image_path, verbose=False):
-        """Extract GPS and orientation metadata from image"""
+        """Extract GPS and orientation metadata from image (including XMP)"""
         try:
             img = Image.open(image_path)
             exifdata = img._getexif()
@@ -97,11 +97,42 @@ class SGDPolygonGeoref:
             if datetime_str:
                 gps_info['datetime'] = datetime_str
             
+            # Check XMP metadata for Camera:Yaw if no GPSImgDirection found
+            if 'heading' not in gps_info and hasattr(img, 'info'):
+                # Look for XMP data
+                xmp_data = img.info.get('xmp')
+                if xmp_data:
+                    # Convert bytes to string if needed
+                    if isinstance(xmp_data, bytes):
+                        xmp_str = xmp_data.decode('utf-8', errors='ignore')
+                    else:
+                        xmp_str = str(xmp_data)
+                    
+                    # Search for Camera:Yaw in XMP
+                    import re
+                    yaw_match = re.search(r'Camera:Yaw="?([\-\d\.]+)"?', xmp_str)
+                    if yaw_match:
+                        yaw_value = float(yaw_match.group(1))
+                        # Convert yaw to compass heading (0-360)
+                        # Yaw is typically -180 to 180, with 0 being north
+                        # Negative values are west, positive are east
+                        if yaw_value < 0:
+                            heading = 360 + yaw_value
+                        else:
+                            heading = yaw_value
+                        gps_info['heading'] = heading
+                        gps_info['heading_source'] = 'XMP:Camera:Yaw'
+                        if verbose:
+                            print(f"  XMP Camera:Yaw: {yaw_value}° → Heading: {heading}°")
+            
             # Log what we found
             if verbose and 'lat' in gps_info:
                 print(f"  Location: ({gps_info['lat']:.6f}, {gps_info['lon']:.6f})")
                 print(f"  Altitude: {gps_info.get('altitude', 'N/A')} m")
-                if 'heading' not in gps_info:
+                if 'heading' in gps_info:
+                    source = gps_info.get('heading_source', 'EXIF:GPSImgDirection')
+                    print(f"  ✓ Heading: {gps_info['heading']:.1f}° (from {source})")
+                else:
                     print("  ⚠️ No heading data found - georeferencing may be less accurate")
             
             return gps_info if 'lat' in gps_info else None
