@@ -348,8 +348,14 @@ class IntegratedSGDDetector:
         
         return sgd_mask, plume_info, characteristics
     
-    def process_frame(self, frame_number, visualize=False):
-        """Process a single frame for SGD detection"""
+    def process_frame(self, frame_number, visualize=False, include_waves=False):
+        """Process a single frame for SGD detection
+        
+        Args:
+            frame_number: Frame number to process
+            visualize: Whether to visualize results
+            include_waves: Whether to include wave areas in ocean mask for SGD search
+        """
         print(f"\nProcessing frame {frame_number}...")
         
         # Load data
@@ -358,9 +364,18 @@ class IntegratedSGDDetector:
         # Segment ocean/land/waves
         masks = self.segment_ocean_land_waves(data['rgb_aligned'])
         
+        # Optionally include waves in ocean mask for SGD detection
+        if include_waves and 'waves' in masks:
+            # Create a combined ocean mask that includes wave areas
+            masks_for_sgd = masks.copy()
+            masks_for_sgd['ocean'] = masks['ocean'] | masks['waves']
+            print("  Including wave areas in SGD search")
+        else:
+            masks_for_sgd = masks
+        
         # Detect SGD
         sgd_mask, plume_info, characteristics = self.detect_sgd_plumes(
-            data['thermal'], masks
+            data['thermal'], masks_for_sgd
         )
         
         print(f"  Found {len(plume_info)} SGD plumes")

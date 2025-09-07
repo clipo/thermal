@@ -83,6 +83,7 @@ class SGDAggregateViewer:
         self.current_idx = 0
         self.temp_threshold = 1.0
         self.min_area = 50
+        self.include_waves = False  # Toggle for including wave areas in SGD search
         self.current_result = None
         self.current_new_sgd = []  # New SGD in current frame
         self.current_existing_sgd = []  # Previously detected SGD
@@ -130,10 +131,11 @@ class SGDAggregateViewer:
         ax_last = plt.axes([0.45, row1_y, btn_width, btn_height])
         
         # Action buttons on the right
-        ax_mark = plt.axes([0.56, row1_y, 0.07, btn_height])
-        ax_save = plt.axes([0.64, row1_y, 0.06, btn_height])
-        ax_export = plt.axes([0.71, row1_y, 0.06, btn_height])
-        ax_new = plt.axes([0.78, row1_y, 0.07, btn_height])
+        ax_mark = plt.axes([0.50, row1_y, 0.07, btn_height])
+        ax_waves = plt.axes([0.58, row1_y, 0.06, btn_height])
+        ax_save = plt.axes([0.65, row1_y, 0.06, btn_height])
+        ax_export = plt.axes([0.72, row1_y, 0.06, btn_height])
+        ax_new = plt.axes([0.79, row1_y, 0.07, btn_height])
         
         # Row 2 (middle) - Medium and large jumps
         row2_y = bottom_margin + btn_height + 0.005
@@ -162,6 +164,7 @@ class SGDAggregateViewer:
         self.btn_last = Button(ax_last, 'Last')
         
         self.btn_mark = Button(ax_mark, 'Mark SGD')
+        self.btn_waves = Button(ax_waves, 'Waves')
         self.btn_save = Button(ax_save, 'Save')
         self.btn_export = Button(ax_export, 'Export')
         self.btn_new = Button(ax_new, 'New Agg')
@@ -189,6 +192,7 @@ class SGDAggregateViewer:
         self.btn_first.on_clicked(lambda e: self.first_frame())
         self.btn_last.on_clicked(lambda e: self.last_frame())
         self.btn_mark.on_clicked(self.mark_sgd)
+        self.btn_waves.on_clicked(self.toggle_waves)
         self.btn_save.on_clicked(self.save_aggregate)
         self.btn_export.on_clicked(self.export_aggregate_map)
         self.btn_new.on_clicked(self.new_aggregate)
@@ -236,9 +240,13 @@ class SGDAggregateViewer:
         self.detector.temp_threshold = self.temp_threshold
         self.detector.min_area = self.min_area
         
-        # Process frame
+        # Process frame with wave inclusion setting
         print(f"\nProcessing frame {frame_num}...")
-        self.current_result = self.detector.process_frame(frame_num, visualize=False)
+        self.current_result = self.detector.process_frame(
+            frame_num, 
+            visualize=False,
+            include_waves=self.include_waves
+        )
         
         # Check for new vs existing SGD
         self.current_new_sgd = []
@@ -401,6 +409,23 @@ class SGDAggregateViewer:
         
         self.axes[7].text(0.05, 0.95, stats, transform=self.axes[7].transAxes,
                          fontsize=10, family='monospace', va='top')
+    
+    def toggle_waves(self, event):
+        """Toggle inclusion of wave areas in SGD search"""
+        self.include_waves = not self.include_waves
+        
+        # Update button appearance
+        if self.include_waves:
+            self.btn_waves.label.set_text('Waves ✓')
+            self.btn_waves.color = 'lightblue'
+            print("Including wave areas in SGD search")
+        else:
+            self.btn_waves.label.set_text('Waves')
+            self.btn_waves.color = '0.85'
+            print("Excluding wave areas from SGD search")
+        
+        # Reprocess current frame
+        self.update_display()
     
     def mark_sgd(self, event):
         """Mark current frame's new SGD as confirmed"""
@@ -606,6 +631,8 @@ class SGDAggregateViewer:
             self.last_frame()
         elif event.key == 'm':
             self.mark_sgd(None)
+        elif event.key == 'w':
+            self.toggle_waves(None)
         elif event.key == 's':
             self.save_aggregate(None)
         elif event.key == 'e':
@@ -622,6 +649,7 @@ class SGDAggregateViewer:
         print("    - Keyboard: ← → arrows, Home/End keys")
         print("  Mark & Save:")
         print("    - 'Mark SGD' button or 'M' key: Confirm new SGD")
+        print("    - 'Waves' button or 'W' key: Toggle wave area inclusion")
         print("    - 'Save' button or 'S' key: Save progress")
         print("    - 'Export' button or 'E' key: Export aggregate map")
         print("    - 'New Agg' button or 'N' key: Start new aggregate file")
