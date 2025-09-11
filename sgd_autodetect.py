@@ -232,6 +232,26 @@ class SGDAutoDetector:
                         'area_pixels': area_pixels,
                         'polygon': None
                     }
+                    
+                    # Extract polygon outline if available
+                    if 'contour' in plume and plume['contour']:
+                        contour = plume['contour']
+                        if len(contour) > 3:  # Need at least 3 points for polygon
+                            # Georeference each polygon point
+                            georef_polygon = []
+                            for y, x in contour[::2]:  # Sample every 2nd point for efficiency
+                                pt_lat, pt_lon = self.georef.thermal_to_latlon(
+                                    int(x), int(y),
+                                    rgb_center_lat, rgb_center_lon,
+                                    altitude, heading
+                                )
+                                georef_polygon.append([pt_lon, pt_lat])
+                            
+                            # Close the polygon
+                            if georef_polygon and georef_polygon[0] != georef_polygon[-1]:
+                                georef_polygon.append(georef_polygon[0])
+                            
+                            sgd_loc['polygon'] = georef_polygon
                 else:
                     # Use basic georeferencer (fallback)
                     lat, lon, heading = self.georef.georeference_point(

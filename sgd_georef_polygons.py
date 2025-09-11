@@ -77,15 +77,33 @@ class SGDPolygonGeoref:
                 
                 # Process GPS tags
                 if tag_name == 'GPSInfo':
+                    lat_ref = 'N'  # Default
+                    lon_ref = 'E'  # Default
+                    
+                    # First pass to get hemisphere references
+                    for gps_tag, gps_value in value.items():
+                        gps_tag_name = GPSTAGS.get(gps_tag, gps_tag)
+                        if gps_tag_name == 'GPSLatitudeRef':
+                            lat_ref = gps_value
+                        elif gps_tag_name == 'GPSLongitudeRef':
+                            lon_ref = gps_value
+                    
+                    # Second pass to process coordinates
                     for gps_tag, gps_value in value.items():
                         gps_tag_name = GPSTAGS.get(gps_tag, gps_tag)
                         
                         if gps_tag_name == 'GPSLatitude':
                             lat = float(gps_value[0]) + float(gps_value[1])/60 + float(gps_value[2])/3600
+                            # Apply hemisphere (South is negative)
+                            if lat_ref == 'S':
+                                lat = -lat
                             gps_info['lat'] = lat
                         elif gps_tag_name == 'GPSLongitude':
                             lon = float(gps_value[0]) + float(gps_value[1])/60 + float(gps_value[2])/3600
-                            gps_info['lon'] = -lon  # West is negative
+                            # Apply hemisphere (West is negative)
+                            if lon_ref == 'W':
+                                lon = -lon
+                            gps_info['lon'] = lon
                         elif gps_tag_name == 'GPSAltitude':
                             gps_info['altitude'] = float(gps_value)
                         elif gps_tag_name == 'GPSImgDirection':
