@@ -79,10 +79,31 @@ class SGDAutoDetector:
         
         # Initialize detector
         self.detector = IntegratedSGDDetector(
-            base_path=str(self.data_dir),
             temp_threshold=self.temp_threshold,
-            min_area_pixels=self.min_area
+            min_area=self.min_area,
+            base_path=str(self.data_dir)
         )
+        
+        # Load available frames
+        self.frames = []
+        self.rgb_files = []
+        self.thermal_files = []
+        
+        for f in sorted(self.data_dir.glob("MAX_*.JPG"))[:500]:  # Limit to 500 frames
+            num = int(f.stem.split('_')[1])
+            thermal_file = self.data_dir / f"IRX_{num:04d}.irg"
+            if thermal_file.exists():
+                self.frames.append(f"Frame_{num:04d}")
+                self.rgb_files.append(f)
+                self.thermal_files.append(thermal_file)
+        
+        if not self.frames:
+            raise FileNotFoundError(f"No paired RGB-thermal frames found in {self.data_dir}")
+        
+        # Set frames in detector for compatibility
+        self.detector.frames = self.frames
+        self.detector.rgb_files = self.rgb_files
+        self.detector.thermal_files = self.thermal_files
         
         # Initialize georeferencer
         if POLYGON_SUPPORT:
@@ -133,80 +154,78 @@ class SGDAutoDetector:
                 return True, existing
         return False, None
     
-    def process_frame(self, frame_number):
+    def process_frame(self, frame_index):
         """Process a single frame and detect SGDs"""
-        if self.verbose:
-            print(f"\n  Analyzing frame {frame_number}...", end="")
+        # Get actual frame number from filename
+        rgb_file = self.rgb_files[frame_index]
+        frame_number = int(rgb_file.stem.split('_')[1])
         
-        # Process frame with detector
-        masks, thermal_data, plumes = self.detector.process_frame(
+        if self.verbose:
+            print(f"\n  Analyzing frame {frame_number} (index {frame_index})...", end="")
+        
+        # Process frame with detector using actual frame number
+        result = self.detector.process_frame(
             frame_number, 
             visualize=False,
             include_waves=self.include_waves
         )
         
-        if plumes is None or len(plumes) == 0:
+        if result is None or result.get('plume_info') is None or len(result['plume_info']) == 0:
             if self.verbose:
                 print(" no SGDs detected")
             return []
         
+        # Extract plumes from result
+        plumes = result['plume_info']
+        
         # Get frame metadata
-        frame_name = self.detector.frames[frame_number]
-        rgb_path = self.detector.rgb_files[frame_number]
+        frame_name = self.frames[frame_index]
+        rgb_path = self.rgb_files[frame_index]
         
         # Georeference each plume
         georeferenced_sgds = []
         
+        # Get overall characteristics for temperature anomaly
+        characteristics = result.get('characteristics', {})
+        temp_anomaly = characteristics.get('temp_anomaly', -1.0)
+        
         for i, plume in enumerate(plumes):
-            # Extract plume properties
-            props = plume['properties']
+            # Extract centroid from plume data
+            centroid = plume.get('centroid', (256, 320))
+            centroid_y = int(centroid[0])
+            centroid_x = int(centroid[1])
             
-            # Calculate centroid
-            if 'y' in plume and 'x' in plume:
-                centroid_y = int(np.mean(plume['y']))
-                centroid_x = int(np.mean(plume['x']))
-            else:
-                # Fallback for older format
-                centroid_y = props.get('centroid_y', 256)
-                centroid_x = props.get('centroid_x', 320)
+            # Get area information
+            area_pixels = plume.get('area_pixels', 0)
+            area_m2 = area_pixels * 0.01  # Assuming 10cm resolution
             
             # Georeference the centroid
             try:
                 if POLYGON_SUPPORT:
-                    # Extract polygon if available
-                    if 'mask' in plume:
-                        # Get plume outline
-                        from skimage import measure
-                        contours = measure.find_contours(plume['mask'], 0.5)
-                        if contours:
-                            # Use largest contour
-                            polygon = max(contours, key=len)
-                            # Convert to list of coordinates
-                            polygon_coords = [[int(x), int(y)] for y, x in polygon]
-                        else:
-                            polygon_coords = None
-                    else:
-                        polygon_coords = None
-                    
-                    # Add to georeferencer with polygon
-                    self.georef.add_sgd_polygon(
-                        frame_name,
+                    # Use polygon georeferencer (no verbose parameter)
+                    lat, lon = self.georef.thermal_to_latlon(
                         centroid_x, centroid_y,
-                        props.get('temperature_anomaly', -1.0),
-                        props.get('area_m2', 0),
-                        props.get('area_pixels', 0),
-                        polygon_coords
+                        str(rgb_path)
                     )
                     
-                    # Get georeferenced location
-                    if self.georef.sgd_polygons:
-                        sgd_loc = self.georef.sgd_polygons[-1]
-                    else:
-                        continue
+                    # Create SGD location record
+                    sgd_loc = {
+                        'frame': frame_name,
+                        'frame_number': frame_number,
+                        'centroid_lat': lat,
+                        'centroid_lon': lon,
+                        'temperature_anomaly': temp_anomaly,
+                        'area_m2': area_m2,
+                        'area_pixels': area_pixels,
+                        'polygon': None
+                    }
+                    
+                    # Add polygon if available (skip for speed in batch mode)
+                    # Polygon georeferencing is expensive, so only do centroids
                 else:
-                    # Point-based georeferencing
+                    # Use basic georeferencer (fallback)
                     lat, lon, heading = self.georef.georeference_point(
-                        rgb_path, centroid_x, centroid_y
+                        str(rgb_path), centroid_x, centroid_y
                     )
                     
                     sgd_loc = {
@@ -214,9 +233,9 @@ class SGDAutoDetector:
                         'frame_number': frame_number,
                         'centroid_lat': lat,
                         'centroid_lon': lon,
-                        'temperature_anomaly': props.get('temperature_anomaly', -1.0),
-                        'area_m2': props.get('area_m2', 0),
-                        'area_pixels': props.get('area_pixels', 0),
+                        'temperature_anomaly': temp_anomaly,
+                        'area_m2': area_m2,
+                        'area_pixels': area_pixels,
                         'polygon': None
                     }
                 
