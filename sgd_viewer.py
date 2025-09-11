@@ -427,13 +427,43 @@ class SGDAggregateViewer:
         # Reprocess current frame
         self.update_display()
     
+    def clear_frame_sgd(self, event):
+        """Clear all SGDs from the current frame"""
+        frame_num = self.frames[self.current_idx]
+        
+        # Find and remove all SGDs from this frame
+        original_count = len(self.unique_sgd_locations)
+        self.unique_sgd_locations = [
+            sgd for sgd in self.unique_sgd_locations 
+            if sgd.get('frame') != frame_num and sgd.get('first_frame') != frame_num
+        ]
+        removed_count = original_count - len(self.unique_sgd_locations)
+        
+        if removed_count > 0:
+            # Remove frame from processed list
+            self.frames_processed.discard(frame_num)
+            
+            print(f"Cleared {removed_count} SGD(s) from frame {frame_num}")
+            print(f"Total unique SGD: {len(self.unique_sgd_locations)}")
+            
+            # Save and update display
+            self.save_aggregate(None)
+            self.update_display()
+        else:
+            print(f"No SGDs to clear from frame {frame_num}")
+    
     def mark_sgd(self, event):
         """Mark current frame's new SGD as confirmed"""
-        if not self.current_new_sgd:
-            print("No new SGD to mark in this frame")
-            return
-        
         frame_num = self.frames[self.current_idx]
+        
+        # If no new SGDs but there are existing ones from this frame, allow re-marking
+        if not self.current_new_sgd:
+            if self.current_existing_sgd:
+                print(f"Frame {frame_num} already processed - {len(self.current_existing_sgd)} SGDs previously marked")
+                print("To update, delete old entries or use 'New Agg' to start fresh")
+            else:
+                print("No SGD detections to mark in this frame")
+            return
         
         # Add new SGD to unique locations
         for sgd in self.current_new_sgd:
@@ -633,6 +663,8 @@ class SGDAggregateViewer:
             self.mark_sgd(None)
         elif event.key == 'w':
             self.toggle_waves(None)
+        elif event.key == 'c':
+            self.clear_frame_sgd(None)
         elif event.key == 's':
             self.save_aggregate(None)
         elif event.key == 'e':
@@ -650,6 +682,7 @@ class SGDAggregateViewer:
         print("  Mark & Save:")
         print("    - 'Mark SGD' button or 'M' key: Confirm new SGD")
         print("    - 'Waves' button or 'W' key: Toggle wave area inclusion")
+        print("    - 'C' key: Clear SGDs from current frame (for re-processing)")
         print("    - 'Save' button or 'S' key: Save progress")
         print("    - 'Export' button or 'E' key: Export aggregate map")
         print("    - 'New Agg' button or 'N' key: Start new aggregate file")
