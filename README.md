@@ -2,7 +2,9 @@
 
 A Python toolkit for detecting submarine groundwater discharge (cold freshwater seeps) in coastal waters using thermal and RGB imagery from Autel 640T UAV.
 
-> **📍 Main Script**: Use `sgd_viewer.py` for all survey processing and mapping. This is the production tool with full features including data persistence, georeferencing, and export capabilities.
+> **📍 Two Processing Modes**:
+> - **Interactive**: Use `sgd_viewer.py` for manual review and verification of SGD locations
+> - **Automated**: Use `sgd_autodetect.py` for hands-free batch processing of entire surveys
 
 ## Table of Contents
 - [Overview](#overview)
@@ -11,6 +13,8 @@ A Python toolkit for detecting submarine groundwater discharge (cold freshwater 
 - [Quick Start](#quick-start)
 - [Command-Line Usage](#command-line-usage)
 - [Primary Scripts](#primary-scripts)
+  - [Automated Batch Processing](#automated-batch-processing-sgd_autodetectpy)
+  - [Interactive Processing](#which-script-should-i-use)
 - [Machine Learning Segmentation](#machine-learning-segmentation)
 - [Why Raw Thermal Data is Essential](#why-raw-thermal-data-is-essential)
 - [Recent Enhancements](#recent-enhancements)
@@ -20,6 +24,7 @@ A Python toolkit for detecting submarine groundwater discharge (cold freshwater 
 - [Troubleshooting](#troubleshooting)
 - [Project Structure](#project-structure)
 - [Citation](#citation)
+- [Contributing](#contributing)
 
 ## Overview
 
@@ -33,16 +38,25 @@ This toolkit processes paired thermal (640×512) and RGB (4096×3072) images fro
 
 ## Key Features
 
+### Core Capabilities
 - **Thermal Analysis**: Process Autel 640T thermal images (deciKelvin format)
 - **Ocean Segmentation**: ML-based segmentation to isolate ocean from land and waves
-- **SGD Detection**: Identify cold freshwater plumes near shorelines
-- **Wave Area Toggle**: Optionally include breaking waves/foam in SGD search
-- **Polygon Export**: Export actual plume outlines as georeferenced polygons
-- **Multi-Format Export**: GeoJSON, KML (Google Earth), and CSV formats
+- **SGD Detection**: Identify cold freshwater plumes near shorelines (1-3°C cooler)
 - **Georeferencing**: Automatic GPS + orientation extraction for accurate mapping
+- **Polygon Export**: Export actual plume outlines as georeferenced polygons
+
+### Processing Options
+- **🤖 Automated Mode** (`sgd_autodetect.py`): Batch process entire surveys without supervision
+- **👁️ Interactive Mode** (`sgd_viewer.py`): Manual review and verification of detections
+- **🔬 Analysis Mode** (`sgd_detector_integrated.py`): Parameter tuning and testing
+
+### Advanced Features
+- **Wave Area Toggle**: Optionally include breaking waves/foam in SGD search
+- **Multi-Format Export**: GeoJSON, KML (Google Earth), and CSV formats
 - **Aggregate Mapping**: Handle overlapping survey frames with deduplication
-- **Interactive Navigation**: Enhanced controls (±1, ±5, ±10, ±25 frames)
+- **Frame Navigation**: Enhanced controls (±1, ±5, ±10, ±25 frames)
 - **Survey Management**: Start fresh surveys while preserving previous data
+- **Progress Tracking**: Real-time progress bars and statistics
 
 ## Detection Pipeline
 
@@ -250,49 +264,60 @@ After successful installation:
 
 ## Quick Start
 
-After installation, here's the fastest way to start detecting SGDs:
+After installation, choose your processing mode:
+
+### Option 1: Automated Batch Processing (Recommended for Large Surveys)
 
 ```bash
-# 1. Navigate to the project directory
+# Navigate to project directory
 cd thermal
 
-# 2. Place your Autel 640T images in the data folder
-#    You need pairs: MAX_XXXX.JPG (RGB) and IRX_XXXX.irg (thermal)
+# Place your images in a data folder
 mkdir -p data/my_survey
 cp /path/to/drone/images/*.JPG data/my_survey/
 cp /path/to/drone/images/*.irg data/my_survey/
 
-# 3. Run the main SGD detection viewer
-python sgd_viewer.py --data data/my_survey
+# Run automated detection
+python sgd_autodetect.py --data data/my_survey --output results.kml
 
-# 4. Navigate frames and mark SGDs
-#    - Use slider or buttons to browse frames
-#    - Click "Mark SGD" when cold plumes are detected
-#    - Press 'W' to toggle wave areas if needed
-#    - Press 'E' to export results when done
-
-# 5. View results
-#    - sgd_polygons.geojson - Open in QGIS or GIS software
-#    - sgd_polygons.kml - Open in Google Earth
-#    - sgd_areas.csv - Open in Excel/spreadsheet
+# View results in Google Earth
+open results.kml  # macOS
+# Or drag results.kml into Google Earth
 ```
 
-### Quick Workflow Example
+### Option 2: Interactive Processing (For Manual Verification)
 
 ```bash
-# Morning survey at rocky shore
+# Run the interactive viewer
+python sgd_viewer.py --data data/my_survey
+
+# Navigate and mark SGDs:
+#   - Use slider/buttons to browse frames
+#   - Click "Mark SGD" for cold plumes
+#   - Press 'W' to toggle wave areas
+#   - Press 'E' to export results
+
+# Output files:
+#   - sgd_polygons.kml → Google Earth
+#   - sgd_polygons.geojson → GIS software
+#   - sgd_areas.csv → Spreadsheet analysis
+```
+
+### Quick Workflow Examples
+
+```bash
+# Fast automated preview (every 10th frame)
+python sgd_autodetect.py --data data/survey --output preview.kml --skip 10
+
+# Full automated processing with custom parameters
+python sgd_autodetect.py --data data/survey --output final.kml --temp 0.5 --waves
+
+# Interactive review of specific area
 python sgd_viewer.py --data data/morning_flight --aggregate morning.json
 
-# Afternoon survey at sandy beach  
-python sgd_viewer.py --data data/afternoon_flight --aggregate afternoon.json
-
-# Export combined results
-python sgd_viewer.py --aggregate morning.json
-# Press 'E' to export
-
-# View in Google Earth
-open sgd_polygons.kml  # macOS
-# Or drag sgd_polygons.kml into Google Earth
+# Compare morning vs afternoon surveys
+python sgd_autodetect.py --data data/morning --output morning_sgd.kml
+python sgd_autodetect.py --data data/afternoon --output afternoon_sgd.kml
 ```
 
 ## Command-Line Usage
@@ -959,7 +984,15 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 
 ## Recent Enhancements
 
-### Bug Fixes (Latest)
+### New Automated Processing Script (Latest)
+- **`sgd_autodetect.py`**: Complete hands-free batch processing
+  - Configurable parameters via command-line
+  - Progress tracking with time estimates
+  - Direct KML export for Google Earth
+  - Frame skipping for faster processing
+  - Detailed statistics and summary output
+
+### Bug Fixes
 - **JSON Serialization**: Fixed numpy int64 serialization errors when saving SGD data
 - **Frame Re-processing**: Added ability to clear existing SGDs from a frame (C key) to allow re-analysis
 - **EXIF GPS Handling**: Fixed Fraction type errors when processing GPS coordinates
