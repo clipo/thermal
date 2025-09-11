@@ -202,10 +202,23 @@ class SGDAutoDetector:
             # Georeference the centroid
             try:
                 if POLYGON_SUPPORT:
-                    # Use polygon georeferencer (no verbose parameter)
+                    # Extract GPS data from image
+                    gps_data = self.georef.extract_gps(str(rgb_path))
+                    if gps_data is None or 'lat' not in gps_data or 'lon' not in gps_data:
+                        if self.verbose:
+                            print(f"\n    Warning: No GPS data in {rgb_path.name}")
+                        continue
+                    
+                    rgb_center_lat = gps_data['lat']
+                    rgb_center_lon = gps_data['lon']
+                    altitude = gps_data.get('altitude', 100)  # Default 100m if missing
+                    heading = gps_data.get('heading', 0)
+                    
+                    # Use polygon georeferencer with all required parameters
                     lat, lon = self.georef.thermal_to_latlon(
                         centroid_x, centroid_y,
-                        str(rgb_path)
+                        rgb_center_lat, rgb_center_lon,
+                        altitude, heading
                     )
                     
                     # Create SGD location record
@@ -219,9 +232,6 @@ class SGDAutoDetector:
                         'area_pixels': area_pixels,
                         'polygon': None
                     }
-                    
-                    # Add polygon if available (skip for speed in batch mode)
-                    # Polygon georeferencing is expensive, so only do centroids
                 else:
                     # Use basic georeferencer (fallback)
                     lat, lon, heading = self.georef.georeference_point(
@@ -387,6 +397,13 @@ class SGDAutoDetector:
         """Export detailed summary in JSON format"""
         json_file = self.output_file.replace('.kml', '_summary.json')
         
+        # Convert datetime objects to strings in stats
+        stats_copy = self.stats.copy()
+        if 'start_time' in stats_copy and isinstance(stats_copy['start_time'], datetime):
+            stats_copy['start_time'] = stats_copy['start_time'].isoformat()
+        if 'end_time' in stats_copy and isinstance(stats_copy['end_time'], datetime):
+            stats_copy['end_time'] = stats_copy['end_time'].isoformat()
+        
         summary = {
             'metadata': {
                 'processing_date': datetime.now().isoformat(),
@@ -399,7 +416,7 @@ class SGDAutoDetector:
                     'include_waves': self.include_waves
                 }
             },
-            'statistics': self.stats,
+            'statistics': stats_copy,
             'sgd_locations': self.unique_sgd_locations
         }
         
