@@ -7,7 +7,7 @@ A Python toolkit for detecting submarine groundwater discharge (cold freshwater 
 ## Table of Contents
 - [Overview](#overview)
 - [Key Features](#key-features)
-- [Installation](#installation)
+- [Installation from Scratch](#installation-from-scratch)
 - [Quick Start](#quick-start)
 - [Command-Line Usage](#command-line-usage)
 - [Primary Scripts](#primary-scripts)
@@ -48,6 +48,252 @@ This toolkit processes paired thermal (640×512) and RGB (4096×3072) images fro
 
 ![Detection Pipeline](docs/images/detection_pipeline.png)
 *The SGD detection pipeline: 1) RGB input aligned to thermal FOV, 2) ML-based segmentation, 3) Thermal data processing, 4) Ocean isolation, 5) Cold anomaly detection, 6) Final SGD identification near shoreline*
+
+## Installation from Scratch
+
+### Prerequisites
+
+- Python 3.8 or higher
+- Git (for cloning the repository)
+- 4GB RAM minimum (8GB recommended for large surveys)
+- macOS, Linux, or Windows with WSL
+
+### Step 1: Clone the Repository
+
+```bash
+# Clone the repository
+git clone https://github.com/clipo/thermal.git
+cd thermal
+```
+
+### Step 2: Set Up Python Environment
+
+It's recommended to use a virtual environment to avoid conflicts with other Python packages:
+
+```bash
+# Create a virtual environment (choose one method)
+
+# Option A: Using venv (built-in to Python)
+python3 -m venv sgd_env
+source sgd_env/bin/activate  # On Windows: sgd_env\Scripts\activate
+
+# Option B: Using conda
+conda create -n sgd_env python=3.9
+conda activate sgd_env
+```
+
+### Step 3: Install Required Packages
+
+```bash
+# Upgrade pip to latest version
+pip install --upgrade pip
+
+# Install all required packages
+pip install -r requirements.txt
+```
+
+### Step 4: Verify Installation
+
+```bash
+# Test that all packages are installed correctly
+python -c "import numpy, matplotlib, PIL, scipy, skimage, sklearn; print('All packages installed successfully!')"
+
+# Test the main script
+python sgd_viewer.py --help
+```
+
+### Step 5: Prepare Your Data
+
+Create a data directory structure for your Autel 640T images:
+
+```bash
+# Create data directory
+mkdir -p data/100MEDIA
+
+# Copy your drone images to the data directory
+# You need both RGB (MAX_XXXX.JPG) and thermal (IRX_XXXX.irg) files
+# Example:
+# cp /path/to/drone/images/MAX_*.JPG data/100MEDIA/
+# cp /path/to/drone/images/IRX_*.irg data/100MEDIA/
+```
+
+### Step 6: Download or Train ML Model (Optional)
+
+The toolkit includes a pre-trained segmentation model, but you can train your own:
+
+```bash
+# Option A: Use the included model (if available)
+# The default model is segmentation_model.pkl
+
+# Option B: Train a new model for your specific environment
+python segmentation_trainer.py
+# Follow the on-screen instructions to label ocean, land, rock, and waves
+# Press 'T' to train, 'S' to save the model
+```
+
+### Step 7: Run Your First Analysis
+
+```bash
+# Process images using the main viewer
+python sgd_viewer.py --data data/100MEDIA
+
+# Or use the interactive detector for tuning parameters
+python sgd_detector_integrated.py --data data/100MEDIA --mode interactive
+```
+
+### Installation on Specific Platforms
+
+#### macOS
+```bash
+# Install Homebrew if not already installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Python 3.9+ if needed
+brew install python@3.9
+
+# Follow steps 1-7 above
+```
+
+#### Ubuntu/Debian Linux
+```bash
+# Update package list
+sudo apt update
+
+# Install Python and pip
+sudo apt install python3.9 python3-pip python3-venv git
+
+# Install system dependencies for matplotlib
+sudo apt install python3-tk
+
+# Follow steps 1-7 above
+```
+
+#### Windows (using WSL2)
+```bash
+# Install WSL2 first (in PowerShell as Administrator)
+wsl --install
+
+# Open WSL2 terminal and install Python
+sudo apt update
+sudo apt install python3.9 python3-pip python3-venv git
+
+# Follow steps 1-7 above
+```
+
+#### Windows (Native)
+```bash
+# Install Python from python.org (3.9 or higher)
+# Make sure to check "Add Python to PATH" during installation
+
+# Open Command Prompt or PowerShell
+# Follow steps 1-7 above, using:
+# - python instead of python3
+# - sgd_env\Scripts\activate instead of source sgd_env/bin/activate
+```
+
+### Common Installation Issues and Solutions
+
+#### Issue: "No module named 'tkinter'"
+```bash
+# macOS
+brew install python-tk
+
+# Ubuntu/Debian
+sudo apt-get install python3-tk
+
+# Windows: tkinter should be included with Python
+```
+
+#### Issue: "matplotlib backend not found"
+```bash
+# Set the backend explicitly
+export MPLBACKEND=TkAgg  # Add to ~/.bashrc or ~/.zshrc for permanent fix
+```
+
+#### Issue: "Permission denied" errors
+```bash
+# Use virtual environment (recommended) or install with --user flag
+pip install --user -r requirements.txt
+```
+
+#### Issue: Large file processing is slow
+```bash
+# Ensure you have sufficient RAM (8GB recommended)
+# Consider processing smaller batches:
+python sgd_viewer.py --data data/100MEDIA --end 100  # Process first 100 frames
+```
+
+### Quick Test with Sample Data
+
+To verify everything is working before using your own data:
+
+```bash
+# Create a test directory with minimal data
+mkdir -p data/test
+# Copy just 10-20 image pairs to test
+# cp your_first_10_MAX*.JPG data/test/
+# cp your_first_10_IRX*.irg data/test/
+
+# Run quick test
+python sgd_detector_integrated.py --data data/test --mode batch --end 10
+```
+
+### Next Steps
+
+After successful installation:
+
+1. **Read the Quick Start section** for basic usage
+2. **Train a custom ML model** if the default doesn't work well for your environment
+3. **Process your survey data** with `sgd_viewer.py`
+4. **Export results** in GeoJSON, KML, or CSV format
+5. **Visualize in Google Earth** or your preferred GIS software
+
+## Quick Start
+
+After installation, here's the fastest way to start detecting SGDs:
+
+```bash
+# 1. Navigate to the project directory
+cd thermal
+
+# 2. Place your Autel 640T images in the data folder
+#    You need pairs: MAX_XXXX.JPG (RGB) and IRX_XXXX.irg (thermal)
+mkdir -p data/my_survey
+cp /path/to/drone/images/*.JPG data/my_survey/
+cp /path/to/drone/images/*.irg data/my_survey/
+
+# 3. Run the main SGD detection viewer
+python sgd_viewer.py --data data/my_survey
+
+# 4. Navigate frames and mark SGDs
+#    - Use slider or buttons to browse frames
+#    - Click "Mark SGD" when cold plumes are detected
+#    - Press 'W' to toggle wave areas if needed
+#    - Press 'E' to export results when done
+
+# 5. View results
+#    - sgd_polygons.geojson - Open in QGIS or GIS software
+#    - sgd_polygons.kml - Open in Google Earth
+#    - sgd_areas.csv - Open in Excel/spreadsheet
+```
+
+### Quick Workflow Example
+
+```bash
+# Morning survey at rocky shore
+python sgd_viewer.py --data data/morning_flight --aggregate morning.json
+
+# Afternoon survey at sandy beach  
+python sgd_viewer.py --data data/afternoon_flight --aggregate afternoon.json
+
+# Export combined results
+python sgd_viewer.py --aggregate morning.json
+# Press 'E' to export
+
+# View in Google Earth
+open sgd_polygons.kml  # macOS
+# Or drag sgd_polygons.kml into Google Earth
+```
 
 ## Command-Line Usage
 
