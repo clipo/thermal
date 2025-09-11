@@ -359,26 +359,102 @@ python sgd_detector_integrated.py --mode single --frame 248
 
 ## Primary Scripts
 
-**IMPORTANT**: `sgd_viewer.py` is the main production tool for processing surveys. Use `sgd_detector_integrated.py` only for testing and analysis.
+**IMPORTANT**: `sgd_viewer.py` is the main production tool for interactive processing. For fully automated batch processing, use `sgd_autodetect.py`.
 
 ### Script Comparison
 
-| Feature | `sgd_viewer.py` (MAIN TOOL) | `sgd_detector_integrated.py` (ANALYSIS) |
-|---------|------------------------------|------------------------------------------|
-| **Purpose** | Complete survey mapping | Algorithm testing & parameter tuning |
-| **Data persistence** | ✅ Saves to `sgd_aggregate.json` | ❌ No saving between sessions |
-| **Multi-frame handling** | ✅ Aggregates & deduplicates | ❌ Analyzes frames individually |
-| **Export to GIS/KML** | ✅ One-click export (E key) | ❌ No export functionality |
-| **Georeferencing** | ✅ Automatic with polygons | ❌ No georeferencing |
-| **Best for** | **Production work** | Development & debugging |
+| Feature | `sgd_viewer.py` (INTERACTIVE) | `sgd_autodetect.py` (AUTOMATED) | `sgd_detector_integrated.py` (ANALYSIS) |
+|---------|--------------------------------|----------------------------------|------------------------------------------|
+| **Purpose** | Interactive survey mapping | Automated batch processing | Algorithm testing & parameter tuning |
+| **User interaction** | ✅ Manual SGD marking | ❌ Fully automated | ✅ Interactive parameter tuning |
+| **Data persistence** | ✅ Saves to JSON | ✅ Exports KML/GeoJSON | ❌ No saving between sessions |
+| **Multi-frame handling** | ✅ Aggregates & deduplicates | ✅ Aggregates & deduplicates | ❌ Analyzes frames individually |
+| **Export to GIS/KML** | ✅ One-click export (E key) | ✅ Automatic KML/GeoJSON | ❌ No export functionality |
+| **Georeferencing** | ✅ Automatic with polygons | ✅ Automatic with polygons | ❌ No georeferencing |
+| **Progress tracking** | Visual slider/buttons | ✅ Progress bar with ETA | Visual matplotlib display |
+| **Best for** | **Interactive review** | **Batch processing** | Development & debugging |
+
+### Automated Batch Processing (`sgd_autodetect.py`)
+
+The automated detection script provides hands-free batch processing of entire surveys:
+
+#### Features
+- 🚀 **Fully automated** - No user interaction required
+- 📊 **Progress tracking** - Real-time progress bar with ETA
+- 🗺️ **Direct KML export** - Ready for Google Earth
+- ⚙️ **Configurable parameters** - Fine-tune detection settings
+- 📈 **Statistics output** - Processing time, detection counts, areas
+- 🔄 **Frame skipping** - Process every Nth frame for speed
+
+#### Usage Examples
+
+```bash
+# Basic automated detection
+python sgd_autodetect.py --data data/survey --output results.kml
+
+# Process every 5th frame with lower temperature threshold
+python sgd_autodetect.py --data data/survey --output sgd.kml --skip 5 --temp 0.5
+
+# Include wave areas with strict deduplication
+python sgd_autodetect.py --data data/survey --output sgd.kml --waves --distance 20
+
+# Quick test run (every 10th frame, quiet mode)
+python sgd_autodetect.py --data data/survey --output test.kml --skip 10 --quiet
+
+# Full processing with all options
+python sgd_autodetect.py \
+  --data data/100MEDIA \
+  --output survey_results.kml \
+  --temp 1.5 \
+  --distance 15 \
+  --area 75 \
+  --skip 1 \
+  --waves
+```
+
+#### Command-Line Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--data` | required | Directory with MAX_*.JPG and IRX_*.irg files |
+| `--output` | required | Output KML filename |
+| `--temp` | 1.0 | Temperature threshold (°C) |
+| `--distance` | 10.0 | Minimum distance between SGDs (meters) |
+| `--skip` | 1 | Process every Nth frame (1=all) |
+| `--area` | 50 | Minimum SGD area (pixels) |
+| `--waves` | False | Include wave areas in detection |
+| `--quiet` | False | Suppress detailed output |
+
+#### Output Files
+
+The script generates multiple output files:
+- **`output.kml`** - Main KML file for Google Earth
+- **`output_summary.json`** - Detailed statistics and parameters
+- **`output.geojson`** - GeoJSON format (if polygon support available)
+
+#### Performance Tips
+
+```bash
+# Fast preview (every 10th frame)
+python sgd_autodetect.py --data data/survey --output preview.kml --skip 10
+
+# Full resolution (all frames)
+python sgd_autodetect.py --data data/survey --output final.kml --skip 1
+
+# Optimize for speed vs accuracy
+# Faster: --skip 5 --area 100
+# More accurate: --skip 1 --area 30 --temp 0.5
+```
 
 ### Which Script Should I Use?
 
 | Task | Use This Script | Command |
 |------|-----------------|---------|
-| **Process entire drone survey** | `sgd_viewer.py` | `python sgd_viewer.py --data data/survey1` |
-| **Map SGDs for publication** | `sgd_viewer.py` | `python sgd_viewer.py` |
-| **Export to GIS/Google Earth** | `sgd_viewer.py` | Run viewer, press 'E' |
+| **Automated batch processing** | `sgd_autodetect.py` | `python sgd_autodetect.py --data data/survey --output results.kml` |
+| **Process without supervision** | `sgd_autodetect.py` | `python sgd_autodetect.py --data data/survey --output sgd.kml --skip 5` |
+| **Interactive survey review** | `sgd_viewer.py` | `python sgd_viewer.py --data data/survey1` |
+| **Manual SGD verification** | `sgd_viewer.py` | `python sgd_viewer.py` |
+| **Export to GIS/Google Earth** | `sgd_viewer.py` or `sgd_autodetect.py` | Viewer: press 'E', Auto: automatic |
 | **Manage multiple surveys** | `sgd_viewer.py` | Press 'N' for new aggregate |
 | **Test detection parameters** | `sgd_detector_integrated.py` | `python sgd_detector_integrated.py --mode interactive` |
 | **Analyze why detection failed** | `sgd_detector_integrated.py` | `python sgd_detector_integrated.py --mode single --frame 248` |
@@ -1046,7 +1122,8 @@ Fixed in latest version - numpy types are now automatically converted to Python 
 ```
 thermal/
 ├── Main Production Scripts
-│   ├── sgd_viewer.py               # Primary survey mapping tool (USE THIS)
+│   ├── sgd_viewer.py               # Interactive survey mapping tool
+│   ├── sgd_autodetect.py          # Automated batch processing (NEW)
 │   ├── sgd_detector_integrated.py  # Interactive analysis & tuning
 │   └── segmentation_trainer.py     # Train ML segmentation models
 │
