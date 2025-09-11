@@ -637,7 +637,12 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 
 ## Recent Enhancements
 
-### Wave Area Inclusion Toggle (NEW)
+### Bug Fixes (Latest)
+- **JSON Serialization**: Fixed numpy int64 serialization errors when saving SGD data
+- **Frame Re-processing**: Added ability to clear existing SGDs from a frame (C key) to allow re-analysis
+- **EXIF GPS Handling**: Fixed Fraction type errors when processing GPS coordinates
+
+### Wave Area Inclusion Toggle
 Toggle whether to include breaking waves and foam areas in SGD detection:
 - **Toggle button**: "Waves" button shows checkmark when active
 - **Keyboard shortcut**: Press 'W' to quickly toggle on/off
@@ -780,6 +785,15 @@ python sgd_detector_integrated.py --mode batch --end 10
 # Use faster rule-based segmentation
 python sgd_viewer.py --no-ml
 ```
+
+### Frame Re-processing Issues
+If you get "No new SGD to mark in this frame" when SGDs are visible:
+- Press 'C' to clear existing SGDs from the current frame
+- Then use 'Mark SGD' button to add new detections
+- This commonly happens when re-analyzing previously processed frames
+
+### JSON Serialization Errors
+Fixed in latest version - numpy types are now automatically converted to Python native types during JSON export. If you encounter this issue, ensure you have the latest version with the NumpyEncoder class.
 
 ## Project Structure
 

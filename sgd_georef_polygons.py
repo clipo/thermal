@@ -13,6 +13,18 @@ from datetime import datetime
 from skimage import measure
 
 
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle numpy types"""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
+
+
 class SGDPolygonGeoref:
     """Enhanced georeferencing with polygon/outline support"""
     
@@ -394,7 +406,7 @@ class SGDPolygonGeoref:
         }
         
         with open(output_path, 'w') as f:
-            json.dump(geojson, f, indent=2)
+            json.dump(geojson, f, indent=2, cls=NumpyEncoder)
         
         polygon_count = sum(1 for loc in self.sgd_polygons if loc['polygon'])
         point_count = len(self.sgd_polygons) - polygon_count

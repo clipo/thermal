@@ -24,6 +24,17 @@ from datetime import datetime
 import json
 import os
 
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle numpy types"""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
+
 class SGDAggregateViewer:
     """SGD viewer with deduplication and aggregate mapping"""
     
@@ -505,7 +516,7 @@ class SGDAggregateViewer:
         }
         
         with open(self.aggregate_file, 'w') as f:
-            json.dump(data, f, indent=2)
+            json.dump(data, f, indent=2, cls=NumpyEncoder)
         
         print(f"Saved aggregate data to {self.aggregate_file}")
     
@@ -581,7 +592,7 @@ class SGDAggregateViewer:
             }
             
             with open(backup_file, 'w') as f:
-                json.dump(data, f, indent=2)
+                json.dump(data, f, indent=2, cls=NumpyEncoder)
             
             print(f"✓ Current data backed up to: {backup_file}")
         
