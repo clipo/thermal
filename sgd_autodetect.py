@@ -652,9 +652,9 @@ Examples:
         print("   - Land (vegetation, sand)")
         print("   - Rock (gray rocky areas)")
         print("   - Wave (white foam)")
-        print("2. Press 'T' to train the model")
-        print("3. Press 'S' to save and continue")
-        print("4. Close the window when done")
+        print("2. Press 'Train' button to train the model")
+        print("3. Press 'Save & Continue' button to proceed to detection")
+        print("   (The window will close automatically)")
         print("-"*60)
         
         # Launch the interactive trainer
@@ -667,9 +667,19 @@ Examples:
                 training_file=training_path
             )
             trainer.run()
+            
+            # Check if model was actually saved
+            if not Path(model_path).exists():
+                print(f"\n⚠ Warning: Model file not found at {model_path}")
+                print("Training may have been cancelled. Exiting.")
+                sys.exit(1)
+            
             print(f"\n✓ Interactive training complete!")
             print(f"✓ Model saved to: {model_path}")
+            print("\n" + "="*60)
+            print("PROCEEDING TO SGD DETECTION")
             print("="*60)
+            print(f"Using newly trained model: {model_path}")
             print()
         except Exception as e:
             print(f"\n✗ Training failed: {e}")

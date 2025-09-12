@@ -416,6 +416,32 @@ class SegmentationTrainer:
         self.update_display()
         print(f"Cleared labels for frame {self.current_frame}")
     
+    def save_and_exit(self, event):
+        """Save model and training data, then close the window"""
+        print("\n" + "="*50)
+        print("SAVING AND EXITING")
+        print("="*50)
+        
+        # Save training data
+        self.save_training_data()
+        
+        # Check if we have a trained model to save
+        if hasattr(self, 'classifier'):
+            # Save the model
+            with open(self.model_file, 'wb') as f:
+                pickle.dump(self.classifier, f)
+            print(f"✓ Model saved to: {self.model_file}")
+        else:
+            print("⚠ No trained model to save. Train the model first (press 'T')")
+            print("  Continuing without saving model...")
+        
+        print("✓ Training data saved")
+        print("\nClosing trainer and continuing to SGD detection...")
+        print("="*50)
+        
+        # Close the matplotlib window
+        plt.close(self.fig)
+    
     def setup_gui(self):
         """Setup the GUI"""
         self.fig = plt.figure(figsize=(18, 10))
@@ -448,12 +474,12 @@ class SegmentationTrainer:
         self.btn_train = Button(ax_train, 'Train')
         self.btn_test = Button(ax_test, 'Test')
         self.btn_clear = Button(ax_clear, 'Clear')
-        self.btn_save = Button(ax_save, 'Save')
+        self.btn_save = Button(ax_save, 'Save & Continue')
         
         self.btn_train.on_clicked(self.train_classifier)
         self.btn_test.on_clicked(self.test_classifier)
         self.btn_clear.on_clicked(self.clear_frame_labels)
-        self.btn_save.on_clicked(lambda e: self.save_training_data())
+        self.btn_save.on_clicked(self.save_and_exit)
         
         # Connect click handler
         self.fig.canvas.mpl_connect('button_press_event', self.on_click)
@@ -466,14 +492,16 @@ INSTRUCTIONS:
 1. Select label type (ocean/land/rock/wave)
 2. Click on image regions to label them
 3. Navigate frames with Prev/Next
-4. Train classifier when ready
-5. Test to see ML segmentation
+4. Press 'Train' when you have enough labels
+5. Press 'Test' to see ML segmentation
+6. Press 'Save & Continue' to proceed to detection
 
 Tips:
 - Label diverse examples
 - Include edge cases
 - Label from multiple frames
 - Need 40+ samples to train
+- IMPORTANT: Press 'Train' before 'Save & Continue'
         """
         ax_inst.text(0.1, 0.9, instructions, transform=ax_inst.transAxes,
                     fontsize=9, family='monospace', va='top')
