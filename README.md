@@ -736,8 +736,36 @@ These features capture both color information and local texture, allowing the cl
 ### Training Process
 
 #### 1. Interactive Labeling (`segmentation_trainer.py`)
+
+**Command-Line Options:**
 ```bash
-python segmentation_trainer.py
+python segmentation_trainer.py [OPTIONS]
+
+Options:
+  --data PATH        Directory with images to train on (default: data/100MEDIA)
+  --model FILE       Output model filename (default: segmentation_model.pkl)  
+  --training FILE    Training data filename (default: segmentation_training_data.json)
+```
+
+**Examples for Different Flights:**
+```bash
+# Train model for specific flight/location
+python segmentation_trainer.py \
+  --data "/Volumes/RapaNui/Thermal Flights/1 July 23/Kikirahamea/104MEDIA" \
+  --model kikirahamea_model.pkl \
+  --training kikirahamea_training.json
+
+# Train model for morning conditions
+python segmentation_trainer.py \
+  --data data/morning_flight \
+  --model morning_model.pkl \
+  --training morning_data.json
+
+# Use custom model in detection
+python sgd_autodetect.py \
+  --data "/path/to/flight" \
+  --output results.kml \
+  --model kikirahamea_model.pkl
 ```
 
 Users label pixels by clicking:
