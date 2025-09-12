@@ -69,7 +69,18 @@ class SGDAutoDetector:
             verbose: Show detailed progress
         """
         self.data_dir = Path(data_dir)
-        self.output_file = output_file
+        
+        # Ensure output goes to sgd_output directory
+        output_dir = Path("sgd_output")
+        output_dir.mkdir(exist_ok=True)
+        
+        # If output_file doesn't have a directory, put it in sgd_output
+        output_path = Path(output_file)
+        if not output_path.parent.name or output_path.parent == Path("."):
+            self.output_file = str(output_dir / output_path.name)
+        else:
+            self.output_file = output_file
+            
         self.temp_threshold = temp_threshold
         self.distance_threshold = distance_threshold
         self.frame_skip = frame_skip
