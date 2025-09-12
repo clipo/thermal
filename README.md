@@ -109,7 +109,15 @@ pip install --upgrade pip
 
 # Install all required packages
 pip install -r requirements.txt
+
+# CRITICAL: Verify scikit-learn version (MUST be 1.5.1)
+python -c "import sklearn; print(f'scikit-learn version: {sklearn.__version__}')"
+
+# If scikit-learn is not 1.5.1, the pre-trained model will give different results!
+# To fix: pip install --force-reinstall scikit-learn==1.5.1
 ```
+
+⚠️ **IMPORTANT**: The pre-trained model requires **scikit-learn version 1.5.1** exactly. Different versions will produce different detection results!
 
 ### Step 4: Verify Installation
 
@@ -148,6 +156,9 @@ The toolkit includes a **pre-trained segmentation model** optimized for Rapa Nui
 # This model is automatically used and works well for:
 # - Rocky volcanic shores (like Rapa Nui)
 # - Clear ocean/land boundaries
+
+# ⚠️ REQUIRES scikit-learn==1.5.1 for correct predictions!
+# Wrong scikit-learn version = different SGD detection results
 # - Wave and foam detection
 
 # Option B: Train a custom model for different environments

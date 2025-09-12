@@ -1,10 +1,14 @@
 # Core dependencies for SGD Detection Toolkit
+# IMPORTANT: scikit-learn 1.5.1 is required for model compatibility
 numpy>=1.20.0
 matplotlib>=3.3.0
 Pillow>=8.0.0
 scipy>=1.7.0
 scikit-image>=0.18.0
-scikit-learn>=1.0.0
+scikit-learn==1.5.1  # EXACT version required for pre-trained model
 
 # Optional for progress bars
 tqdm>=4.60.0
+
+# Note: For exact reproducibility across all systems, use:
+# pip install -r requirements_exact.txt
