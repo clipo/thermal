@@ -516,6 +516,9 @@ The script offers two training approaches for custom segmentation models:
 ##### 1. Interactive Training (`--train`)
 - Opens GUI for manual labeling
 - Click on regions to label as ocean, land, rock, or wave
+- Press "Train" button to train the model
+- Press "Save & Continue" to proceed automatically to detection
+- **Window closes and detection begins immediately after saving**
 - More accurate for challenging conditions
 - Best when precision matters
 
@@ -528,7 +531,23 @@ The script offers two training approaches for custom segmentation models:
 Both modes:
 - Save models to `models/` directory
 - Name models to match output files (e.g., `flight_sgd_model.pkl` for `flight_sgd.kml`)
-- Can be reused with `--model` flag
+- **Models are automatically detected and reused based on output filename**
+
+#### Automatic Model Detection
+
+The script automatically finds and uses matching models based on your output filename:
+
+```bash
+# First run - train a model
+python sgd_autodetect.py --data /path/to/flight --output flight1.kml --train
+# Creates: models/flight1_model.pkl
+
+# Subsequent runs - model is automatically found
+python sgd_autodetect.py --data /path/to/flight --output flight1.kml
+# ✓ Found matching model: models/flight1_model.pkl
+
+# No need to specify --model unless you want a different one
+```
 
 #### Output Files & Directory Structure
 
@@ -561,23 +580,45 @@ Output files include:
 1. **First flight**: Use interactive training for best accuracy
    ```bash
    python sgd_autodetect.py --data /path/to/flight1 --output flight1.kml --train
+   # Creates models/flight1_model.pkl and processes detection
    ```
 
-2. **Similar conditions**: Reuse the model
+2. **Re-process same flight**: Model is automatically found
+   ```bash
+   python sgd_autodetect.py --data /path/to/flight1 --output flight1.kml --skip 5
+   # Automatically uses models/flight1_model.pkl
+   ```
+
+3. **Similar conditions**: Explicitly reuse the model
    ```bash
    python sgd_autodetect.py --data /path/to/flight2 --output flight2.kml \
      --model models/flight1_model.pkl
    ```
 
-3. **Different conditions**: Train new model
+4. **Different conditions**: Train new model
    ```bash
    python sgd_autodetect.py --data /path/to/sunrise_flight --output sunrise.kml --train
+   # Creates models/sunrise_model.pkl
    ```
 
 ##### For Quick Processing:
 Use automatic training when manual labeling isn't practical:
 ```bash
 python sgd_autodetect.py --data /path/to/flight --output quick.kml --train-auto --skip 5
+# Creates models/quick_model.pkl automatically
+```
+
+##### Reprocessing with Different Parameters:
+The model is remembered based on output name:
+```bash
+# Initial run with training
+python sgd_autodetect.py --data /flight --output analysis.kml --train --temp 1.0
+
+# Try different temperature threshold (same model)
+python sgd_autodetect.py --data /flight --output analysis.kml --temp 0.5
+
+# Try with wave areas included (same model)
+python sgd_autodetect.py --data /flight --output analysis.kml --temp 0.5 --waves
 ```
 
 #### Real-World Examples
