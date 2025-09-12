@@ -717,6 +717,15 @@ Examples:
             print(f"\n✗ Training failed: {e}")
             sys.exit(1)
     else:
+        # If no training was done, try to find or use specified model
+        
+        # If model not specified, try to find matching model based on output name
+        if model_path == 'segmentation_model.pkl':  # Default value
+            output_based_model = Path("models") / f"{output_name}_model.pkl"
+            if output_based_model.exists():
+                model_path = str(output_based_model)
+                print(f"✓ Found matching model: {model_path}")
+        
         # Check if model exists in models directory if not absolute path
         if not Path(model_path).is_absolute():
             # First check models directory
