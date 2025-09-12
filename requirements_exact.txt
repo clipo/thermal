@@ -1,0 +1,16 @@
+# Exact package versions for reproducible SGD detection
+# Tested and verified with Rapa Nui survey data
+# Python 3.8-3.12 compatible
+
+numpy==1.26.4
+matplotlib==3.9.2
+Pillow==10.4.0
+scipy==1.13.1
+scikit-image==0.24.0
+scikit-learn==1.5.1
+tqdm==4.66.5
+
+# Note: These exact versions produced:
+# - 101 SGDs detected in test survey
+# - 90 unique locations after deduplication
+# - Correct georeferencing at Rapa Nui (-27.15, -109.44)

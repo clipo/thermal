@@ -1191,6 +1191,70 @@ python sgd_detector_integrated.py --mode interactive
 python sgd_viewer.py --no-ml
 ```
 
+### Reproducibility Issues (Different Results on Different Computers)
+
+If you're getting different SGD detection results on different computers with the same images, follow these steps:
+
+#### 1. Run Diagnostic Script
+```bash
+# Run on each computer and compare outputs
+python diagnose_setup.py
+
+# This generates diagnostic_report.json with:
+# - Package versions
+# - Model file MD5 hashes  
+# - Random seed consistency tests
+# - Platform information
+```
+
+#### 2. Install Exact Package Versions
+```bash
+# Use exact versions that produced verified results
+pip install -r requirements_exact.txt
+
+# These specific versions detected:
+# - 101 SGDs in test survey
+# - 90 unique locations after deduplication
+# - Correct georeferencing at Rapa Nui (-27.15°, -109.44°)
+```
+
+#### 3. Verify Model Integrity
+```bash
+# Check model file hashes match these values:
+# segmentation_model.pkl: MD5 = 7283e45dc29911599c92e281f0697f6b (356KB)
+# segmentation_training_data.json: MD5 = 088d6dc7e0169bb0138e87ffa4c80e66 (511KB)
+
+# On macOS/Linux:
+md5sum segmentation_model.pkl
+md5sum segmentation_training_data.json
+
+# On Windows:
+certutil -hashfile segmentation_model.pkl MD5
+certutil -hashfile segmentation_training_data.json MD5
+```
+
+#### 4. Common Causes and Solutions
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Different package versions | pip/conda version mismatches | Use `requirements_exact.txt` |
+| Corrupted model file | Partial download or git issues | Re-download from GitHub |
+| Platform differences | Windows/Mac/Linux variations | Use Python 3.8-3.12 consistently |
+| Random seed not fixed | Non-deterministic ML behavior | Model includes `random_state=42` |
+| Image loading differences | PIL/Pillow version mismatch | Use Pillow==10.4.0 exactly |
+| Float precision | CPU architecture differences | Minor variations (<1%) are normal |
+
+#### 5. Expected Reproducible Results
+With the exact setup specified in `requirements_exact.txt` and included model files, you should get:
+- **Test Survey (data/100MEDIA)**: 101 SGDs detected, 90 unique after deduplication
+- **Consistent georeferencing**: All detections at Rapa Nui (-27.15°, -109.44°)
+- **Deterministic processing**: Same images = same results every time
+
+If differences persist after following these steps, please:
+1. Run `diagnose_setup.py` on both computers
+2. Share both `diagnostic_report.json` files
+3. Note any differences in detection counts or locations
+
 ### GPS/Georeferencing Issues
 - Verify EXIF: `exiftool MAX_0248.JPG | grep GPS`
 - Check drone GPS was enabled
