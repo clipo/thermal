@@ -442,8 +442,12 @@ The automated detection script provides hands-free batch processing of entire su
 
 #### Features
 - 🚀 **Fully automated** - No user interaction required
+- 🎯 **Custom training** - Train models specific to each flight's conditions
+- 🖱️ **Interactive training** - Manual labeling GUI for precision (`--train`)
+- 🤖 **Automatic training** - Hands-free model generation (`--train-auto`)
 - 📊 **Progress tracking** - Real-time progress bar with ETA
 - 🗺️ **Direct KML export** - Georeferenced polygons for Google Earth
+- 📁 **Organized outputs** - Results in `sgd_output/`, models in `models/`
 - ⚙️ **Configurable parameters** - Fine-tune detection settings
 - 📈 **Statistics output** - Processing time, detection counts, areas
 - 🔄 **Frame skipping** - Process every Nth frame for speed
@@ -453,26 +457,34 @@ The automated detection script provides hands-free batch processing of entire su
 #### Usage Examples
 
 ```bash
-# Basic automated detection
+# Basic automated detection (uses default model)
 python sgd_autodetect.py --data data/survey --output results.kml
+
+# Interactive training (manual labeling) then detection
+python sgd_autodetect.py --data data/survey --output sgd.kml --train
+# This opens a GUI where you click to label ocean/land/rock/wave regions
+
+# Automatic training (no manual labeling) then detection
+python sgd_autodetect.py --data data/survey --output sgd.kml --train-auto
+# Uses color-based heuristics to automatically train a model
+
+# Use existing custom model from previous training
+python sgd_autodetect.py --data data/survey --output sgd.kml --model models/custom_model.pkl
 
 # Process every 5th frame with lower temperature threshold
 python sgd_autodetect.py --data data/survey --output sgd.kml --skip 5 --temp 0.5
 
-# Include wave areas with strict deduplication
-python sgd_autodetect.py --data data/survey --output sgd.kml --waves --distance 20
+# Quick test with automatic training
+python sgd_autodetect.py --data data/survey --output test.kml --train-auto --skip 10 --quiet
 
-# Quick test run (every 10th frame, quiet mode)
-python sgd_autodetect.py --data data/survey --output test.kml --skip 10 --quiet
-
-# Full processing with all options
+# Full processing with manual training
 python sgd_autodetect.py \
   --data data/100MEDIA \
   --output survey_results.kml \
+  --train \
   --temp 1.5 \
   --distance 15 \
   --area 75 \
-  --skip 1 \
   --waves
 ```
 
@@ -480,34 +492,116 @@ python sgd_autodetect.py \
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| **Required** | | |
 | `--data` | required | Directory with MAX_*.JPG and IRX_*.irg files |
 | `--output` | required | Output KML filename |
+| **Detection Parameters** | | |
 | `--temp` | 1.0 | Temperature threshold (°C) |
 | `--distance` | 10.0 | Minimum distance between SGDs (meters) |
 | `--skip` | 1 | Process every Nth frame (1=all) |
 | `--area` | 50 | Minimum SGD area (pixels) |
 | `--waves` | False | Include wave areas in detection |
+| **Model & Training** | | |
+| `--model` | segmentation_model.pkl | Segmentation model to use |
+| `--train` | False | Launch interactive training GUI (manual) |
+| `--train-auto` | False | Auto-train model (no manual labeling) |
+| `--train-samples` | 10 | Frames to sample for auto-training |
+| **Output Options** | | |
 | `--quiet` | False | Suppress detailed output |
 
-#### Output Files
+#### Training Modes
 
-The script generates multiple output files:
-- **`output.kml`** - Main KML file for Google Earth with georeferenced SGD locations
-- **`output_summary.json`** - Detailed statistics, parameters, and all SGD locations
-- **`output.geojson`** - GeoJSON format (if polygon support available)
+The script offers two training approaches for custom segmentation models:
+
+##### 1. Interactive Training (`--train`)
+- Opens GUI for manual labeling
+- Click on regions to label as ocean, land, rock, or wave
+- More accurate for challenging conditions
+- Best when precision matters
+
+##### 2. Automatic Training (`--train-auto`)
+- Uses color-based heuristics
+- No manual intervention needed
+- Faster but may be less accurate
+- Good for standard conditions
+
+Both modes:
+- Save models to `models/` directory
+- Name models to match output files (e.g., `flight_sgd_model.pkl` for `flight_sgd.kml`)
+- Can be reused with `--model` flag
+
+#### Output Files & Directory Structure
+
+All outputs are organized in dedicated directories:
+
+```
+thermal/
+├── sgd_output/           # All detection results
+│   ├── flight1.kml       # KML for Google Earth
+│   ├── flight1_summary.json
+│   ├── flight2.kml
+│   └── flight2_summary.json
+├── models/               # Trained segmentation models
+│   ├── flight1_model.pkl # Custom model for flight1
+│   ├── flight1_training.json
+│   ├── flight2_model.pkl
+│   └── flight2_training.json
+└── segmentation_model.pkl # Default model
+
+```
+
+Output files include:
+- **`.kml`** - Georeferenced SGD polygons for Google Earth
+- **`_summary.json`** - Detection statistics and parameters
+- **`.geojson`** - GeoJSON format (if available)
+
+#### Recommended Workflow
+
+##### For New Survey Areas:
+1. **First flight**: Use interactive training for best accuracy
+   ```bash
+   python sgd_autodetect.py --data /path/to/flight1 --output flight1.kml --train
+   ```
+
+2. **Similar conditions**: Reuse the model
+   ```bash
+   python sgd_autodetect.py --data /path/to/flight2 --output flight2.kml \
+     --model models/flight1_model.pkl
+   ```
+
+3. **Different conditions**: Train new model
+   ```bash
+   python sgd_autodetect.py --data /path/to/sunrise_flight --output sunrise.kml --train
+   ```
+
+##### For Quick Processing:
+Use automatic training when manual labeling isn't practical:
+```bash
+python sgd_autodetect.py --data /path/to/flight --output quick.kml --train-auto --skip 5
+```
 
 #### Real-World Examples
 
 ```bash
-# Process local test data
-python sgd_autodetect.py --data data/100MEDIA --output test.kml --skip 10
+# Process local test data with automatic training
+python sgd_autodetect.py --data data/100MEDIA --output test.kml --train-auto --skip 10
 
-# Process external drive with complex path (Rapa Nui survey)
+# Process Rapa Nui survey with interactive training
 python sgd_autodetect.py \
   --data "/Volumes/RapaNui/Rapa Nui June 2023/Thermal Flights/1 July 23/Kikirahamea - Hiva Hiva/104MEDIA" \
   --output kikirahamea_sgd.kml \
+  --train \
   --skip 10 \
-  --temp 1.0
+  --temp 0.5 \
+  --waves
+
+# Reuse trained model for similar flight
+python sgd_autodetect.py \
+  --data "/Volumes/RapaNui/Rapa Nui June 2023/Thermal Flights/1 July 23/Te Peu - Hiva Hiva/106MEDIA" \
+  --output te_peu_sgd.kml \
+  --model models/kikirahamea_sgd_model.pkl \
+  --skip 10 \
+  --temp 0.5
 
 # Actual output from Rapa Nui survey:
 ============================================================
