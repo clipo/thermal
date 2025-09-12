@@ -136,15 +136,21 @@ mkdir -p data/100MEDIA
 # cp /path/to/drone/images/IRX_*.irg data/100MEDIA/
 ```
 
-### Step 6: Download or Train ML Model (Optional)
+### Step 6: ML Segmentation Model (Pre-Trained Included)
 
-The toolkit includes a pre-trained segmentation model, but you can train your own:
+The toolkit includes a **pre-trained segmentation model** optimized for Rapa Nui coastal environments:
 
 ```bash
-# Option A: Use the included model (if available)
-# The default model is segmentation_model.pkl
+# DEFAULT MODEL INCLUDED (already in repository):
+# - segmentation_model.pkl (356KB) - Random Forest classifier
+# - segmentation_training_data.json (511KB) - Training annotations
+# 
+# This model is automatically used and works well for:
+# - Rocky volcanic shores (like Rapa Nui)
+# - Clear ocean/land boundaries
+# - Wave and foam detection
 
-# Option B: Train a new model for your specific environment
+# Option B: Train a custom model for different environments
 python segmentation_trainer.py
 # Follow the on-screen instructions to label ocean, land, rock, and waves
 # Press 'T' to train, 'S' to save the model
@@ -1254,10 +1260,10 @@ thermal/
 │           ├── MAX_XXXX.JPG       # RGB images (4096×3072)
 │           └── IRX_XXXX.irg       # Raw thermal (640×512, deciKelvin)
 │
-├── Models & Configuration
-│   ├── segmentation_model.pkl      # Default ML model
-│   ├── sgd_aggregate.json         # Persistent SGD database
-│   └── segmentation_training_data.json  # Training annotations
+├── Models & Configuration (INCLUDED IN REPO)
+│   ├── segmentation_model.pkl      # Pre-trained ML model for Rapa Nui (356KB)
+│   ├── segmentation_training_data.json  # Training data (511KB)
+│   └── sgd_aggregate.json         # Persistent SGD database (user-generated)
 │
 ├── Output Formats
 │   ├── sgd_polygons.geojson       # GIS-compatible polygons
