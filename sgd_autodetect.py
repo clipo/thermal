@@ -88,11 +88,13 @@ class SGDAutoDetector:
         self.include_waves = include_waves
         self.verbose = verbose
         
-        # Initialize detector
+        # Initialize detector with specified model
+        model_path = os.environ.get('SGD_MODEL_PATH', 'segmentation_model.pkl')
         self.detector = IntegratedSGDDetector(
             temp_threshold=self.temp_threshold,
             min_area=self.min_area,
-            base_path=str(self.data_dir)
+            base_path=str(self.data_dir),
+            ml_model_path=model_path
         )
         
         # Load available frames
@@ -588,6 +590,14 @@ Examples:
     parser.add_argument('--waves', action='store_true',
                        help='Include wave/foam areas in ocean mask')
     
+    # Model options
+    parser.add_argument('--model', type=str, default='segmentation_model.pkl',
+                       help='Segmentation model to use (default: segmentation_model.pkl)')
+    parser.add_argument('--train', action='store_true',
+                       help='Train a new segmentation model before detection')
+    parser.add_argument('--train-samples', type=int, default=10,
+                       help='Number of frames to sample for training (default: 10)')
+    
     # Output options
     parser.add_argument('--quiet', action='store_true',
                        help='Suppress detailed output, show only progress bar')
@@ -602,6 +612,56 @@ Examples:
     # Ensure output has .kml extension
     if not args.output.endswith('.kml'):
         args.output += '.kml'
+    
+    # Handle model path and training
+    model_path = args.model
+    
+    # If training requested, train a new model first
+    if args.train:
+        from auto_train_segmentation import AutoSegmentationTrainer
+        
+        # Create model filename based on output name
+        output_name = Path(args.output).stem
+        model_dir = Path("models")
+        model_dir.mkdir(exist_ok=True)
+        model_path = str(model_dir / f"{output_name}_model.pkl")
+        training_path = str(model_dir / f"{output_name}_training.json")
+        
+        print("\n" + "="*60)
+        print("AUTOMATED SEGMENTATION TRAINING")
+        print("="*60)
+        print(f"Training new model from: {args.data}")
+        print(f"Model will be saved as: {model_path}")
+        print(f"Sampling {args.train_samples} frames...")
+        print("-"*60)
+        
+        trainer = AutoSegmentationTrainer(
+            data_dir=args.data,
+            model_file=model_path,
+            training_file=training_path,
+            sample_frames=args.train_samples,
+            verbose=not args.quiet
+        )
+        
+        try:
+            stats = trainer.train()
+            print(f"\n✓ Training complete! Accuracy: {stats['test_accuracy']:.2%}")
+            print("="*60)
+            print()
+        except Exception as e:
+            print(f"\n✗ Training failed: {e}")
+            sys.exit(1)
+    else:
+        # Check if model exists in models directory if not absolute path
+        if not Path(model_path).is_absolute():
+            # First check models directory
+            models_dir_path = Path("models") / model_path
+            if models_dir_path.exists():
+                model_path = str(models_dir_path)
+            # Otherwise use as-is (will look in current directory)
+    
+    # Set the model for the detector
+    os.environ['SGD_MODEL_PATH'] = model_path
     
     # Run detection
     detector = SGDAutoDetector(

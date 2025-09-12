@@ -1,11 +1,12 @@
 {
   "metadata": {
-    "last_updated": "2025-09-11T14:59:27.381445",
+    "last_updated": "2025-09-11T15:08:11.602502",
     "total_frames": 250,
     "frames_processed": [
-      16
+      16,
+      81
     ],
-    "distance_threshold": 10.0
+    "distance_threshold": 39.94237749546278
   },
   "sgd_locations": [
     {
@@ -1541,14 +1542,5 @@
         "latitude": 27.15413759173329,
         "longitude": -109.44199083805854
       },
-      "area_m2": 715.6911078815683,
-      "area_pixels": 1000,
-      "shore_distance": 50,
-      "altitude": 414.23855,
-      "eccentricity": 0.5,
-      "temperature_anomaly": -2.0,
-      "first_frame": 16,
-      "confirmed": true
-    }
-  ]
-}
+      "area_m2": 731.618514119109,
+      "area_pixels": 
