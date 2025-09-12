@@ -561,14 +561,20 @@ Examples:
   # Basic usage with default parameters
   python sgd_autodetect.py --data data/survey --output survey_sgd.kml
   
+  # Interactive training (manual labeling) then detection
+  python sgd_autodetect.py --data data/survey --output sgd.kml --train
+  
+  # Automatic training (no labeling) then detection  
+  python sgd_autodetect.py --data data/survey --output sgd.kml --train-auto
+  
+  # Use existing custom model from models directory
+  python sgd_autodetect.py --data data/survey --output sgd.kml --model models/custom_model.pkl
+  
   # Process every 5th frame with custom thresholds
   python sgd_autodetect.py --data data/survey --output sgd.kml --skip 5 --temp 0.5
   
-  # Include wave areas and use strict deduplication
-  python sgd_autodetect.py --data data/survey --output sgd.kml --waves --distance 20
-  
-  # Quick processing of subset
-  python sgd_autodetect.py --data data/survey --output test.kml --skip 10 --quiet
+  # Quick processing with automatic training
+  python sgd_autodetect.py --data data/survey --output test.kml --train-auto --skip 10
         """
     )
     
@@ -594,9 +600,11 @@ Examples:
     parser.add_argument('--model', type=str, default='segmentation_model.pkl',
                        help='Segmentation model to use (default: segmentation_model.pkl)')
     parser.add_argument('--train', action='store_true',
-                       help='Train a new segmentation model before detection')
+                       help='Launch interactive segmentation trainer before detection')
+    parser.add_argument('--train-auto', action='store_true',
+                       help='Automatically train segmentation model (no manual labeling)')
     parser.add_argument('--train-samples', type=int, default=10,
-                       help='Number of frames to sample for training (default: 10)')
+                       help='Number of frames to sample for auto training (default: 10)')
     
     # Output options
     parser.add_argument('--quiet', action='store_true',
@@ -616,14 +624,61 @@ Examples:
     # Handle model path and training
     model_path = args.model
     
-    # If training requested, train a new model first
+    # Check for conflicting training options
+    if args.train and args.train_auto:
+        print("Error: Cannot use both --train and --train-auto. Choose one training mode.")
+        sys.exit(1)
+    
+    # Create model filename based on output name
+    output_name = Path(args.output).stem
+    model_dir = Path("models")
+    model_dir.mkdir(exist_ok=True)
+    
+    # If manual training requested, launch interactive trainer
     if args.train:
+        model_path = str(model_dir / f"{output_name}_model.pkl")
+        training_path = str(model_dir / f"{output_name}_training.json")
+        
+        print("\n" + "="*60)
+        print("INTERACTIVE SEGMENTATION TRAINING")
+        print("="*60)
+        print(f"Launching manual training interface...")
+        print(f"Data directory: {args.data}")
+        print(f"Model will be saved as: {model_path}")
+        print("-"*60)
+        print("\nInstructions:")
+        print("1. Click on regions to label them:")
+        print("   - Ocean (blue water)")
+        print("   - Land (vegetation, sand)")
+        print("   - Rock (gray rocky areas)")
+        print("   - Wave (white foam)")
+        print("2. Press 'T' to train the model")
+        print("3. Press 'S' to save and continue")
+        print("4. Close the window when done")
+        print("-"*60)
+        
+        # Launch the interactive trainer
+        from segmentation_trainer import SegmentationTrainer
+        
+        try:
+            trainer = SegmentationTrainer(
+                base_path=args.data,
+                model_file=model_path,
+                training_file=training_path
+            )
+            trainer.run()
+            print(f"\n✓ Interactive training complete!")
+            print(f"✓ Model saved to: {model_path}")
+            print("="*60)
+            print()
+        except Exception as e:
+            print(f"\n✗ Training failed: {e}")
+            sys.exit(1)
+    
+    # If automatic training requested
+    elif args.train_auto:
         from auto_train_segmentation import AutoSegmentationTrainer
         
-        # Create model filename based on output name
-        output_name = Path(args.output).stem
-        model_dir = Path("models")
-        model_dir.mkdir(exist_ok=True)
         model_path = str(model_dir / f"{output_name}_model.pkl")
         training_path = str(model_dir / f"{output_name}_training.json")
         
