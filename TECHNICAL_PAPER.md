@@ -233,8 +233,8 @@ Ocean segmentation represents the most critical preprocessing step in our pipeli
 Our solution employs a Random Forest classifier, chosen for its ability to handle non-linear decision boundaries, robustness to outliers, and interpretability of feature importance. The ensemble nature of Random Forest, combining predictions from 100 decision trees, provides stable predictions even when individual features are ambiguous. This stability is crucial when processing images captured under varying environmental conditions across multi-hour survey flights.
 
 **Figure 7a: Real Segmentation Results from Rapa Nui**
-![ML Segmentation Example](docs/images/segmentation_example_accurate.png)
-*Segmentation results from Hanga Roa - Rano Kau survey: (Left) Original RGB nadir image showing coastal waters, (Center) ML segmentation with color-coded classes - blue for ocean, gray for rocks, brown for land, white for waves/foam, (Right) Binary ocean mask isolating water areas for thermal analysis. The trained model accurately distinguishes ocean from coastal features using the segmentation_model.pkl.*
+![ML Segmentation Example](docs/images/segmentation_working.png)
+*Ocean segmentation results showing successful water isolation: (Left) Original RGB nadir image of Hanga Roa coastal waters, (Center) Color-coded segmentation with bright blue for ocean (68%), tan for land (23%), white for waves (9%), (Right) Binary ocean mask where white pixels represent ocean areas for SGD detection. This accurate ocean isolation is critical for detecting thermal anomalies only in water.*
 
 **Figure 7b: Segmentation Process Visualization**
 ```
