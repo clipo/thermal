@@ -477,6 +477,9 @@ python sgd_autodetect.py --data data/survey --output sgd.kml --skip 5 --temp 0.5
 # Quick test with automatic training
 python sgd_autodetect.py --data data/survey --output test.kml --train-auto --skip 10 --quiet
 
+# Process multiple XXXMEDIA directories from one flight
+python sgd_autodetect.py --data "/path/to/flight" --output flight.kml --search
+
 # Full processing with manual training
 python sgd_autodetect.py \
   --data data/100MEDIA \
@@ -506,6 +509,8 @@ python sgd_autodetect.py \
 | `--train` | False | Launch interactive training GUI (manual) |
 | `--train-auto` | False | Auto-train model (no manual labeling) |
 | `--train-samples` | 10 | Frames to sample for auto-training |
+| **Batch Processing** | | |
+| `--search` | False | Find and process all XXXMEDIA subdirectories |
 | **Output Options** | | |
 | `--quiet` | False | Suppress detailed output |
 
@@ -547,6 +552,37 @@ python sgd_autodetect.py --data /path/to/flight --output flight1.kml
 # ✓ Found matching model: models/flight1_model.pkl
 
 # No need to specify --model unless you want a different one
+```
+
+#### Processing Multiple XXXMEDIA Directories (--search)
+
+UAV flights often split images into multiple batches (100MEDIA, 101MEDIA, 102MEDIA, etc.). The `--search` flag automatically finds and processes all these subdirectories:
+
+```bash
+# Process all XXXMEDIA subdirectories in a flight folder
+python sgd_autodetect.py --data "/path/to/flight" --output flight.kml --search
+
+# This will find and process:
+# ✓ 100MEDIA/ → flight_100MEDIA.kml
+# ✓ 101MEDIA/ → flight_101MEDIA.kml  
+# ✓ 102MEDIA/ → flight_102MEDIA.kml
+# ✓ Combined summary → flight_combined_summary.json
+```
+
+**Features:**
+- Automatically detects all folders matching pattern XXXMEDIA (where XXX = 100-999)
+- Processes each directory sequentially
+- Creates individual KML files for each directory
+- Generates combined summary with total statistics
+- Shows progress for each directory being processed
+
+**Example with training:**
+```bash
+# Train model and process all directories
+python sgd_autodetect.py --data "/flight" --output analysis.kml --search --train
+
+# Use specific parameters for all directories
+python sgd_autodetect.py --data "/flight" --output sgd.kml --search --skip 5 --temp 0.5
 ```
 
 #### Output Files & Directory Structure
@@ -643,6 +679,15 @@ python sgd_autodetect.py \
   --model models/kikirahamea_sgd_model.pkl \
   --skip 10 \
   --temp 0.5
+
+# Process entire flight with multiple XXXMEDIA folders
+python sgd_autodetect.py \
+  --data "/Volumes/RapaNui/Rapa Nui June 2023/Thermal Flights/Complete Flight" \
+  --output complete_flight.kml \
+  --search \
+  --skip 5 \
+  --temp 0.5
+# Processes: 100MEDIA/, 101MEDIA/, 102MEDIA/, etc.
 
 # Actual output from Rapa Nui survey:
 ============================================================
