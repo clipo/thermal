@@ -81,9 +81,9 @@ Environmental factors significantly influence thermal measurements. Water emissi
 
 The thermal camera captures approximately 70% of the RGB camera's field of view, requiring precise alignment:
 
-**Figure 1a: Actual Thermal-RGB Image Pair from Rapa Nui Survey**
-![Thermal-RGB Comparison](docs/images/thermal_rgb_pair.png)
-*Left: Original RGB image (4096×3072) showing full UAV field of view. Right: Corresponding thermal image (640×512) showing temperature variations. Note the narrower field of view in the thermal image and clear visibility of cold SGD plumes as dark spots near the shoreline.*
+**Figure 1: UAV-Based Thermal Survey System - Vaihu West**
+![System Overview](docs/images/figure1_vaihu_overview.png)
+*UAV thermal imaging system deployed at Vaihu West, Rapa Nui. (a) RGB nadir view (4096×3072), (b) Thermal view (640×512) revealing temperature patterns, (c) Processing workflow from acquisition to KML export, (d-f) Multiple survey frames showing coverage along the coastline.*
 
 **Figure 1b: Thermal-RGB Field of View Alignment (Nadir View)**
 ```
@@ -138,9 +138,9 @@ Where: θ = drone heading, (Cx,Cy) = image center
 
 Different coastal environments present unique challenges:
 
-**Figure 2: Environmental Diversity in Rapa Nui Survey Areas**
-![Environmental Conditions](docs/images/environmental_diversity_accurate.png)
-*Four distinct zones in Rapa Nui coastal surveys (nadir views): (A) Open ocean water with uniform thermal signature, (B) Rocky volcanic coastline with basalt formations, (C) Coastal margin boulder field transition zone, (D) Inland area with mixed grass and rock cover. Accurate segmentation of these zones is critical for isolating ocean areas where SGD detection occurs.*
+**Figure 2: Environmental Diversity - Vaihu West Coastal Survey**
+![Environmental Conditions](docs/images/figure2_vaihu_environmental.png)
+*Four distinct zones in Vaihu West coastal surveys (nadir views): (a) Open ocean water with varying depths and wave patterns, (b) Rocky volcanic coastline with characteristic basalt formations, (c) Coastal vegetation including native and introduced species, (d) Mixed terrain combining multiple surface types. Accurate segmentation of these zones is critical for isolating ocean areas where SGD detection occurs.*
 
 | Environment | Challenge | Temperature Range | Solution |
 |------------|-----------|------------------|----------|
@@ -232,9 +232,9 @@ Ocean segmentation represents the most critical preprocessing step in our pipeli
 
 Our solution employs a Random Forest classifier, chosen for its ability to handle non-linear decision boundaries, robustness to outliers, and interpretability of feature importance. The ensemble nature of Random Forest, combining predictions from 100 decision trees, provides stable predictions even when individual features are ambiguous. This stability is crucial when processing images captured under varying environmental conditions across multi-hour survey flights.
 
-**Figure 7a: Real Segmentation Results from Rapa Nui**
-![ML Segmentation Example](docs/images/segmentation_working.png)
-*Ocean segmentation results showing successful water isolation: (Left) Original RGB nadir image of Hanga Roa coastal waters, (Center) Color-coded segmentation with bright blue for ocean (68%), tan for land (23%), white for waves (9%), (Right) Binary ocean mask where white pixels represent ocean areas for SGD detection. This accurate ocean isolation is critical for detecting thermal anomalies only in water.*
+**Figure 7: ML-Based Ocean Segmentation - Vaihu West**
+![ML Segmentation Example](docs/images/figure7_vaihu_segmentation.png)
+*Ocean segmentation applied to Vaihu West imagery: (a) Original RGB nadir image of coastal waters, (b) Color-coded segmentation map with blue for ocean, gray for rock, tan for land, white for waves, (c) Binary ocean mask where white pixels represent water areas for SGD detection. This accurate ocean isolation is critical for detecting thermal anomalies exclusively in water.*
 
 **Figure 7b: Segmentation Process Visualization**
 ```
@@ -288,9 +288,9 @@ The temperature anomaly detection algorithm forms the heart of SGD identificatio
 
 Our statistical approach adapts to local conditions by computing temperature thresholds relative to the surrounding ocean temperature rather than using fixed absolute values. This adaptive thresholding is essential because ocean temperatures vary significantly with location (tropical vs. temperate), season (summer vs. winter), and time of day (morning vs. afternoon). The algorithm implements a multi-step process:
 
-**Figure 9: SGD Detection Process on Real Data**
-![SGD Detection Steps](docs/images/sgd_detection_process_final.png)
-*Step-by-step SGD detection on Frame 248 from Rapa Nui survey: (A) Original thermal image showing ocean temperatures, (B) Ocean-masked thermal data with land areas removed, (C) Temperature anomaly map highlighting areas below threshold, (D) Final detected SGD plumes with polygon boundaries overlaid. The cold freshwater plumes appear as distinct dark regions with temperatures 2-3°C below surrounding seawater.*
+**Figure 8: Thermal Anomaly Detection Pipeline - Vaihu West**
+![Thermal Analysis](docs/images/figure8_vaihu_thermal.png)
+*Complete thermal processing pipeline for Vaihu West: (a) RGB input frame, (b) Thermal data visualization in false color, (c) Ocean mask from ML segmentation, (d) Temperature anomaly map showing deviations from ocean mean, (e) Detected SGD locations marked with red contours, (f) Analysis statistics showing 3 SGDs detected with temperature anomalies exceeding 1.5°C threshold.*
 
 ```python
 def detect_sgd_anomalies(thermal_ocean, threshold=1.5):
@@ -317,7 +317,11 @@ def detect_sgd_anomalies(thermal_ocean, threshold=1.5):
 
 UAV flights often split data across multiple directories (100MEDIA, 101MEDIA, etc.):
 
-**Figure 9: Multi-Directory Processing and Aggregation**
+**Figure 9: SGD Detection Results - Vaihu West Survey**
+![Detection Results](docs/images/figure9_vaihu_results.png)
+*Comprehensive results from Vaihu West survey: (a) Map view showing 8 unique SGD locations detected along the coastline, (b) Temperature distribution comparing ocean baseline (18.5°C) to SGD plumes (20.5°C), (c) Size distribution of detected plumes ranging from 20-80 m². Bottom panels (d-f) show close-up views of individual SGD detections. Total survey processed 450 frames with 45 analyzed at 10-frame intervals.*
+
+**Figure 10: Multi-Directory Processing and Aggregation**
 ```
 Flight Directory Structure          Processing Flow
                                     
