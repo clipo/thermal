@@ -575,6 +575,10 @@ Examples:
   
   # Quick processing with automatic training
   python sgd_autodetect.py --data data/survey --output test.kml --train-auto --skip 10
+  
+  # Process multiple XXXMEDIA subdirectories in one flight
+  python sgd_autodetect.py --data "/path/to/flight" --output flight.kml --search
+  # Finds and processes: 100MEDIA/, 101MEDIA/, 102MEDIA/, etc.
         """
     )
     
@@ -610,12 +614,44 @@ Examples:
     parser.add_argument('--quiet', action='store_true',
                        help='Suppress detailed output, show only progress bar')
     
+    # Search options
+    parser.add_argument('--search', action='store_true',
+                       help='Search for XXXMEDIA subdirectories (100MEDIA, 101MEDIA, etc.) in the data path')
+    
     args = parser.parse_args()
     
     # Validate inputs
     if not os.path.exists(args.data):
         print(f"Error: Data directory not found: {args.data}")
         sys.exit(1)
+    
+    # Handle search mode - find all XXXMEDIA subdirectories
+    data_directories = []
+    if args.search:
+        import re
+        base_path = Path(args.data)
+        media_pattern = re.compile(r'^\d{3}MEDIA$')
+        
+        # Find all matching subdirectories
+        for item in sorted(base_path.iterdir()):
+            if item.is_dir() and media_pattern.match(item.name):
+                data_directories.append(str(item))
+        
+        if not data_directories:
+            print(f"Error: No XXXMEDIA subdirectories found in {args.data}")
+            print("Looking for directories like: 100MEDIA, 101MEDIA, 102MEDIA, etc.")
+            sys.exit(1)
+        
+        print(f"\n✓ Found {len(data_directories)} media directories to process:")
+        for dir_path in data_directories:
+            dir_name = Path(dir_path).name
+            # Quick check for paired files
+            jpg_count = len(list(Path(dir_path).glob("MAX_*.JPG")))
+            irg_count = len(list(Path(dir_path).glob("IRX_*.irg")))
+            print(f"  - {dir_name}: {jpg_count} RGB, {irg_count} thermal images")
+    else:
+        # Single directory mode
+        data_directories = [args.data]
     
     # Ensure output has .kml extension
     if not args.output.endswith('.kml'):
@@ -737,29 +773,89 @@ Examples:
     # Set the model for the detector
     os.environ['SGD_MODEL_PATH'] = model_path
     
-    # Run detection
-    detector = SGDAutoDetector(
-        data_dir=args.data,
-        output_file=args.output,
-        temp_threshold=args.temp,
-        distance_threshold=args.distance,
-        frame_skip=args.skip,
-        min_area=args.area,
-        include_waves=args.waves,
-        verbose=not args.quiet
-    )
+    # Process each directory
+    all_stats = []
+    total_sgds = 0
+    total_unique = 0
     
-    try:
-        stats = detector.run()
-        sys.exit(0)
-    except KeyboardInterrupt:
-        print("\n\nDetection interrupted by user")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\nError during detection: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+    for idx, data_dir in enumerate(data_directories):
+        # Modify output filename for multiple directories
+        if args.search and len(data_directories) > 1:
+            dir_name = Path(data_dir).name
+            base_output = Path(args.output).stem
+            output_ext = Path(args.output).suffix
+            current_output = f"{base_output}_{dir_name}{output_ext}"
+            
+            print(f"\n{'='*60}")
+            print(f"Processing directory {idx+1}/{len(data_directories)}: {dir_name}")
+            print(f"Output: {current_output}")
+            print('='*60)
+        else:
+            current_output = args.output
+        
+        # Run detection for this directory
+        detector = SGDAutoDetector(
+            data_dir=data_dir,
+            output_file=current_output,
+            temp_threshold=args.temp,
+            distance_threshold=args.distance,
+            frame_skip=args.skip,
+            min_area=args.area,
+            include_waves=args.waves,
+            verbose=not args.quiet
+        )
+        
+        try:
+            stats = detector.run()
+            all_stats.append(stats)
+            
+            # Accumulate totals
+            if stats:
+                total_sgds += stats.get('total_sgds', 0)
+                total_unique += stats.get('unique_sgds', 0)
+                
+        except KeyboardInterrupt:
+            print("\n\nDetection interrupted by user")
+            sys.exit(1)
+        except Exception as e:
+            print(f"\nError during detection in {data_dir}: {e}")
+            if not args.search:
+                import traceback
+                traceback.print_exc()
+                sys.exit(1)
+            else:
+                print(f"Skipping {dir_name} due to error")
+                continue
+    
+    # Print summary for search mode
+    if args.search and len(data_directories) > 1:
+        print("\n" + "="*60)
+        print("COMBINED SUMMARY")
+        print("="*60)
+        print(f"Directories processed: {len(all_stats)}/{len(data_directories)}")
+        print(f"Total SGDs detected: {total_sgds}")
+        print(f"Total unique locations: {total_unique}")
+        
+        # Create combined summary file
+        combined_summary = {
+            'directories_processed': len(all_stats),
+            'total_directories': len(data_directories),
+            'total_sgds': total_sgds,
+            'total_unique': total_unique,
+            'individual_results': all_stats,
+            'data_directories': data_directories
+        }
+        
+        summary_file = Path(args.output).stem + "_combined_summary.json"
+        summary_path = Path("sgd_output") / summary_file
+        
+        with open(summary_path, 'w') as f:
+            json.dump(combined_summary, f, indent=2, cls=NumpyEncoder)
+        
+        print(f"\n✓ Combined summary saved: {summary_path}")
+        print("="*60)
+    
+    sys.exit(0)
 
 
 if __name__ == "__main__":
