@@ -668,6 +668,15 @@ Examples:
     parser.add_argument('--train-samples', type=int, default=10,
                        help='Number of frames to sample for auto training (default: 10)')
     
+    # Training sampling options
+    parser.add_argument('--train-sampling', type=str, default='distributed',
+                       choices=['distributed', 'increment', 'random'],
+                       help='Frame sampling method for training (default: distributed)')
+    parser.add_argument('--train-increment', type=int, default=25,
+                       help='Frame skip interval for increment sampling (default: 25)')
+    parser.add_argument('--train-max-frames', type=int, default=20,
+                       help='Maximum frames to use for training (default: 20)')
+    
     # Output options
     parser.add_argument('--quiet', action='store_true',
                        help='Suppress detailed output, show only progress bar')
@@ -751,6 +760,16 @@ Examples:
         print(f"Model will be saved as: {model_path}")
         print(f"Training data: {training_path}")
         print("-"*60)
+        print(f"Sampling Configuration:")
+        print(f"  Method: {args.train_sampling}")
+        if args.train_sampling == 'increment':
+            print(f"  Increment: every {args.train_increment}th frame")
+        elif args.train_sampling == 'random':
+            print(f"  Random selection from available frames")
+        else:
+            print(f"  Evenly distributed across all frames")
+        print(f"  Max frames: {args.train_max_frames}")
+        print("-"*60)
         print("\nInstructions:")
         print("1. Click on regions to label them (need 100+ samples per class):")
         print("   - Ocean (blue water)")
@@ -762,14 +781,18 @@ Examples:
         print("   (The window will close automatically)")
         print("-"*60)
         
-        # Launch the interactive trainer
+        # Launch the interactive trainer with better frame sampling
         from segmentation_trainer import SegmentationTrainer
         
         try:
+            # Use command-line specified sampling parameters
             trainer = SegmentationTrainer(
                 base_path=training_dir,
-                model_file=model_path,
-                training_file=training_path
+                model_file=str(model_path),
+                training_file=str(training_path),
+                sampling=args.train_sampling,
+                frame_increment=args.train_increment,
+                max_frames=args.train_max_frames
             )
             trainer.run()
             

@@ -28,29 +28,79 @@ class SegmentationTrainer:
     
     def __init__(self, base_path="data/100MEDIA",
                  model_file="segmentation_model.pkl",
-                 training_file="segmentation_training_data.json"):
-        """Initialize trainer
+                 training_file="segmentation_training_data.json",
+                 sampling='distributed',
+                 frame_increment=25,
+                 max_frames=20):
+        """Initialize trainer with enhanced frame sampling
         
         Args:
             base_path: Path to data directory
             model_file: Path to save/load ML model
             training_file: Path to save/load training data
+            sampling: 'distributed', 'increment', or 'random'
+            frame_increment: Skip interval for increment sampling
+            max_frames: Maximum frames to use for training
         """
         self.base_path = Path(base_path)
         self.training_file = training_file
         self.model_file = model_file
+        self.sampling = sampling
+        self.frame_increment = frame_increment
+        self.max_frames = max_frames
         
-        # Find available frames
-        self.frames = []
-        for f in sorted(self.base_path.glob("MAX_*.JPG"))[:100]:
-            num = int(f.stem.split('_')[1])
-            if (self.base_path / f"IRX_{num:04d}.irg").exists():
-                self.frames.append(num)
+        # Import enhanced sampling functions
+        try:
+            from improve_training_sampling import find_training_frames, get_area_name
+            
+            # Find frames with better sampling
+            frame_paths, self.area_name = find_training_frames(
+                self.base_path,
+                sampling=self.sampling,
+                increment=self.frame_increment,
+                max_frames=self.max_frames
+            )
+            
+            # Extract frame numbers and store paths
+            self.frames = []
+            self.frame_paths = {}
+            for frame_path in frame_paths:
+                try:
+                    num = int(frame_path.stem.split('_')[1])
+                    self.frames.append(num)
+                    self.frame_paths[num] = frame_path
+                except:
+                    continue
+                    
+        except ImportError:
+            # Fallback to old method if improve_training_sampling not available
+            print("Using legacy frame selection (sequential)")
+            self.frames = []
+            self.frame_paths = {}
+            for f in sorted(self.base_path.glob("MAX_*.JPG"))[:100]:
+                num = int(f.stem.split('_')[1])
+                if (self.base_path / f"IRX_{num:04d}.irg").exists():
+                    self.frames.append(num)
+                    self.frame_paths[num] = f
+            self.area_name = self.base_path.name
         
         if not self.frames:
             raise FileNotFoundError("No paired frames found!")
         
-        print(f"Found {len(self.frames)} frames")
+        # Print configuration
+        print(f"\n" + "="*60)
+        print("SEGMENTATION TRAINING CONFIGURATION")
+        print("="*60)
+        print(f"Area: {self.area_name if hasattr(self, 'area_name') else self.base_path.name}")
+        print(f"Sampling method: {self.sampling if hasattr(self, 'sampling') else 'sequential'}")
+        if self.sampling == 'increment':
+            print(f"Frame increment: every {self.frame_increment}th frame")
+        print(f"Frames selected: {len(self.frames)}")
+        if len(self.frames) <= 10:
+            print(f"Frame numbers: {self.frames}")
+        else:
+            print(f"Frame numbers: {self.frames[:5]}...{self.frames[-2:]}")
+        print("="*60)
         
         # Initialize
         self.current_frame_idx = 0
@@ -99,8 +149,12 @@ class SegmentationTrainer:
     
     def load_frame(self, frame_number):
         """Load and process a frame"""
-        # Load RGB image
-        rgb_path = self.base_path / f"MAX_{frame_number:04d}.JPG"
+        # Use stored frame path if available (for multi-directory support)
+        if hasattr(self, 'frame_paths') and frame_number in self.frame_paths:
+            rgb_path = self.frame_paths[frame_number]
+        else:
+            # Fallback to standard path
+            rgb_path = self.base_path / f"MAX_{frame_number:04d}.JPG"
         self.rgb_full = np.array(PILImage.open(rgb_path))
         
         # Extract thermal FOV region (center 70%)
