@@ -85,30 +85,32 @@ The thermal camera captures approximately 70% of the RGB camera's field of view,
 ![Thermal-RGB Comparison](docs/images/thermal_rgb_pair.png)
 *Left: Original RGB image (4096×3072) showing full UAV field of view. Right: Corresponding thermal image (640×512) showing temperature variations. Note the narrower field of view in the thermal image and clear visibility of cold SGD plumes as dark spots near the shoreline.*
 
-**Figure 1b: Thermal-RGB Field of View Alignment Schematic**
+**Figure 1b: Thermal-RGB Field of View Alignment (Nadir View)**
 ```
-RGB Image (4096 × 3072 pixels)
+RGB Image (4096 × 3072 pixels) - Looking Straight Down
 ┌─────────────────────────────────────────────────────┐
 │                                                     │
-│         Sky / Horizon / Distant Features           │
+│              Ocean Water (top portion)             │
 │                                                     │
 │     ┌─────────────────────────────────┐           │
 │     │                                 │           │
 │     │     Thermal Camera FOV         │           │
-│     │      (2867 × 2150 px)         │           │
-│     │                                 │           │
+│     │      (640 × 512 px)           │           │
 │     │    ┌──────────────────┐       │           │
-│     │    │   SGD Detection   │       │           │
-│     │    │      Zone         │       │           │
-│     │    │   (Ocean Area)    │       │           │
+│     │    │   Wave Break     │       │           │
+│     │    │     Zone         │       │           │
+│     │    ├──────────────────┤       │           │
+│     │    │   SGD Detection  │       │           │
+│     │    │   Area (Ocean)   │       │           │
+│     │    ├──────────────────┤       │           │
+│     │    │  Rocky Shoreline │       │           │
 │     │    └──────────────────┘       │           │
-│     │                                 │           │
 │     └─────────────────────────────────┘           │
 │                                                     │
-│           Shoreline / Beach / Rocks                │
+│            Coastal Land (bottom portion)           │
 │                                                     │
 └─────────────────────────────────────────────────────┘
-        Offset: (614, 461) pixels from top-left
+     Thermal FOV covers ~70% of RGB field of view
 ```
 
 **Figure 2: Coordinate System Transformation**
@@ -474,24 +476,9 @@ Statistical Summary:
 └─ 95% CI: [-3.08, -0.96]
 ```
 
-**Figure 5: Temporal Detection Pattern**
-```
-SGDs Detected per Hour of Day (Local Time)
-
-Count
-  30 |     ████                                    
-  25 |   ████████                                  
-  20 | ████████████                  ████          
-  15 | ██████████████████        ████████████      
-  10 | ████████████████████████████████████████    
-   5 | ██████████████████████████████████████████  
-   0 └──┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬─
-      6  7  8  9  10 11 12 13 14 15 16 17 18
-                    Hour of Day
-
-Peak Detection: 8-10 AM (optimal lighting conditions)
-Reduced Detection: 12-2 PM (high sun angle, reflections)
-```
+**Figure 5: Temporal Analysis - Flight Times vs SGD Detection**
+![Temporal Analysis](docs/images/temporal_analysis.png)
+*Comparison of overall flight times (top) versus times when SGDs were detected (middle), with normalized detection rate (bottom). The analysis reveals whether detection patterns are driven by flight timing or environmental factors. Higher morning detection rates suggest optimal thermal contrast conditions rather than sampling bias.*
 
 **Figure 6a: Actual KML Output in Google Earth**
 ![Google Earth Visualization](docs/images/google_earth_sgd_polygons.png)
