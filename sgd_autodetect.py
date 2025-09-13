@@ -34,7 +34,7 @@ except ImportError:
 
 
 class NumpyEncoder(json.JSONEncoder):
-    """Custom JSON encoder to handle numpy types"""
+    """Custom JSON encoder to handle numpy types and datetime"""
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)
@@ -42,6 +42,8 @@ class NumpyEncoder(json.JSONEncoder):
             return float(obj)
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
+        elif isinstance(obj, datetime):
+            return obj.isoformat()
         return super(NumpyEncoder, self).default(obj)
 
 
