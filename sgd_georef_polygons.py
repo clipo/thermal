@@ -383,32 +383,38 @@ class SGDPolygonGeoref:
                         "coordinates": [loc['polygon']]  # Outer ring
                     },
                     "properties": {
-                        "frame": loc['frame'],
-                        "datetime": loc['datetime'],
-                        "area_m2": round(loc['area_m2'], 2),
-                        "area_pixels": loc['area_pixels'],
+                        "frame": loc.get('frame', ''),
+                        "datetime": loc.get('datetime', ''),
+                        "area_m2": round(loc.get('area_m2', 0), 2),
+                        "area_pixels": loc.get('area_pixels', 0),
                         "temperature_anomaly": round(loc.get('temperature_anomaly', 0), 2),
-                        "shore_distance": round(loc['shore_distance'], 1),
-                        "altitude": round(loc['altitude'], 1),
-                        "eccentricity": round(loc['eccentricity'], 3)
+                        "shore_distance": round(loc.get('shore_distance', 0), 1) if 'shore_distance' in loc else None,
+                        "altitude": round(loc.get('altitude', 0), 1) if 'altitude' in loc else None,
+                        "eccentricity": round(loc.get('eccentricity', 0), 3) if 'eccentricity' in loc else None
                     }
                 }
             else:
                 # Fallback to point if no polygon
+                # Handle both centroid dict and separate lat/lon fields
+                if 'centroid' in loc and isinstance(loc['centroid'], dict):
+                    coordinates = [loc['centroid']['longitude'], loc['centroid']['latitude']]
+                else:
+                    coordinates = [loc.get('centroid_lon', 0), loc.get('centroid_lat', 0)]
+                
                 feature = {
                     "type": "Feature",
                     "geometry": {
                         "type": "Point",
-                        "coordinates": [loc['centroid']['longitude'], loc['centroid']['latitude']]
+                        "coordinates": coordinates
                     },
                     "properties": {
-                        "frame": loc['frame'],
-                        "datetime": loc['datetime'],
-                        "area_m2": round(loc['area_m2'], 2),
-                        "area_pixels": loc['area_pixels'],
+                        "frame": loc.get('frame', ''),
+                        "datetime": loc.get('datetime', ''),
+                        "area_m2": round(loc.get('area_m2', 0), 2),
+                        "area_pixels": loc.get('area_pixels', 0),
                         "temperature_anomaly": round(loc.get('temperature_anomaly', 0), 2),
-                        "shore_distance": round(loc['shore_distance'], 1),
-                        "altitude": round(loc['altitude'], 1)
+                        "shore_distance": round(loc.get('shore_distance', 0), 1) if 'shore_distance' in loc else None,
+                        "altitude": round(loc.get('altitude', 0), 1) if 'altitude' in loc else None
                     }
                 }
             
@@ -491,18 +497,24 @@ class SGDPolygonGeoref:
         # Add each SGD location
         for i, loc in enumerate(self.sgd_polygons):
             kml.append('<Placemark>')
-            kml.append(f'  <name>SGD {i+1} (Frame {loc["frame"]})</name>')
+            kml.append(f'  <name>SGD {i+1} (Frame {loc.get("frame", "Unknown")})</name>')
             
             # Create description with all metadata
             desc = []
-            desc.append(f'Frame: {loc["frame"]}')
-            desc.append(f'Date/Time: {loc["datetime"]}')
-            desc.append(f'Area: {loc["area_m2"]:.1f} m²')
-            desc.append(f'Area (pixels): {loc["area_pixels"]}')
+            desc.append(f'Frame: {loc.get("frame", "Unknown")}')
+            if 'datetime' in loc:
+                desc.append(f'Date/Time: {loc["datetime"]}')
+            desc.append(f'Area: {loc.get("area_m2", 0):.1f} m²')
+            desc.append(f'Area (pixels): {loc.get("area_pixels", 0)}')
             desc.append(f'Temperature anomaly: {loc.get("temperature_anomaly", 0):.1f}°C')
-            desc.append(f'Shore distance: {loc["shore_distance"]:.1f} m')
-            desc.append(f'Altitude: {loc["altitude"]:.1f} m')
-            desc.append(f'Eccentricity: {loc.get("eccentricity", 0):.3f}')
+            if 'shore_distance' in loc:
+                desc.append(f'Shore distance: {loc["shore_distance"]:.1f} m')
+            if 'altitude' in loc:
+                desc.append(f'Altitude: {loc["altitude"]:.1f} m')
+            if 'eccentricity' in loc:
+                desc.append(f'Eccentricity: {loc["eccentricity"]:.3f}')
+            if 'detection_count' in loc:
+                desc.append(f'Detection count: {loc["detection_count"]}')
             
             kml.append(f'  <description><![CDATA[{chr(10).join(desc)}]]></description>')
             
@@ -528,10 +540,18 @@ class SGDPolygonGeoref:
                 kml.append('  </Polygon>')
             else:
                 # Add as point (fallback)
+                # Handle both centroid dict and separate lat/lon fields
+                if 'centroid' in loc and isinstance(loc['centroid'], dict):
+                    lon = loc['centroid']['longitude']
+                    lat = loc['centroid']['latitude']
+                else:
+                    lon = loc.get('centroid_lon', 0)
+                    lat = loc.get('centroid_lat', 0)
+                
                 kml.append('  <styleUrl>#sgdPointStyle</styleUrl>')
                 kml.append('  <Point>')
                 kml.append('    <coordinates>')
-                kml.append(f'      {loc["centroid"]["longitude"]},{loc["centroid"]["latitude"]},0')
+                kml.append(f'      {lon},{lat},0')
                 kml.append('    </coordinates>')
                 kml.append('  </Point>')
             

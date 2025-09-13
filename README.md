@@ -556,33 +556,40 @@ python sgd_autodetect.py --data /path/to/flight --output flight1.kml
 
 #### Processing Multiple XXXMEDIA Directories (--search)
 
-UAV flights often split images into multiple batches (100MEDIA, 101MEDIA, 102MEDIA, etc.). The `--search` flag automatically finds and processes all these subdirectories:
+UAV flights often split images into multiple batches (100MEDIA, 101MEDIA, 102MEDIA, etc.). The `--search` flag automatically finds and processes all these subdirectories with aggregation:
 
 ```bash
 # Process all XXXMEDIA subdirectories in a flight folder
-python sgd_autodetect.py --data "/path/to/flight" --output flight.kml --search
+python sgd_autodetect.py --data "/path/to/flight" --output flight --search
 
-# This will find and process:
-# ✓ 100MEDIA/ → flight_100MEDIA.kml
-# ✓ 101MEDIA/ → flight_101MEDIA.kml  
-# ✓ 102MEDIA/ → flight_102MEDIA.kml
-# ✓ Combined summary → flight_combined_summary.json
+# This will create:
+# ✓ sgd_output/flight_individual/        # Individual outputs directory
+#   ├── flight_100MEDIA.kml             # KML for 100MEDIA
+#   ├── flight_100MEDIA_summary.json    # Summary for 100MEDIA
+#   ├── flight_101MEDIA.kml             # KML for 101MEDIA
+#   ├── flight_101MEDIA_summary.json    # Summary for 101MEDIA
+#   └── ...
+# ✓ sgd_output/flight.kml               # AGGREGATED KML with all SGDs
+# ✓ sgd_output/flight_summary.json      # Combined summary with deduplication
 ```
 
 **Features:**
 - Automatically detects all folders matching pattern XXXMEDIA (where XXX = 100-999)
 - Processes each directory sequentially
-- Creates individual KML files for each directory
-- Generates combined summary with total statistics
-- Shows progress for each directory being processed
+- Creates individual KML/JSON files in a subdirectory for organization
+- **Generates AGGREGATED KML file combining all detected SGDs**
+- **Deduplicates nearby SGDs across directories** (using distance threshold)
+- Shows total SGDs before and after deduplication
+- Provides comprehensive statistics for the entire flight
 
 **Example with training:**
 ```bash
-# Train model and process all directories
-python sgd_autodetect.py --data "/flight" --output analysis.kml --search --train
+# Train model on first directory and process all
+python sgd_autodetect.py --data "/flight" --output analysis --search --train
+# Note: When using --search with --train, the first directory (e.g., 100MEDIA) is used for training
 
 # Use specific parameters for all directories
-python sgd_autodetect.py --data "/flight" --output sgd.kml --search --skip 5 --temp 0.5
+python sgd_autodetect.py --data "/flight" --output sgd --search --skip 5 --temp 0.5
 ```
 
 #### Output Files & Directory Structure
@@ -591,18 +598,21 @@ All outputs are organized in dedicated directories:
 
 ```
 thermal/
-├── sgd_output/           # All detection results
-│   ├── flight1.kml       # KML for Google Earth
-│   ├── flight1_summary.json
-│   ├── flight2.kml
-│   └── flight2_summary.json
-├── models/               # Trained segmentation models
-│   ├── flight1_model.pkl # Custom model for flight1
-│   ├── flight1_training.json
-│   ├── flight2_model.pkl
-│   └── flight2_training.json
-└── segmentation_model.pkl # Default model
-
+├── sgd_output/                      # All detection results
+│   ├── single_survey.kml           # Single directory outputs
+│   ├── single_survey_summary.json
+│   ├── flight_individual/          # Multi-directory outputs (--search)
+│   │   ├── flight_100MEDIA.kml
+│   │   ├── flight_100MEDIA_summary.json
+│   │   ├── flight_101MEDIA.kml
+│   │   └── flight_101MEDIA_summary.json
+│   ├── flight.kml                  # Aggregated KML (all SGDs combined)
+│   └── flight_summary.json         # Aggregated summary with deduplication
+├── models/                          # Trained segmentation models
+│   ├── flight_model.pkl            # Custom model for flight
+│   ├── flight_training.json
+│   └── survey_model.pkl
+└── segmentation_model.pkl          # Default model
 ```
 
 Output files include:
@@ -1263,7 +1273,16 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 
 ## Recent Enhancements
 
-### ✅ Automated Processing Script FULLY WORKING! (Latest)
+### ✅ Multi-Directory Processing with Aggregation (NEW!)
+- **`--search` flag**: Process entire UAV flights split across XXXMEDIA directories
+  - **Automatic discovery**: Finds all 100MEDIA, 101MEDIA, 102MEDIA, etc. subdirectories
+  - **Aggregated outputs**: Creates combined KML with all SGDs from all directories
+  - **Smart deduplication**: Removes duplicate SGDs across directory boundaries
+  - **Organized outputs**: Individual results in subdirectory, aggregated results at top level
+  - **Training support**: Uses first directory for training when combined with --train
+  - **Tested with 8+ directories**: Successfully processed full Rapa Nui flights
+
+### ✅ Automated Processing Script FULLY WORKING!
 - **`sgd_autodetect.py`**: Production-ready batch processing
   - **Tested with real Rapa Nui data**: Successfully detected 101 SGDs across multiple surveys
   - **Accurate georeferencing**: Fixed hemisphere handling - correctly positions at Rapa Nui (-27.15°, -109.44°)

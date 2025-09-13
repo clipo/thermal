@@ -533,13 +533,17 @@ class SGDAutoDetector:
         
         # Export results
         if self.unique_sgd_locations:
+            # Populate georef.sgd_polygons for aggregation
+            if POLYGON_SUPPORT and hasattr(self.georef, 'sgd_polygons'):
+                self.georef.sgd_polygons = self.unique_sgd_locations.copy()
+            
             self.export_kml()
             self.export_summary_json()
             
             # Also export GeoJSON if polygon support available
             if POLYGON_SUPPORT and self.georef.sgd_polygons:
                 geojson_file = self.output_file.replace('.kml', '.geojson')
-                self.georef.export_geojson(geojson_file)
+                self.georef.export_geojson_polygons(geojson_file)
                 print(f"✓ GeoJSON file saved: {geojson_file}")
         else:
             print("\n⚠ No SGDs detected with current parameters")
@@ -677,11 +681,17 @@ Examples:
         model_path = str(model_dir / f"{output_name}_model.pkl")
         training_path = str(model_dir / f"{output_name}_training.json")
         
+        # If using search mode, use the first subdirectory for training
+        training_dir = args.data
+        if args.search and data_directories:
+            training_dir = data_directories[0]
+            print(f"\n📍 Using {Path(training_dir).name} for training (first directory)")
+        
         print("\n" + "="*60)
         print("INTERACTIVE SEGMENTATION TRAINING")
         print("="*60)
         print(f"Launching manual training interface...")
-        print(f"Data directory: {args.data}")
+        print(f"Data directory: {training_dir}")
         print(f"Model will be saved as: {model_path}")
         print("-"*60)
         print("\nInstructions:")
@@ -700,7 +710,7 @@ Examples:
         
         try:
             trainer = SegmentationTrainer(
-                base_path=args.data,
+                base_path=training_dir,
                 model_file=model_path,
                 training_file=training_path
             )
@@ -730,16 +740,22 @@ Examples:
         model_path = str(model_dir / f"{output_name}_model.pkl")
         training_path = str(model_dir / f"{output_name}_training.json")
         
+        # If using search mode, use the first subdirectory for training
+        training_dir = args.data
+        if args.search and data_directories:
+            training_dir = data_directories[0]
+            print(f"\n📍 Using {Path(training_dir).name} for training (first directory)")
+        
         print("\n" + "="*60)
         print("AUTOMATED SEGMENTATION TRAINING")
         print("="*60)
-        print(f"Training new model from: {args.data}")
+        print(f"Training new model from: {training_dir}")
         print(f"Model will be saved as: {model_path}")
         print(f"Sampling {args.train_samples} frames...")
         print("-"*60)
         
         trainer = AutoSegmentationTrainer(
-            data_dir=args.data,
+            data_dir=training_dir,
             model_file=model_path,
             training_file=training_path,
             sample_frames=args.train_samples,
@@ -777,8 +793,17 @@ Examples:
     
     # Process each directory
     all_stats = []
+    all_sgd_polygons = []  # Collect all SGD polygons for aggregation
     total_sgds = 0
     total_unique = 0
+    
+    # Create subdirectory for individual outputs if in search mode
+    individual_output_dir = None
+    if args.search and len(data_directories) > 1:
+        base_output = Path(args.output).stem
+        individual_output_dir = Path("sgd_output") / f"{base_output}_individual"
+        individual_output_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\n✓ Individual outputs will be saved to: {individual_output_dir}/")
     
     for idx, data_dir in enumerate(data_directories):
         # Modify output filename for multiple directories
@@ -786,11 +811,13 @@ Examples:
             dir_name = Path(data_dir).name
             base_output = Path(args.output).stem
             output_ext = Path(args.output).suffix
-            current_output = f"{base_output}_{dir_name}{output_ext}"
+            
+            # Save individual outputs to subdirectory
+            current_output = str(individual_output_dir / f"{base_output}_{dir_name}{output_ext}")
             
             print(f"\n{'='*60}")
             print(f"Processing directory {idx+1}/{len(data_directories)}: {dir_name}")
-            print(f"Output: {current_output}")
+            print(f"Output: {Path(current_output).name}")
             print('='*60)
         else:
             current_output = args.output
@@ -811,50 +838,131 @@ Examples:
             stats = detector.run()
             all_stats.append(stats)
             
-            # Accumulate totals
+            # Accumulate totals and polygons
             if stats:
-                total_sgds += stats.get('total_sgds', 0)
-                total_unique += stats.get('unique_sgds', 0)
+                total_sgds += stats.get('total_detections', 0)
+                total_unique += stats.get('unique_locations', 0)
+                
+                # Collect SGD polygons for aggregation
+                if args.search and len(data_directories) > 1 and POLYGON_SUPPORT:
+                    if hasattr(detector, 'georef') and hasattr(detector.georef, 'sgd_polygons'):
+                        all_sgd_polygons.extend(detector.georef.sgd_polygons)
                 
         except KeyboardInterrupt:
             print("\n\nDetection interrupted by user")
             sys.exit(1)
         except Exception as e:
+            import traceback
             print(f"\nError during detection in {data_dir}: {e}")
+            print(f"Error type: {type(e).__name__}")
+            traceback.print_exc()
             if not args.search:
-                import traceback
-                traceback.print_exc()
                 sys.exit(1)
             else:
                 print(f"Skipping {dir_name} due to error")
                 continue
     
-    # Print summary for search mode
+    # Print summary and create aggregated outputs for search mode
     if args.search and len(data_directories) > 1:
+        print("\n" + "="*60)
+        print("CREATING AGGREGATED OUTPUTS")
+        print("="*60)
+        
+        # Deduplicate SGD polygons across all directories
+        if all_sgd_polygons and POLYGON_SUPPORT:
+            from sgd_georef_polygons import SGDPolygonGeoref
+            import math
+            
+            def haversine_distance(lat1, lon1, lat2, lon2):
+                """Calculate distance between two points in meters"""
+                R = 6371000  # Earth's radius in meters
+                phi1 = math.radians(lat1)
+                phi2 = math.radians(lat2)
+                dphi = math.radians(lat2 - lat1)
+                dlambda = math.radians(lon2 - lon1)
+                
+                a = math.sin(dphi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda/2)**2
+                c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+                return R * c
+            
+            # Deduplicate SGDs based on location proximity
+            unique_sgds = []
+            for sgd in all_sgd_polygons:
+                # Check if this SGD is close to any existing unique SGD
+                is_duplicate = False
+                for unique in unique_sgds:
+                    # Calculate distance between centroids
+                    dist = haversine_distance(
+                        sgd['centroid_lat'], sgd['centroid_lon'],
+                        unique['centroid_lat'], unique['centroid_lon']
+                    )
+                    
+                    if dist < args.distance:  # Within threshold distance
+                        is_duplicate = True
+                        # Update the unique SGD if this one has larger area
+                        if sgd.get('area_m2', 0) > unique.get('area_m2', 0):
+                            unique['area_m2'] = sgd['area_m2']
+                            unique['area_pixels'] = sgd['area_pixels']
+                            if 'polygon' in sgd and sgd['polygon']:
+                                unique['polygon'] = sgd['polygon']
+                        break
+                
+                if not is_duplicate:
+                    unique_sgds.append(sgd)
+            
+            print(f"Total SGDs before deduplication: {len(all_sgd_polygons)}")
+            print(f"Unique SGDs after deduplication: {len(unique_sgds)}")
+            
+            # Create aggregated KML using deduplicated SGDs
+            if unique_sgds:
+                temp_georef = SGDPolygonGeoref()
+                temp_georef.sgd_polygons = unique_sgds
+                
+                # Ensure the output has .kml extension but not double
+                output_name = args.output
+                if not output_name.endswith('.kml'):
+                    output_name += '.kml'
+                aggregated_kml_path = Path("sgd_output") / output_name
+                temp_georef.export_kml_polygons(str(aggregated_kml_path))
+                print(f"✓ Aggregated KML saved: {aggregated_kml_path}")
+            
+            # Update totals
+            total_unique = len(unique_sgds)
+        
         print("\n" + "="*60)
         print("COMBINED SUMMARY")
         print("="*60)
         print(f"Directories processed: {len(all_stats)}/{len(data_directories)}")
         print(f"Total SGDs detected: {total_sgds}")
-        print(f"Total unique locations: {total_unique}")
+        print(f"Unique locations (after deduplication): {total_unique}")
         
         # Create combined summary file
         combined_summary = {
             'directories_processed': len(all_stats),
             'total_directories': len(data_directories),
-            'total_sgds': total_sgds,
-            'total_unique': total_unique,
+            'total_sgds_detected': total_sgds,
+            'unique_sgds_after_deduplication': total_unique,
+            'distance_threshold_meters': args.distance,
+            'temperature_threshold_celsius': args.temp,
             'individual_results': all_stats,
-            'data_directories': data_directories
+            'data_directories': data_directories,
+            'individual_outputs_directory': str(individual_output_dir),
+            'aggregated_kml': str(Path("sgd_output") / args.output)
         }
         
-        summary_file = Path(args.output).stem + "_combined_summary.json"
+        summary_file = Path(args.output).stem + "_summary.json"
         summary_path = Path("sgd_output") / summary_file
         
         with open(summary_path, 'w') as f:
             json.dump(combined_summary, f, indent=2, cls=NumpyEncoder)
         
-        print(f"\n✓ Combined summary saved: {summary_path}")
+        print(f"✓ Aggregated summary saved: {summary_path}")
+        print("\n" + "="*60)
+        print("OUTPUT FILES:")
+        print("="*60)
+        print(f"📁 Individual outputs: {individual_output_dir}/")
+        print(f"🗺️  Aggregated KML: sgd_output/{args.output}")
+        print(f"📊 Aggregated summary: {summary_path}")
         print("="*60)
     
     sys.exit(0)
