@@ -2,6 +2,8 @@
 
 A **production-ready** Python toolkit for detecting submarine groundwater discharge (cold freshwater seeps) in coastal waters using thermal and RGB imagery from Autel 640T UAV. Successfully tested with real Rapa Nui (Easter Island) survey data.
 
+📚 **[Read the Technical Paper](TECHNICAL_PAPER.md)** - Comprehensive documentation of the thermal image processing challenges and our solutions
+
 > **🎉 FULLY OPERATIONAL - Ready for Scientific Use**
 > 
 > **📍 Two Processing Modes**:
@@ -12,6 +14,7 @@ A **production-ready** Python toolkit for detecting submarine groundwater discha
 > - **👁️ Interactive** (`sgd_viewer.py`): Manual review and verification with visual feedback
 
 ## Table of Contents
+- [Technical Paper](TECHNICAL_PAPER.md) - In-depth technical documentation
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Installation from Scratch](#installation-from-scratch)
@@ -1184,6 +1187,8 @@ This is why the toolkit's multi-step pipeline is essential:
 Without these steps, cold rocks, shadows, and land features would create false positives, making accurate SGD detection impossible.
 
 ## Technical Details
+
+> 📖 **For comprehensive technical documentation, see the [Technical Paper](TECHNICAL_PAPER.md)**
 
 ### Image Alignment & Orientation
 - Thermal FOV is ~70% of RGB FOV (centered)
