@@ -139,7 +139,7 @@ Where: θ = drone heading, (Cx,Cy) = image center
 Different coastal environments present unique challenges:
 
 **Figure 2: Environmental Diversity in Rapa Nui Survey Areas**
-![Environmental Conditions](docs/images/environmental_diversity.png)
+![Environmental Conditions](docs/images/environmental_diversity_fixed.png)
 *Four different coastal environments from our surveys: (A) Rocky volcanic shoreline with high thermal contrast, (B) Sandy beach with subtle temperature gradients, (C) Boulder field requiring complex segmentation, (D) Active surf zone with wave interference. Each environment requires adapted processing parameters.*
 
 | Environment | Challenge | Temperature Range | Solution |
@@ -233,7 +233,7 @@ Ocean segmentation represents the most critical preprocessing step in our pipeli
 Our solution employs a Random Forest classifier, chosen for its ability to handle non-linear decision boundaries, robustness to outliers, and interpretability of feature importance. The ensemble nature of Random Forest, combining predictions from 100 decision trees, provides stable predictions even when individual features are ambiguous. This stability is crucial when processing images captured under varying environmental conditions across multi-hour survey flights.
 
 **Figure 7a: Real Segmentation Results from Rapa Nui**
-![ML Segmentation Example](docs/images/segmentation_example.png)
+![ML Segmentation Example](docs/images/segmentation_example_fixed.png)
 *Actual segmentation results showing: (Left) Original RGB image of coastline, (Center) ML segmentation with color-coded classes - blue for ocean, brown for land, gray for rocks, white for waves, (Right) Final binary ocean mask used for thermal analysis. Note the accurate delineation of complex shoreline features and wave zones.*
 
 **Figure 7b: Segmentation Process Visualization**
@@ -289,7 +289,7 @@ The temperature anomaly detection algorithm forms the heart of SGD identificatio
 Our statistical approach adapts to local conditions by computing temperature thresholds relative to the surrounding ocean temperature rather than using fixed absolute values. This adaptive thresholding is essential because ocean temperatures vary significantly with location (tropical vs. temperate), season (summer vs. winter), and time of day (morning vs. afternoon). The algorithm implements a multi-step process:
 
 **Figure 9: SGD Detection Process on Real Data**
-![SGD Detection Steps](docs/images/sgd_detection_process.png)
+![SGD Detection Steps](docs/images/sgd_detection_process_fixed.png)
 *Step-by-step SGD detection on Frame 248 from Rapa Nui survey: (A) Original thermal image showing ocean temperatures, (B) Ocean-masked thermal data with land areas removed, (C) Temperature anomaly map highlighting areas below threshold, (D) Final detected SGD plumes with polygon boundaries overlaid. The cold freshwater plumes appear as distinct dark regions with temperatures 2-3°C below surrounding seawater.*
 
 ```python
