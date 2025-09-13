@@ -139,8 +139,8 @@ Where: θ = drone heading, (Cx,Cy) = image center
 Different coastal environments present unique challenges:
 
 **Figure 2: Environmental Diversity in Rapa Nui Survey Areas**
-![Environmental Conditions](docs/images/environmental_diversity_fixed.png)
-*Four different coastal environments from our surveys: (A) Rocky volcanic shoreline with high thermal contrast, (B) Sandy beach with subtle temperature gradients, (C) Boulder field requiring complex segmentation, (D) Active surf zone with wave interference. Each environment requires adapted processing parameters.*
+![Environmental Conditions](docs/images/environmental_diversity_accurate.png)
+*Four distinct zones in Rapa Nui coastal surveys (nadir views): (A) Open ocean water with uniform thermal signature, (B) Rocky volcanic coastline with basalt formations, (C) Coastal margin boulder field transition zone, (D) Inland area with mixed grass and rock cover. Accurate segmentation of these zones is critical for isolating ocean areas where SGD detection occurs.*
 
 | Environment | Challenge | Temperature Range | Solution |
 |------------|-----------|------------------|----------|
@@ -233,8 +233,8 @@ Ocean segmentation represents the most critical preprocessing step in our pipeli
 Our solution employs a Random Forest classifier, chosen for its ability to handle non-linear decision boundaries, robustness to outliers, and interpretability of feature importance. The ensemble nature of Random Forest, combining predictions from 100 decision trees, provides stable predictions even when individual features are ambiguous. This stability is crucial when processing images captured under varying environmental conditions across multi-hour survey flights.
 
 **Figure 7a: Real Segmentation Results from Rapa Nui**
-![ML Segmentation Example](docs/images/segmentation_example_fixed.png)
-*Actual segmentation results showing: (Left) Original RGB image of coastline, (Center) ML segmentation with color-coded classes - blue for ocean, brown for land, gray for rocks, white for waves, (Right) Final binary ocean mask used for thermal analysis. Note the accurate delineation of complex shoreline features and wave zones.*
+![ML Segmentation Example](docs/images/segmentation_example_accurate.png)
+*Segmentation results from Hanga Roa - Rano Kau survey: (Left) Original RGB nadir image showing coastal waters, (Center) ML segmentation with color-coded classes - blue for ocean, gray for rocks, brown for land, white for waves/foam, (Right) Binary ocean mask isolating water areas for thermal analysis. The trained model accurately distinguishes ocean from coastal features using the segmentation_model.pkl.*
 
 **Figure 7b: Segmentation Process Visualization**
 ```
