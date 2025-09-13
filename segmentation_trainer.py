@@ -77,6 +77,9 @@ class SegmentationTrainer:
         # Setup GUI
         self.setup_gui()
         self.update_display()
+        
+        # Show initial instruction
+        self.show_status("👆 Click on image to label pixels. Need 100+ samples per class", 'blue')
     
     def load_training_data(self):
         """Load existing training data if available"""
@@ -309,9 +312,16 @@ class SegmentationTrainer:
         """Train a classifier on collected data"""
         if len(self.training_data) < 40:
             print(f"Need at least 40 samples, have {len(self.training_data)}")
+            self.show_status(f"❌ Need at least 40 samples, have {len(self.training_data)}", 'red')
             return
         
+        # Show training is starting
+        self.show_status("🔄 Training classifier... Please wait", 'orange')
+        plt.pause(0.1)  # Force update
+        
         print("\nTraining classifier...")
+        import time
+        start_time = time.time()
         
         # Prepare data
         X = np.array([s['features'] for s in self.training_data])
@@ -334,6 +344,12 @@ class SegmentationTrainer:
         
         # Evaluate
         y_pred = self.classifier.predict(X_test)
+        accuracy = np.mean(y_pred == y_test)
+        
+        # Show results
+        elapsed = time.time() - start_time
+        self.show_status(f"✅ Training complete! Accuracy: {accuracy:.1%} (took {elapsed:.1f}s)", 'green')
+        
         print("\nClassifier Performance:")
         print(classification_report(y_test, y_pred, 
                                    target_names=self.classes))
@@ -398,12 +414,25 @@ class SegmentationTrainer:
             mask = predictions == i
             segmentation[mask] = self.class_colors[class_name]
         
+        # Clear and update display
+        self.ax_pred.clear()
         self.ax_pred.imshow(segmentation)
-        self.ax_pred.set_title('ML Segmentation')
+        self.ax_pred.set_title('ML Segmentation', fontsize=10)
         self.ax_pred.axis('off')
+        
+        # Calculate statistics
+        unique, counts = np.unique(predictions, return_counts=True)
+        ocean_pct = 0
+        if 0 in unique:  # Ocean is class 0
+            idx = np.where(unique == 0)[0][0]
+            ocean_pct = counts[idx] / predictions.size * 100
+        
+        # Show status
+        self.show_status(f"✅ Segmentation complete! Ocean: {ocean_pct:.1f}%", 'green')
         
         plt.draw()
         print("Segmentation complete!")
+        print(f"Ocean coverage: {ocean_pct:.1f}%")
     
     def clear_frame_labels(self, event):
         """Clear labels for current frame"""
@@ -414,6 +443,25 @@ class SegmentationTrainer:
         # Reset display
         self.load_frame(self.current_frame)
         self.update_display()
+    
+    def show_status(self, message, color='black'):
+        """Show status message in the interface"""
+        if not hasattr(self, 'status_text'):
+            # Create status text area if it doesn't exist
+            self.status_text = self.fig.text(0.5, 0.02, '', 
+                                            ha='center', va='bottom',
+                                            fontsize=11, weight='bold',
+                                            bbox=dict(boxstyle='round', 
+                                                    facecolor='white', 
+                                                    edgecolor=color,
+                                                    linewidth=2))
+        
+        self.status_text.set_text(message)
+        self.status_text.set_bbox(dict(boxstyle='round', 
+                                      facecolor='white', 
+                                      edgecolor=color,
+                                      linewidth=2))
+        plt.draw()
         print(f"Cleared labels for frame {self.current_frame}")
     
     def save_and_exit(self, event):
