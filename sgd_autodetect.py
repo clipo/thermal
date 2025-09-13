@@ -90,8 +90,8 @@ class SGDAutoDetector:
         self.include_waves = include_waves
         self.verbose = verbose
         
-        # Initialize detector with specified model
-        model_path = os.environ.get('SGD_MODEL_PATH', 'segmentation_model.pkl')
+        # Initialize detector with area-specific model selection
+        model_path = self.select_area_model(self.data_dir)
         self.detector = IntegratedSGDDetector(
             temp_threshold=self.temp_threshold,
             min_area=self.min_area,
@@ -143,6 +143,58 @@ class SGDAutoDetector:
             'start_time': None,
             'end_time': None
         }
+    
+    def select_area_model(self, data_path):
+        """
+        Select the appropriate segmentation model based on the survey area.
+        
+        Args:
+            data_path: Path to the data directory
+            
+        Returns:
+            Path to the most appropriate model file
+        """
+        from improve_training_sampling import get_area_name
+        
+        # Get area name from directory structure
+        area_name = get_area_name(data_path)
+        
+        # Check for area-specific model
+        models_dir = Path('models')
+        area_model = models_dir / f"{area_name}_segmentation.pkl"
+        
+        if area_model.exists():
+            if self.verbose:
+                print(f"✓ Using area-specific model: {area_model.name}")
+            return str(area_model)
+        
+        # Check for parent area model if in a XXXMEDIA subdirectory
+        if data_path.name.endswith('MEDIA'):
+            parent_name = get_area_name(data_path.parent)
+            parent_model = models_dir / f"{parent_name}_segmentation.pkl"
+            if parent_model.exists():
+                if self.verbose:
+                    print(f"✓ Using parent area model: {parent_model.name}")
+                return str(parent_model)
+        
+        # Check environment variable
+        env_model = os.environ.get('SGD_MODEL_PATH')
+        if env_model and Path(env_model).exists():
+            if self.verbose:
+                print(f"✓ Using model from environment: {env_model}")
+            return env_model
+        
+        # Fall back to default model
+        default_model = Path('segmentation_model.pkl')
+        if default_model.exists():
+            if self.verbose:
+                print(f"✓ Using default model: {default_model.name}")
+            return str(default_model)
+        
+        # No model found - will need to train
+        if self.verbose:
+            print("⚠ No segmentation model found - training will be required")
+        return 'segmentation_model.pkl'  # Return default name for new training
     
     def haversine_distance(self, lat1, lon1, lat2, lon2):
         """Calculate distance between two GPS coordinates in meters"""
@@ -678,8 +730,8 @@ Examples:
     
     # If manual training requested, launch interactive trainer
     if args.train:
-        model_path = str(model_dir / f"{output_name}_model.pkl")
-        training_path = str(model_dir / f"{output_name}_training.json")
+        # Import enhanced training utilities
+        from improve_training_sampling import get_area_name, create_model_paths
         
         # If using search mode, use the first subdirectory for training
         training_dir = args.data
@@ -687,15 +739,20 @@ Examples:
             training_dir = data_directories[0]
             print(f"\n📍 Using {Path(training_dir).name} for training (first directory)")
         
+        # Get area-based model naming
+        area_name = get_area_name(training_dir)
+        model_path, training_path = create_model_paths(area_name)
+        
         print("\n" + "="*60)
         print("INTERACTIVE SEGMENTATION TRAINING")
         print("="*60)
-        print(f"Launching manual training interface...")
+        print(f"Survey Area: {area_name}")
         print(f"Data directory: {training_dir}")
         print(f"Model will be saved as: {model_path}")
+        print(f"Training data: {training_path}")
         print("-"*60)
         print("\nInstructions:")
-        print("1. Click on regions to label them:")
+        print("1. Click on regions to label them (need 100+ samples per class):")
         print("   - Ocean (blue water)")
         print("   - Land (vegetation, sand)")
         print("   - Rock (gray rocky areas)")
