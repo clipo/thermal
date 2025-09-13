@@ -796,8 +796,8 @@ Examples:
             )
             trainer.run()
             
-            # Check if model was actually saved
-            if not Path(model_path).exists():
+            # Check if model was actually saved (model_path is a Path object from create_model_paths)
+            if not model_path.exists():
                 print(f"\n⚠ Warning: Model file not found at {model_path}")
                 print("Training may have been cancelled. Exiting.")
                 sys.exit(1)
@@ -809,6 +809,9 @@ Examples:
             print("="*60)
             print(f"Using newly trained model: {model_path}")
             print()
+            
+            # Convert Path to string for later use
+            model_path = str(model_path)
         except Exception as e:
             print(f"\n✗ Training failed: {e}")
             sys.exit(1)
@@ -868,8 +871,8 @@ Examples:
                 model_path = str(models_dir_path)
             # Otherwise use as-is (will look in current directory)
     
-    # Set the model for the detector
-    os.environ['SGD_MODEL_PATH'] = model_path
+    # Set the model for the detector (ensure it's a string)
+    os.environ['SGD_MODEL_PATH'] = str(model_path)
     
     # Process each directory
     all_stats = []
