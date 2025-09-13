@@ -289,7 +289,7 @@ The temperature anomaly detection algorithm forms the heart of SGD identificatio
 Our statistical approach adapts to local conditions by computing temperature thresholds relative to the surrounding ocean temperature rather than using fixed absolute values. This adaptive thresholding is essential because ocean temperatures vary significantly with location (tropical vs. temperate), season (summer vs. winter), and time of day (morning vs. afternoon). The algorithm implements a multi-step process:
 
 **Figure 9: SGD Detection Process on Real Data**
-![SGD Detection Steps](docs/images/sgd_detection_process_fixed.png)
+![SGD Detection Steps](docs/images/sgd_detection_process_final.png)
 *Step-by-step SGD detection on Frame 248 from Rapa Nui survey: (A) Original thermal image showing ocean temperatures, (B) Ocean-masked thermal data with land areas removed, (C) Temperature anomaly map highlighting areas below threshold, (D) Final detected SGD plumes with polygon boundaries overlaid. The cold freshwater plumes appear as distinct dark regions with temperatures 2-3°C below surrounding seawater.*
 
 ```python
