@@ -483,6 +483,9 @@ python sgd_autodetect.py --data data/survey --output test.kml --train-auto --ski
 # Process multiple XXXMEDIA directories from one flight
 python sgd_autodetect.py --data "/path/to/flight" --output flight.kml --search
 
+# Keep ALL detections without deduplication (useful for dense SGD areas)
+python sgd_autodetect.py --data data/survey --output all_sgds.kml --distance -1
+
 # Full processing with manual training
 python sgd_autodetect.py \
   --data data/100MEDIA \
@@ -503,7 +506,7 @@ python sgd_autodetect.py \
 | `--output` | required | Output KML filename |
 | **Detection Parameters** | | |
 | `--temp` | 1.0 | Temperature threshold (°C) |
-| `--distance` | 10.0 | Minimum distance between SGDs (meters) |
+| `--distance` | 10.0 | Minimum distance between SGDs in meters (use -1 to disable deduplication) |
 | `--skip` | 1 | Process every Nth frame (1=all) |
 | `--area` | 50 | Minimum SGD area (pixels) |
 | `--waves` | False | Include wave areas in detection |
@@ -1426,21 +1429,32 @@ python sgd_detector_integrated.py --data /path/to/images
    - Temperature threshold: Start with 1.0°C
    - Minimum area: 50 pixels (increase for fewer false positives)
    - Merge distance: 10m default (adjust based on resolution)
+   
+4. **Deduplication Control**:
+   - **Default (10m)**: Merges SGDs within 10 meters into single detection
+   - **Dense areas**: Reduce to 5m or less for closely-spaced SGDs
+   - **Disable entirely**: Use `--distance -1` to keep all raw detections
+   - **When to disable**:
+     - Studying temporal patterns (same SGD across frames)
+     - Dense SGD fields with many nearby seeps
+     - Validation/debugging to see all detections
+     - Creating heat maps of detection frequency
+   - **Example**: `python sgd_autodetect.py --data /path --output all.kml --distance -1`
 
-4. **Wave Area Toggle**:
+5. **Wave Area Toggle**:
    - **Enable for**: Rocky shores, surf zones, tidal areas
    - **Disable for**: Calm waters, protected bays
    - **Test both**: Some SGDs only visible in turbulent water
    - **Monitor results**: Watch for false positives in foam
 
-5. **Flight Planning**:
+6. **Flight Planning**:
    - Maintain consistent altitude (50-100m typical)
    - Plan for 80-90% overlap between frames
    - Fly during calm conditions for best thermal contrast
    - **Enable GPS heading recording** in drone settings for accurate georeferencing
    - Consider flight patterns (lawn mower) that maintain consistent orientation
 
-5. **Survey Organization**:
+7. **Survey Organization**:
    - Use separate aggregate files for each survey
    - Name models descriptively (location_condition.pkl)
    - Document environmental conditions in filenames
