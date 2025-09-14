@@ -59,6 +59,7 @@ This toolkit processes paired thermal (640×512) and RGB (4096×3072) images fro
 - **🔬 Analysis Mode** (`sgd_detector_integrated.py`): Parameter tuning and testing
 
 ### Advanced Features
+- **Multi-Threshold Analysis**: Analyze SGDs at multiple temperature thresholds with color-coded visualization
 - **Polygon Merging**: Automatic creation of unified distribution maps (_merged.kml files)
 - **Wave Area Toggle**: Optionally include breaking waves/foam in SGD search
 - **Multi-Format Export**: GeoJSON, KML (Google Earth), and CSV formats
@@ -493,6 +494,11 @@ python sgd_autodetect.py --data "/path/to/flight" --output flight.kml --search
 # Keep ALL detections without deduplication (useful for dense SGD areas)
 python sgd_autodetect.py --data data/survey --output all_sgds.kml --distance -1
 
+# Multi-threshold analysis with color-coded results
+python sgd_autodetect.py --data data/survey --output sgd_multi.kml --interval-step 0.5 --interval-step-number 4
+# Creates multiple KML files at thresholds: 1.0°C, 1.5°C, 2.0°C, 2.5°C
+# Plus a combined color-coded KML showing all thresholds together
+
 # Full processing with manual training
 python sgd_autodetect.py \
   --data data/100MEDIA \
@@ -527,6 +533,9 @@ python sgd_autodetect.py \
 | `--train-max-frames` | 20 | Maximum frames to use for training |
 | **Batch Processing** | | |
 | `--search` | False | Find and process all XXXMEDIA subdirectories |
+| **Multi-Threshold Analysis** | | |
+| `--interval-step` | None | Temperature increment for multi-threshold analysis |
+| `--interval-step-number` | 4 | Number of threshold levels to analyze |
 | **Output Options** | | |
 | `--quiet` | False | Suppress detailed output |
 
@@ -1462,20 +1471,40 @@ python sgd_detector_integrated.py --data /path/to/images
      - Creating heat maps of detection frequency
    - **Example**: `python sgd_autodetect.py --data /path --output all.kml --distance -1`
 
-5. **Wave Area Toggle**:
+5. **Multi-Threshold Analysis**:
+   - **Purpose**: Analyze SGDs at multiple temperature thresholds simultaneously
+   - **Creates**: Individual KML files for each threshold plus combined color-coded visualization
+   - **Color Scheme**:
+     - 0.5°C: Yellow (weak SGD signals)
+     - 1.0°C: Green (moderate SGD)
+     - 1.5°C: Orange (strong SGD)
+     - 2.0°C: Red (very strong SGD)
+     - 2.5°C+: Purple to black (extreme SGD)
+   - **Usage**: `--interval-step 0.5 --interval-step-number 4`
+   - **Example**: Starting at 1.0°C with 0.5°C steps and 4 levels analyzes: 1.0°C, 1.5°C, 2.0°C, 2.5°C
+   - **Benefits**:
+     - Identify temperature gradients in SGD plumes
+     - Distinguish strong core flows from diffuse seepage
+     - Better visualization of SGD intensity patterns
+     - Helps optimize threshold selection for specific sites
+   - **Output Files**:
+     - `output_threshold_X.X.kml`: Individual threshold results
+     - `output_combined_thresholds.kml`: All thresholds with color coding
+
+6. **Wave Area Toggle**:
    - **Enable for**: Rocky shores, surf zones, tidal areas
    - **Disable for**: Calm waters, protected bays
    - **Test both**: Some SGDs only visible in turbulent water
    - **Monitor results**: Watch for false positives in foam
 
-6. **Flight Planning**:
+7. **Flight Planning**:
    - Maintain consistent altitude (50-100m typical)
    - Plan for 80-90% overlap between frames
    - Fly during calm conditions for best thermal contrast
    - **Enable GPS heading recording** in drone settings for accurate georeferencing
    - Consider flight patterns (lawn mower) that maintain consistent orientation
 
-7. **Survey Organization**:
+8. **Survey Organization**:
    - Use separate aggregate files for each survey
    - Name models descriptively (location_condition.pkl)
    - Document environmental conditions in filenames

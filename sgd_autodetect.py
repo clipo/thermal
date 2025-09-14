@@ -687,6 +687,12 @@ Examples:
     parser.add_argument('--waves', action='store_true',
                        help='Include wave/foam areas in ocean mask')
     
+    # Multi-threshold analysis options
+    parser.add_argument('--interval-step', type=float, default=None,
+                       help='Temperature interval for multi-threshold analysis (e.g., 0.5)')
+    parser.add_argument('--interval-step-number', type=int, default=4,
+                       help='Number of threshold steps to analyze (default: 4)')
+    
     # Model options
     parser.add_argument('--model', type=str, default='segmentation_model.pkl',
                        help='Segmentation model to use (default: segmentation_model.pkl)')
@@ -934,45 +940,105 @@ Examples:
         else:
             current_output = args.output
         
-        # Run detection for this directory
-        detector = SGDAutoDetector(
-            data_dir=data_dir,
-            output_file=current_output,
-            temp_threshold=args.temp,
-            distance_threshold=args.distance,
-            frame_skip=args.skip,
-            min_area=args.area,
-            include_waves=args.waves,
-            verbose=not args.quiet
-        )
-        
-        try:
-            stats = detector.run()
-            all_stats.append(stats)
+        # Check if multi-threshold analysis is requested
+        if args.interval_step is not None:
+            # Use multi-threshold analyzer
+            from multi_threshold_analysis import MultiThresholdAnalyzer
             
-            # Accumulate totals and polygons
-            if stats:
-                total_sgds += stats.get('total_detections', 0)
-                total_unique += stats.get('unique_locations', 0)
+            print(f"\n{'='*60}")
+            print(f"MULTI-THRESHOLD ANALYSIS")
+            print(f"Base threshold: {args.temp}°C")
+            print(f"Interval step: {args.interval_step}°C")
+            print(f"Number of thresholds: {args.interval_step_number}")
+            print('='*60)
+            
+            analyzer = MultiThresholdAnalyzer(
+                data_dir=data_dir,
+                base_output=current_output,
+                base_threshold=args.temp,
+                interval_step=args.interval_step,
+                num_steps=args.interval_step_number,
+                distance_threshold=args.distance,
+                frame_skip=args.skip,
+                min_area=args.area,
+                include_waves=args.waves,
+                verbose=not args.quiet
+            )
+            
+            try:
+                # Run multi-threshold analysis
+                all_results = analyzer.run_multi_threshold()
                 
-                # Collect SGD polygons for aggregation
-                if args.search and len(data_directories) > 1 and POLYGON_SUPPORT:
-                    if hasattr(detector, 'georef') and hasattr(detector.georef, 'sgd_polygons'):
-                        all_sgd_polygons.extend(detector.georef.sgd_polygons)
+                # Create combined KML with all thresholds
+                combined_kml = analyzer.create_all_threshold_kml(all_results)
+                print(f"\n✓ Combined multi-threshold KML: {combined_kml}")
                 
-        except KeyboardInterrupt:
-            print("\n\nDetection interrupted by user")
-            sys.exit(1)
-        except Exception as e:
-            import traceback
-            print(f"\nError during detection in {data_dir}: {e}")
-            print(f"Error type: {type(e).__name__}")
-            traceback.print_exc()
-            if not args.search:
+                # Get aggregated stats for summary
+                stats = analyzer.get_aggregated_stats(all_results)
+                all_stats.append(stats)
+                
+                # Accumulate totals
+                if stats:
+                    total_sgds += stats.get('total_detections', 0)
+                    total_unique += stats.get('unique_locations', 0)
+                    
+                    # Collect SGD polygons for aggregation (use highest threshold results)
+                    if args.search and len(data_directories) > 1 and POLYGON_SUPPORT:
+                        if all_results:
+                            # Get polygons from all threshold levels
+                            for threshold, result in all_results.items():
+                                if 'sgd_polygons' in result:
+                                    all_sgd_polygons.extend(result['sgd_polygons'])
+                    
+            except Exception as e:
+                import traceback
+                print(f"\nError during multi-threshold analysis: {e}")
+                traceback.print_exc()
+                if not args.search:
+                    sys.exit(1)
+                else:
+                    print(f"Skipping {data_dir} due to error")
+                    continue
+        else:
+            # Standard single-threshold detection
+            detector = SGDAutoDetector(
+                data_dir=data_dir,
+                output_file=current_output,
+                temp_threshold=args.temp,
+                distance_threshold=args.distance,
+                frame_skip=args.skip,
+                min_area=args.area,
+                include_waves=args.waves,
+                verbose=not args.quiet
+            )
+            
+            try:
+                stats = detector.run()
+                all_stats.append(stats)
+                
+                # Accumulate totals and polygons
+                if stats:
+                    total_sgds += stats.get('total_detections', 0)
+                    total_unique += stats.get('unique_locations', 0)
+                    
+                    # Collect SGD polygons for aggregation
+                    if args.search and len(data_directories) > 1 and POLYGON_SUPPORT:
+                        if hasattr(detector, 'georef') and hasattr(detector.georef, 'sgd_polygons'):
+                            all_sgd_polygons.extend(detector.georef.sgd_polygons)
+            
+            except KeyboardInterrupt:
+                print("\n\nDetection interrupted by user")
                 sys.exit(1)
-            else:
-                print(f"Skipping {dir_name} due to error")
-                continue
+            except Exception as e:
+                import traceback
+                print(f"\nError during detection in {data_dir}: {e}")
+                print(f"Error type: {type(e).__name__}")
+                traceback.print_exc()
+                if not args.search:
+                    sys.exit(1)
+                else:
+                    print(f"Skipping {dir_name} due to error")
+                    continue
     
     # Print summary and create aggregated outputs for search mode
     if args.search and len(data_directories) > 1:
