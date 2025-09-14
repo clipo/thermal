@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>Merged SGD Areas - 2025-09-14 07:10</name>
+<description>
+Merged overlapping SGD polygons into 2 unified shapes
+
+Original detections: 4
+
+Merge method: Shapely (accurate)
+
+Approximate total area: 492.8 m²
+
+</description>
+<Style id="mergedSGD">
+  <LineStyle>
+    <color>ff0000ff</color>
+    <width>2</width>
+  </LineStyle>
+  <PolyStyle>
+    <color>7f0000ff</color>
+  </PolyStyle>
+</Style>
+<Folder>
+<name>Merged SGD Areas</name>
+<open>1</open>
+<Placemark>
+  <name>Merged Area 1</name>
+  <description>Approximate area: 246.4 m²</description>
+  <styleUrl>#mergedSGD</styleUrl>
+  <Polygon>
+    <outerBoundaryIs>
+      <LinearRing>
+        <coordinates>
+          -109.4395,-27.1503,0
+          -109.4394,-27.1503,0
+          -109.4394,-27.1502,0
+          -109.4394,-27.1501,0
+          -109.4395,-27.1501,0
+          -109.4395,-27.1502,0
+          -109.4395,-27.1503,0
+        </coordinates>
+      </LinearRing>
+    </outerBoundaryIs>
+  </Polygon>
+</Placemark>
+<Placemark>
+  <name>Merged Area 2</name>
+  <description>Approximate area: 246.4 m²</description>
+  <styleUrl>#mergedSGD</styleUrl>
+  <Polygon>
+    <outerBoundaryIs>
+      <LinearRing>
+        <coordinates>
+          -109.4401,-27.15,0
+          -109.4401,-27.1501,0
+          -109.44,-27.1501,0
+          -109.4399,-27.1501,0
+          -109.4399,-27.15,0
+          -109.44,-27.15,0
+          -109.4401,-27.15,0
+        </coordinates>
+      </LinearRing>
+    </outerBoundaryIs>
+  </Polygon>
+</Placemark>
+</Folder>
+</Document>
+</kml>

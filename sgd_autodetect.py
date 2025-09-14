@@ -483,6 +483,28 @@ class SGDAutoDetector:
             f.write('\n'.join(kml_content))
         
         print(f"✓ KML file saved: {self.output_file}")
+        
+        # Create merged polygon KML if we have polygons
+        if POLYGON_SUPPORT and any(sgd.get('polygon') for sgd in self.unique_sgd_locations):
+            try:
+                from merge_sgd_polygons import create_merged_kml
+                
+                # Create merged KML filename
+                merged_kml = self.output_file.replace('.kml', '_merged.kml')
+                
+                # Create merged KML
+                result = create_merged_kml(
+                    self.unique_sgd_locations,
+                    merged_kml,
+                    use_shapely=True
+                )
+                
+                if result:
+                    print(f"✓ Merged KML saved: {merged_kml}")
+            except ImportError:
+                pass  # Merging not available
+            except Exception as e:
+                print(f"Warning: Could not create merged KML: {e}")
     
     def export_summary_json(self):
         """Export detailed summary in JSON format"""
@@ -1016,6 +1038,21 @@ Examples:
                 aggregated_kml_path = Path("sgd_output") / output_name
                 temp_georef.export_kml_polygons(str(aggregated_kml_path))
                 print(f"✓ Aggregated KML saved: {aggregated_kml_path}")
+                
+                # Create merged KML for aggregated results
+                try:
+                    from merge_sgd_polygons import create_merged_kml
+                    
+                    merged_aggregated = str(aggregated_kml_path).replace('.kml', '_merged.kml')
+                    result = create_merged_kml(
+                        unique_sgds,
+                        merged_aggregated,
+                        use_shapely=True
+                    )
+                    if result:
+                        print(f"✓ Aggregated merged KML saved: {merged_aggregated}")
+                except:
+                    pass  # Merging not available
             
             # Update totals
             total_unique = len(unique_sgds)
