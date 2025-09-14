@@ -218,7 +218,10 @@ class EnhancedMultiThresholdAnalyzer:
                 continue
             
             suffix = "_merged" if merge else "_unmerged"
-            output_file = f"{base_name}_combined_thresholds{suffix}.kml"
+            # Ensure output goes to sgd_output directory
+            output_dir = Path("sgd_output")
+            output_dir.mkdir(exist_ok=True)
+            output_file = str(output_dir / f"{base_name}_combined_thresholds{suffix}.kml")
             
             kml_content = []
             kml_content.append('<?xml version="1.0" encoding="UTF-8"?>')

@@ -915,6 +915,9 @@ Examples:
     total_sgds = 0
     total_unique = 0
     
+    # For multi-threshold analysis with --search, collect results from all directories
+    all_multi_threshold_results = {}  # {threshold: [polygons from all directories]}
+    
     # Create subdirectory for individual outputs if in search mode
     individual_output_dir = None
     if args.search and len(data_directories) > 1:
@@ -986,12 +989,18 @@ Examples:
                     total_sgds += stats.get('total_detections', 0)
                     total_unique += stats.get('unique_locations', 0)
                     
-                    # Collect SGD polygons for aggregation (use highest threshold results)
+                    # Collect SGD polygons for aggregation
                     if args.search and len(data_directories) > 1 and POLYGON_SUPPORT:
                         if all_results:
-                            # Get polygons from all threshold levels
+                            # Collect polygons from all threshold levels for aggregation
                             for threshold, result in all_results.items():
-                                if 'sgd_polygons' in result:
+                                if 'sgd_polygons' in result and result['sgd_polygons']:
+                                    # Initialize threshold list if needed
+                                    if threshold not in all_multi_threshold_results:
+                                        all_multi_threshold_results[threshold] = []
+                                    # Add this directory's polygons for this threshold
+                                    all_multi_threshold_results[threshold].extend(result['sgd_polygons'])
+                                    # Also add to general polygon list (for backwards compatibility)
                                     all_sgd_polygons.extend(result['sgd_polygons'])
                     
             except Exception as e:
@@ -1126,6 +1135,46 @@ Examples:
             
             # Update totals
             total_unique = len(unique_sgds)
+        
+        # Create aggregated multi-threshold KML if interval-step was used
+        if args.interval_step is not None and all_multi_threshold_results:
+            print("\n" + "="*60)
+            print("CREATING AGGREGATED MULTI-THRESHOLD KML")
+            print("="*60)
+            
+            from multi_threshold_analysis_v2 import EnhancedMultiThresholdAnalyzer
+            
+            # Create a temporary analyzer just for the aggregated KML creation
+            aggregated_analyzer = EnhancedMultiThresholdAnalyzer(
+                data_dir="",  # Not used for aggregation
+                base_output=args.output,
+                base_threshold=args.temp,
+                interval_step=args.interval_step,
+                num_steps=args.interval_step_number,
+                distance_threshold=args.distance,
+                frame_skip=args.skip,
+                min_area=args.area,
+                include_waves=args.waves,
+                verbose=False
+            )
+            
+            # Format the aggregated results for the analyzer
+            aggregated_results = {}
+            for threshold, polygons in all_multi_threshold_results.items():
+                aggregated_results[threshold] = {
+                    'threshold': threshold,
+                    'sgd_polygons': polygons,
+                    'stats': {
+                        'total_detections': len(polygons),
+                        'unique_locations': len(polygons)  # Will be deduplicated in KML
+                    }
+                }
+            
+            # Create aggregated combined KMLs
+            aggregated_kmls = aggregated_analyzer.create_combined_kml(aggregated_results)
+            print(f"✓ Created aggregated multi-threshold KMLs:")
+            for kml_file in aggregated_kmls:
+                print(f"   - {kml_file}")
         
         print("\n" + "="*60)
         print("COMBINED SUMMARY")
