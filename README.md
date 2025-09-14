@@ -313,6 +313,29 @@ After successful installation:
 
 ## Quick Start
 
+### Quick Command Reference
+
+```bash
+# Vaihu West Coast (Our Standard Test Case)
+python sgd_autodetect.py \
+  --data "/Volumes/RapaNui/Rapa Nui Jan 2024/Autel/Flight 3 - Vaihu - West" \
+  --output vaihu-west.kml --skip 2 --distance -1 --temp 0.5 --area 50 \
+  --search --waves --interval-step 0.5 --interval-step-number 4
+
+# Basic Detection
+python sgd_autodetect.py --data /path/to/images --output results.kml
+
+# Train Then Detect
+python sgd_autodetect.py --data /path/to/images --output results.kml --train
+
+# Multi-Threshold Analysis
+python sgd_autodetect.py --data /path/to/images --output multi.kml \
+  --interval-step 0.5 --interval-step-number 4
+
+# Fast Preview
+python sgd_autodetect.py --data /path/to/images --output preview.kml --skip 50
+```
+
 After installation, choose your processing mode:
 
 ### Option 1: Automated Batch Processing (Recommended for Large Surveys)
@@ -468,47 +491,171 @@ The automated detection script provides hands-free batch processing of entire su
 
 #### Usage Examples
 
+##### Basic Examples
+
 ```bash
 # Basic automated detection (uses default model)
 python sgd_autodetect.py --data data/survey --output results.kml
 
 # Interactive training (manual labeling) then detection
 python sgd_autodetect.py --data data/survey --output sgd.kml --train
-# This opens a GUI where you click to label ocean/land/rock/wave regions
-
-# Automatic training (no manual labeling) then detection
-python sgd_autodetect.py --data data/survey --output sgd.kml --train-auto
-# Uses color-based heuristics to automatically train a model
-
-# Use existing custom model from previous training
-python sgd_autodetect.py --data data/survey --output sgd.kml --model models/custom_model.pkl
 
 # Process every 5th frame with lower temperature threshold
 python sgd_autodetect.py --data data/survey --output sgd.kml --skip 5 --temp 0.5
 
-# Quick test with automatic training
-python sgd_autodetect.py --data data/survey --output test.kml --train-auto --skip 10 --quiet
-
-# Process multiple XXXMEDIA directories from one flight
-python sgd_autodetect.py --data "/path/to/flight" --output flight.kml --search
-
-# Keep ALL detections without deduplication (useful for dense SGD areas)
+# Keep ALL detections without deduplication
 python sgd_autodetect.py --data data/survey --output all_sgds.kml --distance -1
+```
 
-# Multi-threshold analysis with color-coded results
-python sgd_autodetect.py --data data/survey --output sgd_multi.kml --interval-step 0.5 --interval-step-number 4
-# Creates multiple KML files at thresholds: 1.0°C, 1.5°C, 2.0°C, 2.5°C
-# Plus a combined color-coded KML showing all thresholds together
+##### Real-World Case Studies
 
-# Full processing with manual training
+###### 1. Vaihu West Coast, Rapa Nui (Classic Test Case)
+This is our standard validation site with known SGD locations along the rocky coastline.
+
+```bash
+# Full multi-threshold analysis of Vaihu area
 python sgd_autodetect.py \
-  --data data/100MEDIA \
-  --output survey_results.kml \
+  --data "/Volumes/RapaNui/Rapa Nui Jan 2024/Autel/Flight 3 - Vaihu - West" \
+  --output vaihu-west.kml \
+  --skip 2 \
+  --distance -1 \
+  --temp 0.5 \
+  --area 50 \
+  --search \
+  --waves \
+  --interval-step 0.5 \
+  --interval-step-number 4
+
+# This command:
+# - Processes all XXXMEDIA folders (--search)
+# - Analyzes every 2nd frame (--skip 2)
+# - Keeps all detections without deduplication (--distance -1)
+# - Starts at 0.5°C threshold with 0.5°C steps
+# - Creates 4 threshold levels: 0.5°C, 1.0°C, 1.5°C, 2.0°C
+# - Includes wave areas (rocky coast has breaking waves)
+# - Outputs combined KML with all thresholds color-coded
+```
+
+###### 2. Dense SGD Field Analysis
+For areas with many closely-spaced SGDs:
+
+```bash
+python sgd_autodetect.py \
+  --data "/path/to/dense/sgd/area" \
+  --output dense_sgd_field.kml \
+  --temp 0.3 \
+  --distance 5 \
+  --area 30 \
+  --skip 1 \
+  --interval-step 0.25 \
+  --interval-step-number 6
+
+# Captures weak signals (0.3°C) and small plumes (30 pixels)
+# Tight deduplication (5m) preserves nearby distinct SGDs
+# Fine temperature gradients: 0.3, 0.55, 0.8, 1.05, 1.3, 1.55°C
+```
+
+###### 3. High-Altitude Survey with Large Coverage
+For flights at 100m+ altitude covering large areas:
+
+```bash
+python sgd_autodetect.py \
+  --data "/Volumes/Survey/HighAltitude/Flight1" \
+  --output regional_survey.kml \
+  --search \
+  --skip 10 \
+  --temp 1.0 \
+  --area 100 \
+  --distance 20 \
+  --train-auto
+
+# Processes every 10th frame for efficiency
+# Larger minimum area (100 pixels) for high altitude
+# Wider deduplication radius (20m) for regional scale
+# Auto-trains model for the specific conditions
+```
+
+###### 4. Temporal Analysis (Tidal Cycle)
+For studying SGD variation over time:
+
+```bash
+# Morning low tide
+python sgd_autodetect.py \
+  --data "/path/to/morning/flight" \
+  --output sgd_morning_low_tide.kml \
+  --temp 0.5 \
+  --distance -1 \
+  --skip 5
+
+# Afternoon high tide (same location)
+python sgd_autodetect.py \
+  --data "/path/to/afternoon/flight" \
+  --output sgd_afternoon_high_tide.kml \
+  --temp 0.5 \
+  --distance -1 \
+  --skip 5 \
+  --model models/morning_model.pkl  # Use same model for consistency
+
+# Compare the KML files to see tidal influence on SGD patterns
+```
+
+###### 5. Quick Field Validation
+For rapid in-field assessment:
+
+```bash
+# Fast processing for immediate results
+python sgd_autodetect.py \
+  --data "/path/to/new/flight" \
+  --output quick_check.kml \
+  --skip 50 \
+  --temp 1.0 \
+  --quiet \
+  --train-auto
+
+# Processes every 50th frame (very fast)
+# Uses automatic training (no manual input needed)
+# Quiet mode for minimal output
+```
+
+###### 6. Scientific Publication Quality
+For detailed analysis with comprehensive outputs:
+
+```bash
+python sgd_autodetect.py \
+  --data "/path/to/publication/data" \
+  --output publication_sgd.kml \
   --train \
-  --temp 1.5 \
-  --distance 15 \
-  --area 75 \
-  --waves
+  --skip 1 \
+  --temp 0.5 \
+  --area 25 \
+  --distance 10 \
+  --interval-step 0.25 \
+  --interval-step-number 8
+
+# Manual training for highest accuracy
+# Process all frames (skip 1)
+# Fine temperature resolution (0.25°C steps)
+# 8 threshold levels for detailed gradient analysis
+# Creates publication-ready visualizations
+```
+
+##### Advanced Batch Processing
+
+```bash
+# Process entire survey campaign
+for flight in /Volumes/RapaNui/*/Autel/Flight*; do
+  basename=$(basename "$flight")
+  python sgd_autodetect.py \
+    --data "$flight" \
+    --output "campaign_${basename}.kml" \
+    --search \
+    --skip 5 \
+    --temp 0.5 \
+    --waves
+done
+
+# Merge all results into single campaign KML
+# (manually combine in Google Earth or GIS software)
 ```
 
 #### Command-Line Options
