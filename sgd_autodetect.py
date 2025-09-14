@@ -942,8 +942,8 @@ Examples:
         
         # Check if multi-threshold analysis is requested
         if args.interval_step is not None:
-            # Use multi-threshold analyzer
-            from multi_threshold_analysis import MultiThresholdAnalyzer
+            # Use enhanced multi-threshold analyzer
+            from multi_threshold_analysis_v2 import EnhancedMultiThresholdAnalyzer
             
             print(f"\n{'='*60}")
             print(f"MULTI-THRESHOLD ANALYSIS")
@@ -952,7 +952,7 @@ Examples:
             print(f"Number of thresholds: {args.interval_step_number}")
             print('='*60)
             
-            analyzer = MultiThresholdAnalyzer(
+            analyzer = EnhancedMultiThresholdAnalyzer(
                 data_dir=data_dir,
                 base_output=current_output,
                 base_threshold=args.temp,
@@ -966,12 +966,16 @@ Examples:
             )
             
             try:
-                # Run multi-threshold analysis
-                all_results = analyzer.run_multi_threshold()
+                # Run enhanced multi-threshold analysis
+                all_results = analyzer.run_multi_threshold_analysis()
                 
-                # Create combined KML with all thresholds
-                combined_kml = analyzer.create_all_threshold_kml(all_results)
-                print(f"\n✓ Combined multi-threshold KML: {combined_kml}")
+                # Verify nesting property
+                analyzer.verify_nesting(all_results)
+                
+                # Create combined KMLs (merged and unmerged)
+                combined_kmls = analyzer.create_combined_kml(all_results)
+                for kml_file in combined_kmls:
+                    print(f"✓ Created: {kml_file}")
                 
                 # Get aggregated stats for summary
                 stats = analyzer.get_aggregated_stats(all_results)
