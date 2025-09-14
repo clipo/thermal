@@ -211,6 +211,10 @@ class SGDAutoDetector:
     
     def is_duplicate_location(self, new_lat, new_lon):
         """Check if location is too close to existing SGDs"""
+        # If distance_threshold is negative, disable deduplication
+        if self.distance_threshold < 0:
+            return False, None
+            
         for existing in self.unique_sgd_locations:
             distance = self.haversine_distance(
                 new_lat, new_lon,
@@ -520,7 +524,10 @@ class SGDAutoDetector:
         print(f"Data directory: {self.data_dir}")
         print(f"Output file: {self.output_file}")
         print(f"Temperature threshold: {self.temp_threshold}°C")
-        print(f"Distance threshold: {self.distance_threshold}m")
+        if self.distance_threshold < 0:
+            print(f"Distance threshold: DISABLED (keeping all detections)")
+        else:
+            print(f"Distance threshold: {self.distance_threshold}m")
         print(f"Frame skip: {self.frame_skip} (process every {self.frame_skip} frame(s))")
         print(f"Minimum area: {self.min_area} pixels")
         print(f"Include waves: {self.include_waves}")
@@ -650,7 +657,7 @@ Examples:
     parser.add_argument('--temp', type=float, default=1.0,
                        help='Temperature difference threshold in °C (default: 1.0)')
     parser.add_argument('--distance', type=float, default=10.0,
-                       help='Minimum distance between unique SGDs in meters (default: 10.0)')
+                       help='Minimum distance between unique SGDs in meters (default: 10.0, use -1 to disable deduplication)')
     parser.add_argument('--skip', type=int, default=1,
                        help='Process every Nth frame (1=all, 5=every 5th, etc.) (default: 1)')
     parser.add_argument('--area', type=int, default=50,
@@ -980,7 +987,8 @@ Examples:
                         unique['centroid_lat'], unique['centroid_lon']
                     )
                     
-                    if dist < args.distance:  # Within threshold distance
+                    # Check if deduplication is disabled (negative distance)
+                    if args.distance >= 0 and dist < args.distance:  # Within threshold distance
                         is_duplicate = True
                         # Update the unique SGD if this one has larger area
                         if sgd.get('area_m2', 0) > unique.get('area_m2', 0):
