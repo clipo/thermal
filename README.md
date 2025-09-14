@@ -739,20 +739,29 @@ python sgd_autodetect.py --data /path/to/data --output sgd_fine.kml \
 
 ##### Output Files
 
-For each multi-threshold run, you get:
-- **Individual threshold KMLs**: `output_threshold_X.X.kml` for each temperature level
-- **Individual merged KMLs**: `output_threshold_X.X_merged.kml` with unified polygons
-- **Combined visualization**: `output_combined_thresholds.kml` with all thresholds color-coded
+For each multi-threshold run, the system creates:
+
+**Primary Visualization Files** (these are what you want to open in Google Earth):
+- `sgd_output/your_output_combined_thresholds_merged.kml` - **Main file** with all thresholds color-coded, polygons merged
+- `sgd_output/your_output_combined_thresholds_unmerged.kml` - All thresholds color-coded, individual polygons preserved
+
+**Individual Threshold Files** (for detailed analysis):
+- `sgd_output/your_output_threshold_0.5.kml` - Just the 0.5°C detections
+- `sgd_output/your_output_threshold_1.0.kml` - Just the 1.0°C detections
+- (and so on for each threshold level)
 
 ##### Color Coding Scheme
 
 The combined KML uses distinct colors for each temperature threshold:
-- **0.5°C**: Yellow 🟡 - Weak/diffuse SGD signals
+- **0.5°C**: Yellow 🟡 - Weak/diffuse SGD signals (largest plumes)
 - **1.0°C**: Green 🟢 - Moderate SGD flow
 - **1.5°C**: Orange 🟠 - Strong SGD discharge
 - **2.0°C**: Red 🔴 - Very strong SGD
 - **2.5°C**: Purple 🟣 - Intense SGD core
-- **3.0°C+**: Dark red to black - Extreme SGD anomalies
+- **3.0°C+**: Dark red to black - Extreme SGD anomalies (smallest, hottest cores)
+
+**What You'll See in Google Earth:**
+When you open the `combined_thresholds_merged.kml` file, you'll see overlapping colored polygons showing the temperature gradient structure of SGD plumes. The yellow areas (low threshold) show the full extent of cold water influence, while red/purple areas (high threshold) show only the concentrated discharge points. This creates a "heat map" effect showing SGD intensity.
 
 ##### Use Cases
 
@@ -1526,6 +1535,72 @@ THRESHOLD_COLORS = {
 - **Site Characterization**: Optimal threshold selection per location
 
 ## Output Formats
+
+### Output File Organization
+
+All outputs are organized in the `sgd_output/` directory with clear naming conventions:
+
+#### Standard Detection Output
+```
+sgd_output/
+├── your_output.kml                 # Main KML with SGD polygons
+├── your_output_merged.kml          # Merged overlapping polygons
+├── your_output_summary.json        # Detection statistics
+└── your_output.geojson            # GeoJSON format (if enabled)
+```
+
+#### Multi-Threshold Analysis Output (`--interval-step`)
+When using multi-threshold analysis, additional files are created:
+
+```
+sgd_output/
+├── your_output_threshold_0.5.kml   # Individual threshold @ 0.5°C
+├── your_output_threshold_1.0.kml   # Individual threshold @ 1.0°C
+├── your_output_threshold_1.5.kml   # Individual threshold @ 1.5°C
+├── your_output_threshold_2.0.kml   # Individual threshold @ 2.0°C
+│
+├── your_output_combined_thresholds_merged.kml    # All thresholds, merged polygons
+├── your_output_combined_thresholds_unmerged.kml  # All thresholds, individual polygons
+│
+└── [threshold files include _merged.kml, _summary.json, .geojson variants]
+```
+
+#### Multi-Directory Processing with Search (`--search`)
+When processing multiple XXXMEDIA directories:
+
+```
+sgd_output/
+├── your_output_individual/                        # Individual directory outputs
+│   ├── your_output_100MEDIA.kml
+│   ├── your_output_101MEDIA.kml
+│   └── your_output_102MEDIA.kml
+│
+├── your_output.kml                               # Aggregated detections (all directories)
+├── your_output_merged.kml                        # Aggregated with merged polygons
+└── your_output_summary.json                      # Combined statistics
+```
+
+#### Multi-Threshold with Search (Full Analysis)
+The most comprehensive analysis (`--search` + `--interval-step`):
+
+```
+sgd_output/
+├── your_output_individual/                        # Per-directory outputs
+│   ├── your_output_100MEDIA_threshold_0.5.kml
+│   ├── your_output_100MEDIA_threshold_1.0.kml
+│   ├── your_output_100MEDIA_combined_thresholds_merged.kml
+│   └── your_output_100MEDIA_combined_thresholds_unmerged.kml
+│
+├── your_output_combined_thresholds_merged.kml    # AGGREGATED: All dirs, all thresholds
+├── your_output_combined_thresholds_unmerged.kml  # AGGREGATED: All dirs, all thresholds
+│
+└── your_output_summary.json                      # Complete analysis statistics
+```
+
+**Key Files to Look For:**
+- `*_combined_thresholds_merged.kml` - The main visualization showing all temperature thresholds with color coding
+- `*_summary.json` - Statistics and metadata about the detection run
+- `*_merged.kml` - Unified SGD distribution maps with overlapping polygons combined
 
 ### Export Formats
 
