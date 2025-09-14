@@ -20,6 +20,7 @@ A **production-ready** Python toolkit for detecting submarine groundwater discha
 - [Installation from Scratch](#installation-from-scratch)
 - [Quick Start](#quick-start)
 - [Command-Line Usage](#command-line-usage)
+  - [Multi-Threshold Temperature Analysis](#multi-threshold-temperature-analysis)
 - [Primary Scripts](#primary-scripts)
   - [Automated Batch Processing](#automated-batch-processing-sgd_autodetectpy)
   - [Interactive Processing](#which-script-should-i-use)
@@ -534,7 +535,7 @@ python sgd_autodetect.py \
 | **Batch Processing** | | |
 | `--search` | False | Find and process all XXXMEDIA subdirectories |
 | **Multi-Threshold Analysis** | | |
-| `--interval-step` | None | Temperature increment for multi-threshold analysis |
+| `--interval-step` | None | Temperature increment between thresholds (°C) |
 | `--interval-step-number` | 4 | Number of threshold levels to analyze |
 | **Output Options** | | |
 | `--quiet` | False | Suppress detailed output |
@@ -562,6 +563,79 @@ Both modes:
 - Save models to `models/` directory
 - Name models to match output files (e.g., `flight_sgd_model.pkl` for `flight_sgd.kml`)
 - **Models are automatically detected and reused based on output filename**
+
+#### Multi-Threshold Temperature Analysis
+
+The multi-threshold analysis feature allows you to analyze SGDs at multiple temperature thresholds in a single run, creating color-coded visualizations that show the intensity gradient of submarine groundwater discharge.
+
+##### How It Works
+
+When you enable multi-threshold analysis with `--interval-step`, the system:
+1. Runs detection at multiple temperature thresholds automatically
+2. Creates individual KML files for each threshold level
+3. Generates a combined KML with color-coded visualization
+4. Merges overlapping polygons at each threshold level
+
+##### Basic Usage
+
+```bash
+# Analyze at 4 thresholds starting from base (1.0°C) with 0.5°C increments
+# This analyzes at: 1.0°C, 1.5°C, 2.0°C, and 2.5°C
+python sgd_autodetect.py --data /path/to/data --output sgd_multi.kml \
+  --temp 1.0 --interval-step 0.5 --interval-step-number 4
+
+# Fine-grained analysis with 0.25°C steps
+# Analyzes at: 0.5°C, 0.75°C, 1.0°C, 1.25°C, 1.5°C, 1.75°C
+python sgd_autodetect.py --data /path/to/data --output sgd_fine.kml \
+  --temp 0.5 --interval-step 0.25 --interval-step-number 6
+```
+
+##### Output Files
+
+For each multi-threshold run, you get:
+- **Individual threshold KMLs**: `output_threshold_X.X.kml` for each temperature level
+- **Individual merged KMLs**: `output_threshold_X.X_merged.kml` with unified polygons
+- **Combined visualization**: `output_combined_thresholds.kml` with all thresholds color-coded
+
+##### Color Coding Scheme
+
+The combined KML uses distinct colors for each temperature threshold:
+- **0.5°C**: Yellow 🟡 - Weak/diffuse SGD signals
+- **1.0°C**: Green 🟢 - Moderate SGD flow
+- **1.5°C**: Orange 🟠 - Strong SGD discharge
+- **2.0°C**: Red 🔴 - Very strong SGD
+- **2.5°C**: Purple 🟣 - Intense SGD core
+- **3.0°C+**: Dark red to black - Extreme SGD anomalies
+
+##### Use Cases
+
+1. **SGD Intensity Mapping**: Identify the core vs. periphery of SGD plumes
+2. **Threshold Optimization**: Test multiple thresholds to find optimal detection parameters
+3. **Scientific Analysis**: Quantify temperature gradients in SGD discharge zones
+4. **Visualization**: Create compelling visualizations showing SGD intensity patterns
+
+##### Example Workflow
+
+```bash
+# 1. First, train a segmentation model if needed
+python sgd_autodetect.py --data /path/to/survey --output test.kml --train --skip 50
+
+# 2. Run multi-threshold analysis
+python sgd_autodetect.py --data /path/to/survey --output sgd_analysis.kml \
+  --interval-step 0.5 --interval-step-number 5 --skip 10
+
+# 3. View results in Google Earth
+# - Load sgd_analysis_combined_thresholds.kml for color-coded view
+# - Load individual threshold files to see specific temperature levels
+```
+
+##### Tips for Multi-Threshold Analysis
+
+- **Start conservative**: Begin with your known working threshold as the base
+- **Use appropriate steps**: 0.25-0.5°C steps work well for most scenarios
+- **Consider processing time**: Each threshold level requires full processing
+- **Combine with --skip**: Use frame skipping for faster initial analysis
+- **Review all outputs**: Check individual threshold files to understand detection patterns
 
 #### Automatic Model Detection
 
@@ -1264,6 +1338,45 @@ The system automatically handles drone orientation for accurate georeferencing:
 3. Find cold anomalies near shore
 4. Filter by size and temperature threshold
 5. Georeference using EXIF GPS data
+
+### Multi-Threshold Analysis Implementation
+
+The multi-threshold analysis uses an iterative approach to identify SGD intensity gradients:
+
+#### Algorithm Flow
+1. **Threshold Generation**: Creates array of thresholds based on base + (step × n)
+2. **Parallel Processing**: Each threshold processed independently
+3. **Polygon Collection**: SGD polygons stored by threshold level
+4. **Color Assignment**: Each threshold mapped to specific KML color code
+5. **Merged Output**: Combined KML with all thresholds overlaid
+
+#### Technical Implementation
+```python
+# Threshold calculation
+thresholds = [base_threshold + (i * interval_step) for i in range(num_steps)]
+
+# Color mapping (KML format: aabbggrr in hex)
+THRESHOLD_COLORS = {
+    0.5: {'name': 'yellow', 'kml': '7f00ffff'},
+    1.0: {'name': 'green', 'kml': '7f00ff00'},
+    1.5: {'name': 'orange', 'kml': '7f0080ff'},
+    2.0: {'name': 'red', 'kml': '7f0000ff'},
+    2.5: {'name': 'purple', 'kml': '7fff00ff'},
+    3.0: {'name': 'darkred', 'kml': '7f000080'}
+}
+```
+
+#### Performance Considerations
+- Each threshold requires full frame processing
+- Memory usage scales with number of thresholds
+- I/O operations multiply by threshold count
+- Consider using `--skip` for initial analysis
+
+#### Scientific Applications
+- **Plume Structure**: Core flow vs. diffuse seepage
+- **Temporal Variation**: Threshold sensitivity over tidal cycles
+- **Flux Estimation**: Temperature gradient correlates with discharge rate
+- **Site Characterization**: Optimal threshold selection per location
 
 ## Output Formats
 
