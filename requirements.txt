@@ -10,5 +10,12 @@ scikit-learn==1.5.1  # EXACT version required for pre-trained model
 # Optional for progress bars
 tqdm>=4.60.0
 
+# For polygon merging (creates unified SGD distribution maps)
+shapely>=2.0.0
+
+# Optional for enhanced ML models (better segmentation accuracy)
+# xgboost>=2.0.0
+# lightgbm>=4.0.0
+
 # Note: For exact reproducibility across all systems, use:
 # pip install -r requirements_exact.txt

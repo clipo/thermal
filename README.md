@@ -59,6 +59,7 @@ This toolkit processes paired thermal (640×512) and RGB (4096×3072) images fro
 - **🔬 Analysis Mode** (`sgd_detector_integrated.py`): Parameter tuning and testing
 
 ### Advanced Features
+- **Polygon Merging**: Automatic creation of unified distribution maps (_merged.kml files)
 - **Wave Area Toggle**: Optionally include breaking waves/foam in SGD search
 - **Multi-Format Export**: GeoJSON, KML (Google Earth), and CSV formats
 - **Aggregate Mapping**: Handle overlapping survey frames with deduplication
@@ -118,6 +119,12 @@ python -c "import sklearn; print(f'scikit-learn version: {sklearn.__version__}')
 
 # If scikit-learn is not 1.5.1, the pre-trained model will give different results!
 # To fix: pip install --force-reinstall scikit-learn==1.5.1
+
+# Verify Shapely is installed (for polygon merging)
+python -c "import shapely; print(f'Shapely version: {shapely.__version__}')"
+
+# Optional: Install enhanced ML models for better segmentation
+# pip install xgboost lightgbm
 ```
 
 ⚠️ **IMPORTANT**: The pre-trained model requires **scikit-learn version 1.5.1** exactly. Different versions will produce different detection results!
@@ -1323,7 +1330,21 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
   python sgd_autodetect.py --data "/path" --train --train-sampling random --train-max-frames 15
   ```
 
-### ✅ Multi-Directory Processing with Aggregation (NEW!)
+### ✅ Polygon Merging for Distribution Visualization (NEW!)
+- **Automatic merged KML generation**: Creates `_merged.kml` files with unified shapes
+  - **Overlapping polygons combined**: Uses Shapely library for accurate polygon union
+  - **Clearer visualization**: Shows overall SGD distribution without overlapping clutter
+  - **Dual outputs**: Keeps both detailed (individual SGDs) and merged (distribution) KMLs
+  - **Semi-transparent fill**: Red-shaded areas show SGD extent
+  - **Area calculations**: Shows total merged area coverage
+- **Works automatically**: No extra flags needed - creates merged KML alongside regular output
+- **Example outputs**:
+  ```
+  survey.kml          # Original with all individual SGD polygons
+  survey_merged.kml   # Merged overlapping areas for distribution view
+  ```
+
+### ✅ Multi-Directory Processing with Aggregation
 - **`--search` flag**: Process entire UAV flights split across XXXMEDIA directories
   - **Automatic discovery**: Finds all 100MEDIA, 101MEDIA, 102MEDIA, etc. subdirectories
   - **Aggregated outputs**: Creates combined KML with all SGDs from all directories
