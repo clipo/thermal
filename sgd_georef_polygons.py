@@ -38,8 +38,11 @@ class SGDPolygonGeoref:
         self.thermal_width = 640
         self.thermal_height = 512
         
-        # Thermal FOV is ~70% of RGB FOV
-        self.thermal_fov_ratio = 0.7
+        # Calculate exact thermal FOV ratio based on actual FOVs
+        # Thermal: 45° FOV, RGB: 80° FOV for Autel 640T
+        self.rgb_fov_deg = 80.0
+        self.thermal_fov_deg = 45.0
+        self.thermal_fov_ratio = np.tan(np.radians(self.thermal_fov_deg/2)) / np.tan(np.radians(self.rgb_fov_deg/2))
         
         # Calculate mapping parameters
         thermal_width_in_rgb = self.rgb_width * self.thermal_fov_ratio
@@ -171,37 +174,28 @@ class SGDPolygonGeoref:
             print(f"Error extracting GPS: {e}")
             return None
     
-    def thermal_to_latlon(self, thermal_x, thermal_y, 
-                          rgb_center_lat, rgb_center_lon, 
+    def thermal_to_latlon(self, thermal_x, thermal_y,
+                          rgb_center_lat, rgb_center_lon,
                           altitude, heading=None):
         """Convert thermal pixel coordinates to lat/lon"""
         # Ensure coordinates are float (not Fraction)
         rgb_center_lat = float(rgb_center_lat)
         rgb_center_lon = float(rgb_center_lon)
         altitude = float(altitude)
-        
-        # Map thermal pixel to RGB coordinates
-        rgb_x = self.offset_x + thermal_x * self.scale_x
-        rgb_y = self.offset_y + thermal_y * self.scale_y
-        
-        # Calculate offset from RGB center
-        rgb_center_x = self.rgb_width / 2
-        rgb_center_y = self.rgb_height / 2
-        
-        offset_x_pixels = rgb_x - rgb_center_x
-        offset_y_pixels = rgb_y - rgb_center_y
-        
-        # Ground sample distance for RGB camera
-        rgb_fov_deg = 80  # Typical RGB drone camera FOV
-        rgb_fov_rad = np.radians(rgb_fov_deg)
-        
-        # Ground width covered by RGB
-        ground_width = 2 * altitude * np.tan(rgb_fov_rad / 2)
-        
-        # Meters per RGB pixel
-        gsd = ground_width / self.rgb_width
-        
-        # Convert to meters
+
+        # Calculate offset from thermal image center
+        thermal_center_x = self.thermal_width / 2
+        thermal_center_y = self.thermal_height / 2
+
+        offset_x_pixels = thermal_x - thermal_center_x
+        offset_y_pixels = thermal_y - thermal_center_y
+
+        # Ground sample distance for thermal sensor
+        thermal_fov_rad = np.radians(self.thermal_fov_deg)
+        thermal_ground_width = 2 * altitude * np.tan(thermal_fov_rad / 2)
+        gsd = thermal_ground_width / self.thermal_width
+
+        # Convert pixel offsets to meters
         offset_x_meters = offset_x_pixels * gsd
         offset_y_meters = -offset_y_pixels * gsd  # Y is inverted
         
