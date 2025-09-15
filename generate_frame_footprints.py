@@ -65,10 +65,10 @@ class ThermalFrameMapper:
         self.frame_skip = frame_skip
         self.verbose = verbose
 
-        # Thermal camera specifications
+        # Thermal camera specifications (Autel 640T)
         self.thermal_width = 640
         self.thermal_height = 512
-        self.thermal_fov_deg = 50.0  # Field of view in degrees
+        self.thermal_fov_deg = 45.0  # Thermal FOV is narrower than RGB (45° vs 80°)
 
         # Storage for frame data
         self.frame_footprints = []
@@ -257,7 +257,9 @@ class ThermalFrameMapper:
         ]
 
         # Apply rotation based on heading
-        heading_rad = np.radians(heading)
+        # Note: Use negative heading to match SGD georeferencing convention
+        # (converting from camera coordinates to world coordinates)
+        heading_rad = np.radians(-heading)
         cos_h = np.cos(heading_rad)
         sin_h = np.sin(heading_rad)
 
