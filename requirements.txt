@@ -13,6 +13,10 @@ tqdm>=4.60.0
 # For polygon merging (creates unified SGD distribution maps)
 shapely>=2.0.0
 
+# For EXIF data extraction (GPS, timestamps, drone orientation)
+piexif>=1.1.3
+# Alternative: exifread>=3.0.0
+
 # Optional for enhanced ML models (better segmentation accuracy)
 # xgboost>=2.0.0
 # lightgbm>=4.0.0

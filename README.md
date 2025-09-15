@@ -1135,6 +1135,82 @@ python sgd_viewer.py --data data/your_survey
 - **KML** (`*_polygons.kml`): Open in Google Earth - see plume polygons on satellite imagery
 - **CSV** (`*_areas.csv`): Import to Excel for analysis
 
+## Additional Analysis Tools
+
+### Thermal Frame Coverage Mapping
+
+Generate KML files to visualize thermal image footprints and survey coverage:
+
+#### `generate_frame_footprints.py`
+Creates two KML files showing where thermal frames were captured:
+- **Individual frames**: Each thermal image as a yellow rectangle
+- **Merged coverage**: Total survey area as a red polygon
+
+```bash
+# Process all frames
+python generate_frame_footprints.py --data "/path/to/106MEDIA"
+
+# Process every 10th frame (faster)
+python generate_frame_footprints.py --data "/path/to/data" --skip 10 --output my_coverage
+```
+
+#### `generate_frame_footprints_multi.py`
+Process multiple directories (like `--search` flag):
+
+```bash
+# Process all XXXMEDIA subdirectories
+python generate_frame_footprints_multi.py --data "/path/to/survey" --search
+
+# With frame skipping
+python generate_frame_footprints_multi.py --data "/path/to/survey" --search --skip 20
+```
+
+#### Output Files
+- `*_frames.kml`: Individual thermal frames with metadata (GPS, altitude, heading, file paths)
+- `*_merged.kml`: Combined coverage polygon showing total survey area
+
+#### Use Cases
+- Verify complete coverage of study area
+- Identify gaps in survey coverage
+- Visualize flight patterns
+- Quality control for data collection
+- Plan follow-up surveys
+
+### Baseline Temperature Testing
+
+Compare different ocean baseline calculation methods:
+
+#### `test_baseline_methods.py`
+Analyze how different baseline methods affect SGD detection:
+
+```bash
+# Compare methods on specific frames
+python test_baseline_methods.py /path/to/data 1,2,3,4,5
+
+# Process all frames in directory
+python test_baseline_methods.py /path/to/data
+```
+
+Creates comparison visualizations showing detection differences between:
+- Median (traditional)
+- Upper quartile (75th percentile)
+- 80th/90th percentiles
+- Trimmed mean
+
+### KML Verification Tools
+
+#### `test_kml_paths.py`
+Verify that KML files contain file path information:
+
+```bash
+python test_kml_paths.py sgd_output/survey.kml
+```
+
+Checks that each SGD placemark includes:
+- Frame number
+- Source RGB/thermal paths
+- Data folder location
+
 ## Machine Learning Segmentation (88-99% Accuracy)
 
 ### The Challenge
@@ -1674,6 +1750,36 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 - **Easier verification**: Click on any SGD in Google Earth to see exact source files
 - **Improved traceability**: Direct link from detected SGD to original imagery
 - **Works automatically**: No extra flags needed - all KML exports include this information
+
+### ✅ Thermal Frame Coverage Mapping (NEW!)
+- **Visualize survey coverage**: Generate KML files showing thermal image footprints along the coast
+- **Two output modes**:
+  - **Individual frames**: Each thermal image shown as a yellow rectangle with metadata
+  - **Merged coverage**: Combined polygon showing total survey area in red
+- **Multi-directory support**: Process entire flights across multiple XXXMEDIA folders
+- **Scripts included**:
+  - `generate_frame_footprints.py`: Single directory processing
+  - `generate_frame_footprints_multi.py`: Multi-directory with `--search` flag
+  - `run_frame_coverage.sh`: Convenience wrapper script
+- **Usage examples**:
+  ```bash
+  # Process all frames in a directory
+  python generate_frame_footprints.py --data "/path/to/106MEDIA"
+
+  # Process every 10th frame for faster processing
+  python generate_frame_footprints.py --data "/path/to/data" --skip 10
+
+  # Process multiple directories
+  python generate_frame_footprints_multi.py --data "/path/to/survey" --search
+  ```
+- **Outputs in `sgd_output/`**:
+  - `*_frames.kml`: Individual thermal frame rectangles with GPS, altitude, heading
+  - `*_merged.kml`: Total coverage polygon using Shapely for accurate union
+- **Benefits**:
+  - Identify coverage gaps
+  - Verify flight patterns
+  - Plan follow-up surveys
+  - Quality control for data collection
 
 ### ✅ Enhanced Segmentation Training (NEW!)
 - **Smart Frame Sampling**: Three sampling strategies for better training diversity
