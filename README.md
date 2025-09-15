@@ -1162,6 +1162,7 @@ python sgd_viewer.py --data data/your_survey
   - `trimmed_mean`: Mean of middle 50% of values
 - `--percentile FLOAT`: Custom percentile value if using percentile baseline (default: 75)
 - `--window INT`: Moving average window size for baseline (0=disabled, 5=recommended for turns)
+- `--edge-aware`: Enable edge-aware detection for better frame-to-frame SGD continuity
 
 #### Multi-Threshold Analysis
 - `--interval-step FLOAT`: Temperature interval for multi-threshold analysis (e.g., 0.5)
@@ -1867,6 +1868,19 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
   ```
 - **Why it matters**: When the UAV turns and captures different ocean areas, the baseline temperature can shift dramatically between frames, causing the same SGD to appear/disappear or change size. The moving average provides a stable reference temperature.
 - **Best for**: Flights with significant turns, coastal surveys with varying viewing angles, areas with patchy temperature distributions
+
+### ✅ Edge-Aware Detection for Frame Continuity (NEW!)
+- **Problem solved**: SGDs at frame edges weren't continuing in overlapping frames despite 93-96% overlap
+- **Relaxed edge constraints**: 20-pixel shore distance near edges (vs 5 pixels standard)
+- **Partial plume handling**: Reduced minimum area for edge SGDs that may be cut off
+- **Edge tracking**: Identifies which frame boundaries SGDs touch for continuity analysis
+- **Command-line control**: Use `--edge-aware` with `--window` for best results
+  ```bash
+  # Enable edge-aware detection with moving average (recommended)
+  python sgd_autodetect.py --data "/path" --output output.kml --window 5 --edge-aware
+  ```
+- **Why it matters**: Standard detection requires SGDs within 5 pixels of shoreline. At frame edges, the shoreline may be cut off, causing valid SGDs to be rejected. Edge-aware detection ensures natural continuation across the 90%+ overlap between consecutive frames.
+- **Frame overlap analyzer**: Use `analyze_frame_overlap.py` to diagnose continuity issues between specific frames
 
 ### ✅ Enhanced KML Output with Source File References (NEW!)
 - **Full file paths in KML descriptions**: Each SGD placemark now includes:

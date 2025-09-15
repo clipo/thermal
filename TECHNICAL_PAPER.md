@@ -608,7 +608,37 @@ def extract_plume_polygon(binary_mask):
 
 Despite the demonstrated success of our system, several fundamental limitations constrain its applicability and accuracy. Understanding these limitations is crucial for appropriate deployment planning and interpretation of results. Many limitations stem from physical constraints of thermal imaging technology, while others reflect algorithmic trade-offs between sensitivity and specificity. Addressing these challenges represents active areas of research that will shape the next generation of SGD detection systems.
 
-### 8.1 Current Limitations
+### 8.1 Implementation Challenges and Solutions
+
+#### Critical Alignment and Georeferencing Issues
+
+**Thermal-RGB-Ground Alignment Complexity**: One of the most significant challenges emerged from the multi-layer alignment required between thermal imagery (640×512), RGB imagery (4096×3072), and ground coordinates. The thermal sensor captures approximately 45° field of view compared to the RGB's 80°, but initial implementations incorrectly assumed 70% coverage, leading to SGD polygons extending beyond thermal frame boundaries. This was resolved by:
+- Calculating exact FOV ratios using tangent relationships: `tan(45°/2) / tan(80°/2)`
+- Properly scaling thermal pixels through RGB coordinate space to ground positions
+- Verifying ground coverage calculations against actual survey altitudes (typically 358m, not 400-500m as initially assumed)
+
+**Frame-to-Frame Continuity Problem**: Despite 93-96% overlap between consecutive frames, SGDs at frame edges failed to continue in adjacent frames. Investigation revealed multiple compounding factors:
+- Shore distance requirements (5 pixels) failed at frame edges where shoreline was partially visible
+- Connected component labeling treated partial SGDs as separate entities
+- Minimum area thresholds rejected edge fragments of larger plumes
+
+The solution required implementing edge-aware detection with:
+- Relaxed shore distance constraints (20 pixels) within 50-pixel edge buffer zones
+- Reduced minimum area requirements for partial edge plumes
+- Edge tracking to identify continuation candidates across frames
+
+**Baseline Temperature Instability**: Ocean baseline temperatures shifted dramatically when UAVs turned, causing identical SGDs to appear/disappear between frames. Single-frame baselines proved inadequate for consistent detection. The moving average solution buffers ocean temperatures across 5 frames, providing stable reference temperatures even during maneuvers.
+
+#### Georeferencing Precision Challenges
+
+**Altitude Confusion**: Initial implementations used hardcoded default altitudes (100m or 400m) when EXIF data was missing, causing incorrect ground coverage calculations. The system now strictly uses EXIF GPS altitude (MSL - Mean Sea Level) with verification tools to ensure both SGD detection and frame footprint generation use identical values.
+
+**Heading Extraction Complexity**: Drone orientation proved critical for accurate georeferencing, but heading data resided in different metadata locations:
+- Standard EXIF `GPSImgDirection` (when available)
+- XMP `Camera:Yaw` for Autel drones (requires -180° to 180° conversion)
+- Rotation direction convention differences between coordinate systems
+
+### 8.2 Current Limitations
 
 #### Environmental and Physical Constraints
 
@@ -630,7 +660,7 @@ Despite the demonstrated success of our system, several fundamental limitations 
 
 **Spatial Resolution Trade-offs**: The 640×512 pixel thermal sensor provides adequate resolution for detecting SGD plumes larger than 0.5 m², but smaller seeps remain below detection limits. Increasing altitude to cover larger areas further reduces effective resolution, creating a fundamental trade-off between survey coverage and detection sensitivity.
 
-### 8.2 Future Enhancements
+### 8.3 Future Enhancements
 
 #### Near-term Improvements (1-2 years)
 
