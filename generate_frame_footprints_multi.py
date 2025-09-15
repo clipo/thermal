@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 from generate_frame_footprints import ThermalFrameMapper
 
+# The ThermalFrameMapper now includes proper heading extraction and rotation
+
 try:
     from shapely.geometry import Polygon
     from shapely.ops import unary_union

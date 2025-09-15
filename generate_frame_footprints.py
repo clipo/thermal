@@ -115,8 +115,12 @@ class ThermalFrameMapper:
             return None
 
     def _extract_gps_piexif(self, image_path):
-        """Extract GPS using piexif library"""
+        """Extract GPS using piexif library with XMP heading support"""
         try:
+            from PIL import Image
+            import re
+
+            # First get basic EXIF with piexif
             exif_dict = piexif.load(str(image_path))
 
             # Extract GPS data
@@ -151,11 +155,42 @@ class ThermalFrameMapper:
             if alt_tuple:
                 altitude = float(alt_tuple[0]) / float(alt_tuple[1]) if alt_tuple[1] != 0 else 100.0
 
-            # Get heading/direction
+            # Get heading/direction from EXIF
             heading = 0.0
+            heading_source = None
             heading_tuple = gps_data.get(GPSIFD.GPSImgDirection)
             if heading_tuple:
                 heading = float(heading_tuple[0]) / float(heading_tuple[1]) if heading_tuple[1] != 0 else 0.0
+                heading_source = 'EXIF:GPSImgDirection'
+
+            # If no EXIF heading, check XMP for Camera:Yaw (Autel drones)
+            if heading == 0.0:
+                try:
+                    img = Image.open(image_path)
+                    if hasattr(img, 'info'):
+                        xmp_data = img.info.get('xmp')
+                        if xmp_data:
+                            # Convert bytes to string if needed
+                            if isinstance(xmp_data, bytes):
+                                xmp_str = xmp_data.decode('utf-8', errors='ignore')
+                            else:
+                                xmp_str = str(xmp_data)
+
+                            # Search for Camera:Yaw in XMP
+                            yaw_match = re.search(r'Camera:Yaw="?([\-\d\.]+)"?', xmp_str)
+                            if yaw_match:
+                                yaw_value = float(yaw_match.group(1))
+                                # Convert yaw to compass heading (0-360)
+                                if yaw_value < 0:
+                                    heading = 360 + yaw_value
+                                else:
+                                    heading = yaw_value
+                                heading_source = 'XMP:Camera:Yaw'
+                                if self.verbose:
+                                    print(f"    Found heading from XMP: {heading:.1f}°")
+                except Exception as e:
+                    if self.verbose:
+                        print(f"    Could not extract XMP heading: {e}")
 
             # Get timestamp
             datetime_str = ""
@@ -287,6 +322,13 @@ class ThermalFrameMapper:
                 if self.verbose:
                     print(f"  Skipping frame {frame_num}: No GPS data")
                 continue
+
+            # Report heading status on first frame and periodically
+            if self.verbose and (processed == 0 or processed % 20 == 0):
+                if gps_info['heading'] != 0.0:
+                    print(f"  Frame {frame_num}: Heading {gps_info['heading']:.1f}° (rotation applied)")
+                else:
+                    print(f"  Frame {frame_num}: No heading data (no rotation)")
 
             # Calculate footprint corners
             corners = self.calculate_footprint_corners(
