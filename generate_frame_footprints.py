@@ -104,7 +104,7 @@ class ThermalFrameMapper:
                 return {
                     'lat': gps_info['lat'],
                     'lon': gps_info['lon'],
-                    'altitude': gps_info.get('altitude', 100.0),
+                    'altitude': gps_info.get('altitude', 400.0),  # Match SGD default
                     'heading': gps_info.get('heading', 0.0),
                     'datetime': gps_info.get('datetime', '')
                 }
@@ -149,11 +149,11 @@ class ThermalFrameMapper:
             else:
                 return None
 
-            # Get altitude
-            altitude = 100.0  # Default altitude
+            # Get altitude (typical survey height 300-500m)
+            altitude = 400.0  # Default altitude matches SGD georeferencing default
             alt_tuple = gps_data.get(GPSIFD.GPSAltitude)
             if alt_tuple:
-                altitude = float(alt_tuple[0]) / float(alt_tuple[1]) if alt_tuple[1] != 0 else 100.0
+                altitude = float(alt_tuple[0]) / float(alt_tuple[1]) if alt_tuple[1] != 0 else 400.0
 
             # Get heading/direction from EXIF
             heading = 0.0
