@@ -671,6 +671,7 @@ done
 | `--skip` | 1 | Process every Nth frame (1=all) |
 | `--area` | 50 | Minimum SGD area (pixels) |
 | `--waves` | False | Include wave areas in detection |
+| `--baseline` | median | Ocean baseline method: median, upper_quartile, percentile_80, percentile_90, trimmed_mean |
 | **Model & Training** | | |
 | `--model` | segmentation_model.pkl | Segmentation model to use |
 | `--train` | False | Launch interactive training GUI (manual) |
@@ -1647,6 +1648,32 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 - Suitable for scientific publication and analysis
 
 ## Recent Enhancements (December 2024)
+
+### ✅ Improved Ocean Baseline Temperature Methods (NEW!)
+- **Configurable baseline calculation**: More robust SGD detection in frames with large cold plumes
+  - **Upper Quartile** (75th percentile): Recommended for frames dominated by cold water
+  - **Custom Percentiles**: 80th, 90th percentile options for fine-tuning
+  - **Trimmed Mean**: Excludes coldest 25% before calculating mean
+  - **Traditional Median**: Available for comparison
+- **Command-line control**: Use `--baseline` flag to select method
+  ```bash
+  # Use upper quartile (recommended for cold-dominated frames)
+  python sgd_autodetect.py --data "/path" --output output.kml --baseline upper_quartile
+
+  # Use 90th percentile for very cold-dominated scenes
+  python sgd_autodetect.py --data "/path" --output output.kml --baseline percentile_90
+  ```
+- **Why it matters**: When large SGD plumes cover most of the frame, median temperature can be biased toward cold water, causing the algorithm to miss SGDs. Upper quartile establishes ambient ocean temperature from warmer regions.
+- **Test script included**: Compare baseline methods with `test_baseline_methods.py`
+
+### ✅ Enhanced KML Output with Source File References (NEW!)
+- **Full file paths in KML descriptions**: Each SGD placemark now includes:
+  - RGB image path (e.g., `/path/to/MAX_1501.JPG`)
+  - Thermal image path (e.g., `/path/to/IRX_1501.irg`)
+  - Data folder location
+- **Easier verification**: Click on any SGD in Google Earth to see exact source files
+- **Improved traceability**: Direct link from detected SGD to original imagery
+- **Works automatically**: No extra flags needed - all KML exports include this information
 
 ### ✅ Enhanced Segmentation Training (NEW!)
 - **Smart Frame Sampling**: Three sampling strategies for better training diversity

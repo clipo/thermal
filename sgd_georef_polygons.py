@@ -285,21 +285,22 @@ class SGDPolygonGeoref:
     def process_frame_with_polygons(self, frame_number, plume_info_list, verbose=False):
         """
         Georeference detected SGD plumes with polygon outlines.
-        
+
         Args:
             frame_number: Frame number
             plume_info_list: List of plume dictionaries from detector (with contours)
             verbose: Print orientation information
-        
+
         Returns:
             List of georeferenced polygon features
         """
         # Get GPS from RGB image
         rgb_path = self.base_path / f"MAX_{frame_number:04d}.JPG"
-        
+        thermal_path = self.base_path / f"IRX_{frame_number:04d}.irg"
+
         if verbose:
             print(f"\nProcessing frame {frame_number}:")
-        
+
         gps_info = self.extract_gps(str(rgb_path), verbose=verbose)
         
         if not gps_info or 'lat' not in gps_info:
@@ -351,6 +352,9 @@ class SGDPolygonGeoref:
             sgd_feature = {
                 'frame': frame_number,
                 'datetime': gps_info.get('datetime', ''),
+                'rgb_path': str(rgb_path),
+                'thermal_path': str(thermal_path),
+                'data_folder': str(self.base_path),
                 'polygon': polygon_coords,  # Full outline
                 'centroid': {
                     'latitude': lat if polygon_coords is None else np.mean([c[1] for c in polygon_coords[:-1]]),
@@ -385,6 +389,9 @@ class SGDPolygonGeoref:
                     "properties": {
                         "frame": loc.get('frame', ''),
                         "datetime": loc.get('datetime', ''),
+                        "rgb_path": loc.get('rgb_path', ''),
+                        "thermal_path": loc.get('thermal_path', ''),
+                        "data_folder": loc.get('data_folder', ''),
                         "area_m2": round(loc.get('area_m2', 0), 2),
                         "area_pixels": loc.get('area_pixels', 0),
                         "temperature_anomaly": round(loc.get('temperature_anomaly', 0), 2),
@@ -410,6 +417,9 @@ class SGDPolygonGeoref:
                     "properties": {
                         "frame": loc.get('frame', ''),
                         "datetime": loc.get('datetime', ''),
+                        "rgb_path": loc.get('rgb_path', ''),
+                        "thermal_path": loc.get('thermal_path', ''),
+                        "data_folder": loc.get('data_folder', ''),
                         "area_m2": round(loc.get('area_m2', 0), 2),
                         "area_pixels": loc.get('area_pixels', 0),
                         "temperature_anomaly": round(loc.get('temperature_anomaly', 0), 2),
@@ -504,6 +514,15 @@ class SGDPolygonGeoref:
             desc.append(f'Frame: {loc.get("frame", "Unknown")}')
             if 'datetime' in loc:
                 desc.append(f'Date/Time: {loc["datetime"]}')
+            desc.append('---')
+            desc.append('Source Files:')
+            if 'rgb_path' in loc:
+                desc.append(f'RGB: {loc["rgb_path"]}')
+            if 'thermal_path' in loc:
+                desc.append(f'Thermal: {loc["thermal_path"]}')
+            if 'data_folder' in loc:
+                desc.append(f'Folder: {loc["data_folder"]}')
+            desc.append('---')
             desc.append(f'Area: {loc.get("area_m2", 0):.1f} m²')
             desc.append(f'Area (pixels): {loc.get("area_pixels", 0)}')
             desc.append(f'Temperature anomaly: {loc.get("temperature_anomaly", 0):.1f}°C')
