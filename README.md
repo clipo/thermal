@@ -1142,15 +1142,16 @@ python sgd_viewer.py --data data/your_survey
 Generate KML files to visualize thermal image footprints and survey coverage:
 
 #### `generate_frame_footprints.py`
-Creates two KML files showing where thermal frames were captured:
-- **Individual frames**: Each thermal image as a yellow rectangle
+Creates KML files showing actual thermal camera coverage (640×512, 45° FOV):
+- **Individual frames**: Each thermal image as a yellow rectangle, properly rotated
 - **Merged coverage**: Total survey area as a red polygon
+- **Accurate specifications**: Uses Autel 640T thermal camera parameters (not RGB)
 
 ```bash
 # Process all frames
 python generate_frame_footprints.py --data "/path/to/106MEDIA"
 
-# Process every 10th frame (faster)
+# Process every 10th frame (MUST match SGD detection --skip value)
 python generate_frame_footprints.py --data "/path/to/data" --skip 10 --output my_coverage
 ```
 
@@ -1161,20 +1162,36 @@ Process multiple directories (like `--search` flag):
 # Process all XXXMEDIA subdirectories
 python generate_frame_footprints_multi.py --data "/path/to/survey" --search
 
-# With frame skipping
+# With frame skipping (match SGD detection skip value)
 python generate_frame_footprints_multi.py --data "/path/to/survey" --search --skip 20
 ```
 
+#### `verify_sgd_frame_alignment.py`
+Verify that SGD detections fall within thermal frame boundaries:
+
+```bash
+# Check if SGDs are inside thermal frames
+python verify_sgd_frame_alignment.py sgd_output/sgd.kml sgd_output/frames.kml
+
+# Output shows percentage of SGDs within/outside frame boundaries
+```
+
+#### Critical Notes
+- **Frame synchronization**: Always use the same `--skip` value for SGD detection and frame generation
+- **Thermal FOV**: Frames show 45° field of view (narrower than 80° RGB FOV)
+- **Rotation**: Frames are rotated based on drone heading from XMP metadata
+- **Coverage**: Shows where thermal sensor can actually detect SGDs
+
 #### Output Files
-- `*_frames.kml`: Individual thermal frames with metadata (GPS, altitude, heading, file paths)
-- `*_merged.kml`: Combined coverage polygon showing total survey area
+- `*_frames.kml`: Individual 640×512 thermal frames with rotation applied
+- `*_merged.kml`: Combined coverage polygon showing total thermal survey area
 
 #### Use Cases
-- Verify complete coverage of study area
-- Identify gaps in survey coverage
-- Visualize flight patterns
-- Quality control for data collection
-- Plan follow-up surveys
+- Verify SGD detections are within thermal sensor boundaries
+- Ensure complete thermal coverage of study area
+- Identify gaps where thermal data is missing
+- Quality control for SGD detection accuracy
+- Plan follow-up surveys for missed areas
 
 ### Baseline Temperature Testing
 
@@ -1753,32 +1770,39 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 
 ### ✅ Thermal Frame Coverage Mapping (NEW!)
 - **Visualize survey coverage**: Generate KML files showing thermal image footprints along the coast
+- **Accurate thermal FOV**: Uses correct 45° field of view for Autel 640T thermal camera (not RGB)
+- **Proper orientation**: Frames rotated based on drone heading from XMP metadata
 - **Two output modes**:
   - **Individual frames**: Each thermal image shown as a yellow rectangle with metadata
   - **Merged coverage**: Combined polygon showing total survey area in red
 - **Multi-directory support**: Process entire flights across multiple XXXMEDIA folders
+- **Critical fixes applied**:
+  - Thermal FOV corrected to 45° (was 50°) to match actual sensor specifications
+  - Rotation direction fixed to match SGD georeferencing convention
+  - Heading extraction from XMP Camera:Yaw for Autel drones
 - **Scripts included**:
   - `generate_frame_footprints.py`: Single directory processing
   - `generate_frame_footprints_multi.py`: Multi-directory with `--search` flag
+  - `verify_sgd_frame_alignment.py`: Check if SGDs fall within frame boundaries
   - `run_frame_coverage.sh`: Convenience wrapper script
-- **Usage examples**:
+- **Important**: Use same `--skip` value for both SGD detection and frame generation:
   ```bash
-  # Process all frames in a directory
-  python generate_frame_footprints.py --data "/path/to/106MEDIA"
+  # Detect SGDs every 5th frame
+  python sgd_autodetect.py --data "/path" --output sgd.kml --skip 5
 
-  # Process every 10th frame for faster processing
-  python generate_frame_footprints.py --data "/path/to/data" --skip 10
+  # Generate frames for the SAME frames
+  python generate_frame_footprints.py --data "/path" --skip 5
 
-  # Process multiple directories
-  python generate_frame_footprints_multi.py --data "/path/to/survey" --search
+  # Verify alignment
+  python verify_sgd_frame_alignment.py sgd_output/sgd.kml sgd_output/frames.kml
   ```
 - **Outputs in `sgd_output/`**:
-  - `*_frames.kml`: Individual thermal frame rectangles with GPS, altitude, heading
+  - `*_frames.kml`: Individual 640×512 thermal frame rectangles with GPS, altitude, heading
   - `*_merged.kml`: Total coverage polygon using Shapely for accurate union
 - **Benefits**:
+  - Shows actual thermal sensor coverage (45° FOV, not 80° RGB FOV)
+  - Verify SGD detections fall within thermal boundaries
   - Identify coverage gaps
-  - Verify flight patterns
-  - Plan follow-up surveys
   - Quality control for data collection
 
 ### ✅ Enhanced Segmentation Training (NEW!)
@@ -2007,6 +2031,40 @@ python sgd_detector_integrated.py --mode interactive
 # Use rule-based if ML fails
 python sgd_viewer.py --no-ml
 ```
+
+### SGDs Appearing Outside Thermal Frame Boundaries
+
+If SGD detections appear outside the thermal frame footprints in Google Earth:
+
+#### 1. Ensure Frame Synchronization
+```bash
+# CRITICAL: Use the same --skip value for both operations
+python sgd_autodetect.py --data "/path" --output sgd.kml --skip 5
+python generate_frame_footprints.py --data "/path" --skip 5
+
+# Verify alignment
+python verify_sgd_frame_alignment.py sgd_output/sgd.kml sgd_output/frames.kml
+```
+
+#### 2. Check Thermal FOV Settings
+- Thermal frames use 45° FOV (not 50° or 80°)
+- Thermal sensor is 640×512 pixels
+- Coverage is ~70% of RGB frame area
+
+#### 3. Verify Heading/Rotation
+```bash
+# Test if frames are properly rotated
+python test_frame_rotation.py /path/to/data
+
+# Should show heading values like:
+# Frame 1501: Heading 280.2° (rotation applied)
+```
+
+#### 4. Common Causes
+- **Different skip values**: SGD detection and frame generation must use same frame skip
+- **Wrong FOV**: Ensure using thermal FOV (45°) not RGB FOV (80°)
+- **Missing heading**: Without XMP Camera:Yaw data, frames won't rotate correctly
+- **Mixed datasets**: Verify SGDs and frames are from the same survey location
 
 ### Reproducibility Issues (Different Results on Different Computers)
 
