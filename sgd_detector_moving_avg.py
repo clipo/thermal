@@ -8,6 +8,8 @@ import numpy as np
 from collections import deque
 from pathlib import Path
 from sgd_detector_improved import ImprovedSGDDetector
+from scipy import ndimage
+from skimage import measure
 
 
 class MovingAverageSGDDetector(ImprovedSGDDetector):
@@ -51,181 +53,53 @@ class MovingAverageSGDDetector(ImprovedSGDDetector):
         self.window_size = window_size
         self.ocean_temp_buffer = deque(maxlen=window_size)
         self.frame_metadata_buffer = deque(maxlen=window_size)
+        self.max_area = max_area
 
         # Statistics tracking
         self.baseline_history = []
 
-    def update_ocean_buffer(self, ocean_temps, frame_number):
+    def detect_sgd(self, thermal, masks):
         """
-        Update the moving window buffer with ocean temperatures from current frame.
+        Override parent's detect_sgd to use buffered ocean temperatures.
 
-        Args:
-            ocean_temps: Ocean temperatures from current frame
-            frame_number: Current frame number for tracking
+        This method is called by process_frame after loading and segmenting.
         """
-        # Add current frame's ocean temps to buffer
-        self.ocean_temp_buffer.append(ocean_temps)
-        self.frame_metadata_buffer.append({
-            'frame': frame_number,
-            'median': np.nanmedian(ocean_temps),
-            'mean': np.nanmean(ocean_temps),
-            'std': np.nanstd(ocean_temps),
-            'count': len(ocean_temps)
-        })
+        # Extract ocean temperatures from current frame
+        ocean_mask = masks['ocean']
+        ocean_temps = thermal[ocean_mask]
 
-    def calculate_buffered_baseline(self):
-        """
-        Calculate ocean baseline using buffered temperatures from multiple frames.
+        # Get frame number from the thermal data (this is a bit of a hack)
+        # In real usage, frame number should be passed through
+        frame_number = len(self.ocean_temp_buffer)  # Use buffer length as proxy
 
-        Returns:
-            dict: Baseline statistics including temperature and metadata
-        """
-        if not self.ocean_temp_buffer:
-            return None
+        # Update buffer with current frame's ocean temps
+        self.update_ocean_buffer(ocean_temps, frame_number)
 
-        # Combine all ocean temperatures from buffer
-        all_ocean_temps = np.concatenate([temps for temps in self.ocean_temp_buffer])
+        # Calculate baseline from buffer
+        baseline_stats = self.calculate_buffered_baseline()
 
-        # Remove NaN values
-        valid_temps = all_ocean_temps[~np.isnan(all_ocean_temps)]
-
-        if len(valid_temps) == 0:
-            return None
-
-        # Calculate baseline using selected method
-        baseline = self.calculate_ocean_baseline(valid_temps)
-
-        # Calculate additional statistics
-        stats = {
-            'baseline': baseline,
-            'method': self.baseline_method,
-            'window_size': len(self.ocean_temp_buffer),
-            'total_pixels': len(valid_temps),
-            'frames_used': [m['frame'] for m in self.frame_metadata_buffer],
-            'median': np.median(valid_temps),
-            'mean': np.mean(valid_temps),
-            'std': np.std(valid_temps),
-            'q25': np.percentile(valid_temps, 25),
-            'q75': np.percentile(valid_temps, 75)
-        }
-
-        # Track baseline history
-        self.baseline_history.append({
-            'frames': stats['frames_used'].copy(),
-            'baseline': baseline,
-            'std': stats['std']
-        })
-
-        return stats
-
-    def process_frame(self, frame_number, visualize=False, verbose=False, **kwargs):
-        """
-        Process a single frame with moving average baseline.
-
-        Args:
-            frame_number: Frame number to process
-            visualize: Whether to create visualization
-            verbose: Whether to print detailed output
-
-        Returns:
-            dict: Detection results with baseline metadata
-        """
-        # First, get the standard frame processing to extract ocean temps
-        # We'll override the detection part
-        rgb_file = self.data_dir / f'MAX_{frame_number:04d}.JPG'
-        thermal_file = self.data_dir / f'IRX_{frame_number:04d}.irg'
-
-        if not rgb_file.exists() or not thermal_file.exists():
-            if verbose:
-                print(f"  ✗ Missing files for frame {frame_number}")
+        if baseline_stats is None:
+            # No valid ocean temperatures
             return {
-                'frame': frame_number,
-                'plume_info': [],
-                'error': 'Missing files'
+                'sgd_plumes': np.zeros_like(ocean_mask),
+                'shoreline': np.zeros_like(ocean_mask),
+                'shoreline_thin': np.zeros_like(ocean_mask),
+                'ocean_stats': {},
+                'plume_info': []
             }
 
-        # Load and process images using parent class methods
-        try:
-            # Call parent's process_frame to get raw data
-            parent_result = super().process_frame(frame_number, visualize=False)
+        baseline_temp = baseline_stats['baseline']
+        threshold = baseline_temp - self.temp_threshold
 
-            if 'error' in parent_result:
-                return parent_result
-
-            thermal = parent_result['thermal']
-            masks = parent_result['masks']
-
-            # Extract ocean temperatures
-            ocean_mask = masks['ocean']
-            ocean_temps = thermal[ocean_mask]
-
-            # Update buffer with current frame's ocean temps
-            self.update_ocean_buffer(ocean_temps, frame_number)
-
-            # Calculate baseline from buffer
-            baseline_stats = self.calculate_buffered_baseline()
-
-            if baseline_stats is None:
-                if verbose:
-                    print(f"  ✗ No valid ocean temperatures in buffer")
-                return {
-                    'frame': frame_number,
-                    'plume_info': [],
-                    'error': 'No ocean temperatures'
-                }
-
-            baseline_temp = baseline_stats['baseline']
-
-            # Detect SGDs using buffered baseline
-            threshold = baseline_temp - self.temp_threshold
-
-            if verbose:
-                print(f"  Frame {frame_number}:")
-                print(f"    Buffer: {len(self.ocean_temp_buffer)} frames")
-                print(f"    Baseline: {baseline_temp:.2f}°C (from frames {baseline_stats['frames_used']})")
-                print(f"    Threshold: {threshold:.2f}°C")
-                print(f"    Std dev: {baseline_stats['std']:.2f}°C")
-
-            # Continue with detection using new threshold
-            result = self.detect_sgd_with_baseline(
-                thermal, masks, threshold, baseline_temp,
-                frame_number, visualize, verbose
-            )
-
-            # Add baseline metadata to result
-            result['baseline_stats'] = baseline_stats
-            result['baseline_method'] = 'moving_average'
-
-            return result
-
-        except Exception as e:
-            if verbose:
-                print(f"  ✗ Error processing frame {frame_number}: {e}")
-            return {
-                'frame': frame_number,
-                'plume_info': [],
-                'error': str(e)
-            }
-
-    def detect_sgd_with_baseline(self, thermal, masks, threshold, baseline_temp,
-                                 frame_number, visualize=False, verbose=False):
-        """
-        Detect SGDs using pre-calculated baseline temperature.
-
-        This is similar to the parent detect_sgd but uses provided baseline.
-        """
-        from scipy import ndimage
-        from skimage import measure
-
-        # Detect cold anomalies
-        cold_mask = (thermal < threshold) & masks['ocean']
+        # Detect cold anomalies using buffered baseline
+        cold_mask = (thermal < threshold) & ocean_mask
 
         # Get shoreline
         shoreline, shoreline_thin = self.detect_shoreline(masks)
 
         # Distance from shore
         distance_from_shore = ndimage.distance_transform_edt(~shoreline)
-        distance_from_shore[~masks['ocean']] = np.inf
+        distance_from_shore[~ocean_mask] = np.inf
 
         # Find connected cold regions
         labeled_cold, num_features = measure.label(cold_mask, return_num=True)
@@ -250,7 +124,7 @@ class MovingAverageSGDDetector(ImprovedSGDDetector):
 
                 props = measure.regionprops(plume.astype(int))[0]
 
-                # Extract contour
+                # Extract contour of the plume
                 contours = measure.find_contours(plume.astype(float), 0.5)
                 plume_contour = contours[0] if contours else []
 
@@ -269,22 +143,82 @@ class MovingAverageSGDDetector(ImprovedSGDDetector):
                     'temp_anomaly': baseline_temp - np.nanmean(plume_temps)
                 })
 
-        result = {
-            'frame': frame_number,
-            'sgd_mask': sgd_mask,
-            'plume_info': plume_info,
-            'ocean_baseline': baseline_temp,
-            'detection_threshold': threshold,
+        # Track baseline for analysis
+        self.baseline_history.append({
+            'frames_used': baseline_stats['frames_used'].copy() if 'frames_used' in baseline_stats else [],
+            'baseline': baseline_temp,
+            'std': baseline_stats.get('std', 0)
+        })
+
+        return {
+            'sgd_plumes': sgd_mask,
             'shoreline': shoreline,
             'shoreline_thin': shoreline_thin,
-            'masks': masks,
-            'thermal': thermal
+            'ocean_stats': baseline_stats,
+            'plume_info': plume_info,
+            'baseline_method': 'moving_average',
+            'window_size': self.window_size
         }
 
-        if visualize:
-            self.visualize_detection(result)
+    def update_ocean_buffer(self, ocean_temps, frame_number):
+        """
+        Update the moving window buffer with ocean temperatures from current frame.
 
-        return result
+        Args:
+            ocean_temps: Ocean temperatures from current frame
+            frame_number: Current frame number for tracking
+        """
+        # Filter out invalid temperatures
+        valid_temps = ocean_temps[~np.isnan(ocean_temps)]
+
+        if len(valid_temps) > 0:
+            # Add current frame's ocean temps to buffer
+            self.ocean_temp_buffer.append(valid_temps)
+            self.frame_metadata_buffer.append({
+                'frame': frame_number,
+                'median': np.median(valid_temps),
+                'mean': np.mean(valid_temps),
+                'std': np.std(valid_temps),
+                'count': len(valid_temps)
+            })
+
+    def calculate_buffered_baseline(self):
+        """
+        Calculate ocean baseline using buffered temperatures from multiple frames.
+
+        Returns:
+            dict: Baseline statistics including temperature and metadata
+        """
+        if not self.ocean_temp_buffer:
+            return None
+
+        # Combine all ocean temperatures from buffer
+        all_ocean_temps = np.concatenate(list(self.ocean_temp_buffer))
+
+        # Remove NaN values
+        valid_temps = all_ocean_temps[~np.isnan(all_ocean_temps)]
+
+        if len(valid_temps) == 0:
+            return None
+
+        # Calculate baseline using selected method
+        baseline = self.calculate_ocean_baseline(valid_temps)
+
+        # Calculate additional statistics
+        stats = {
+            'baseline': baseline,
+            'method': self.baseline_method,
+            'window_size': len(self.ocean_temp_buffer),
+            'total_pixels': len(valid_temps),
+            'frames_used': [m['frame'] for m in self.frame_metadata_buffer],
+            'median': np.median(valid_temps),
+            'mean': np.mean(valid_temps),
+            'std': np.std(valid_temps),
+            'q25': np.percentile(valid_temps, 25),
+            'q75': np.percentile(valid_temps, 75)
+        }
+
+        return stats
 
     def get_baseline_statistics(self):
         """
@@ -340,12 +274,13 @@ if __name__ == "__main__":
     print(f"\nProcessing {len(test_frames)} frames...")
 
     for frame_num in test_frames:
-        result = detector.process_frame(frame_num, verbose=True)
+        result = detector.process_frame(frame_num, visualize=False)
 
-        if 'baseline_stats' in result:
-            stats = result['baseline_stats']
-            print(f"  Frame {frame_num}: {len(result['plume_info'])} SGDs detected")
-            print(f"    Baseline: {stats['baseline']:.2f}°C from {len(stats['frames_used'])} frames")
+        if 'ocean_stats' in result:
+            stats = result['ocean_stats']
+            print(f"  Frame {frame_num}: {len(result.get('plume_info', []))} SGDs detected")
+            if stats:
+                print(f"    Baseline: {stats.get('baseline', 0):.2f}°C from {stats.get('window_size', 0)} frames")
 
     # Print overall statistics
     print("\n" + "=" * 60)
