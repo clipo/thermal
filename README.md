@@ -503,6 +503,9 @@ python sgd_autodetect.py --data data/survey --output sgd.kml --train
 # Process every 5th frame with lower temperature threshold
 python sgd_autodetect.py --data data/survey --output sgd.kml --skip 5 --temp 0.5
 
+# Use moving average baseline for stable detection during UAV turns
+python sgd_autodetect.py --data data/survey --output sgd.kml --window 5
+
 # Keep ALL detections without deduplication
 python sgd_autodetect.py --data data/survey --output all_sgds.kml --distance -1
 ```
@@ -1134,6 +1137,44 @@ python sgd_viewer.py --data data/your_survey
 - **GeoJSON** (`*_polygons.geojson`): Open in QGIS or ArcGIS
 - **KML** (`*_polygons.kml`): Open in Google Earth - see plume polygons on satellite imagery
 - **CSV** (`*_areas.csv`): Import to Excel for analysis
+
+## Command-Line Reference
+
+### sgd_autodetect.py Parameters
+
+#### Required Arguments
+- `--data PATH`: Directory containing MAX_*.JPG and IRX_*.irg files
+- `--output FILENAME`: Output KML filename (e.g., survey_sgd.kml)
+
+#### Detection Parameters
+- `--temp FLOAT`: Temperature difference threshold in °C (default: 1.0)
+- `--area INT`: Minimum SGD area in pixels (default: 50)
+- `--distance FLOAT`: Minimum distance between unique SGDs in meters (default: 10.0, use -1 to disable deduplication)
+- `--skip INT`: Process every Nth frame (1=all, 5=every 5th, etc.) (default: 1)
+- `--waves`: Include wave/foam areas in ocean mask (useful for rocky coasts)
+
+#### Baseline Temperature Options
+- `--baseline METHOD`: Ocean baseline calculation method (default: median)
+  - `median`: Standard median of ocean temperatures
+  - `upper_quartile`: 75th percentile (recommended for cold-dominated frames)
+  - `percentile_80`: 80th percentile
+  - `percentile_90`: 90th percentile (for extreme cold conditions)
+  - `trimmed_mean`: Mean of middle 50% of values
+- `--percentile FLOAT`: Custom percentile value if using percentile baseline (default: 75)
+- `--window INT`: Moving average window size for baseline (0=disabled, 5=recommended for turns)
+
+#### Multi-Threshold Analysis
+- `--interval-step FLOAT`: Temperature interval for multi-threshold analysis (e.g., 0.5)
+- `--interval-step-number INT`: Number of threshold steps to analyze (default: 4)
+
+#### Training and Model Options
+- `--train`: Train new segmentation model interactively (manual labeling)
+- `--train-auto`: Train automatically using temperature-based segmentation
+- `--model PATH`: Path to custom segmentation model
+
+#### Processing Options
+- `--search`: Process all XXXMEDIA subdirectories in the given path
+- `--quiet`: Suppress verbose output
 
 ## Additional Analysis Tools
 
@@ -1793,7 +1834,7 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 - Compatible with all major GIS software (QGIS, ArcGIS)
 - Suitable for scientific publication and analysis
 
-## Recent Enhancements (December 2024)
+## Recent Enhancements (December 2024 - January 2025)
 
 ### ✅ Improved Ocean Baseline Temperature Methods (NEW!)
 - **Configurable baseline calculation**: More robust SGD detection in frames with large cold plumes
@@ -1812,6 +1853,21 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 - **Why it matters**: When large SGD plumes cover most of the frame, median temperature can be biased toward cold water, causing the algorithm to miss SGDs. Upper quartile establishes ambient ocean temperature from warmer regions.
 - **Test script included**: Compare baseline methods with `test_baseline_methods.py`
 
+### ✅ Moving Average Baseline for Stable Detection (NEW!)
+- **Temporal smoothing**: Prevents dramatic shifts in SGD boundaries when UAV turns
+- **Configurable window**: Average ocean temperatures across N frames (default 5)
+- **Stability during maneuvers**: Maintains consistent detection as viewing angle changes
+- **Command-line control**: Use `--window` flag to enable
+  ```bash
+  # Enable 5-frame moving average (recommended for flights with turns)
+  python sgd_autodetect.py --data "/path" --output output.kml --window 5
+
+  # Disable moving average (single-frame baseline)
+  python sgd_autodetect.py --data "/path" --output output.kml --window 0
+  ```
+- **Why it matters**: When the UAV turns and captures different ocean areas, the baseline temperature can shift dramatically between frames, causing the same SGD to appear/disappear or change size. The moving average provides a stable reference temperature.
+- **Best for**: Flights with significant turns, coastal surveys with varying viewing angles, areas with patchy temperature distributions
+
 ### ✅ Enhanced KML Output with Source File References (NEW!)
 - **Full file paths in KML descriptions**: Each SGD placemark now includes:
   - RGB image path (e.g., `/path/to/MAX_1501.JPG`)
@@ -1820,6 +1876,12 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
 - **Easier verification**: Click on any SGD in Google Earth to see exact source files
 - **Improved traceability**: Direct link from detected SGD to original imagery
 - **Works automatically**: No extra flags needed - all KML exports include this information
+
+### ✅ Corrected SGD Georeferencing (FIXED!)
+- **Accurate thermal FOV**: Fixed SGD polygons using correct 45° thermal FOV (was incorrectly using ~61°)
+- **Proper containment**: SGD polygons now correctly fit within thermal frame footprints
+- **29.5% size reduction**: More accurate ground coverage calculations
+- **Altitude handling**: Uses actual EXIF GPS altitude (MSL) for all calculations
 
 ### ✅ Thermal Frame Coverage Mapping (NEW!)
 - **Visualize survey coverage**: Generate KML files showing thermal image footprints along the coast
