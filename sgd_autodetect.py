@@ -24,6 +24,7 @@ import time
 
 # Import core detection modules
 from sgd_detector_integrated import IntegratedSGDDetector
+from sgd_detector_improved import ImprovedSGDDetector
 try:
     from sgd_georef_polygons import SGDPolygonGeoref
     POLYGON_SUPPORT = True
@@ -50,12 +51,14 @@ class NumpyEncoder(json.JSONEncoder):
 class SGDAutoDetector:
     """Automated SGD detection with batch processing"""
     
-    def __init__(self, data_dir, output_file, 
-                 temp_threshold=1.0, 
+    def __init__(self, data_dir, output_file,
+                 temp_threshold=1.0,
                  distance_threshold=10.0,
                  frame_skip=1,
                  min_area=50,
                  include_waves=False,
+                 baseline_method='median',
+                 percentile_value=75,
                  verbose=True):
         """
         Initialize automated SGD detector
@@ -68,6 +71,8 @@ class SGDAutoDetector:
             frame_skip: Process every Nth frame (1=all, 5=every 5th, etc.)
             min_area: Minimum plume area in pixels
             include_waves: Include wave areas in ocean mask
+            baseline_method: Method for calculating ocean baseline ('median', 'upper_quartile', etc.)
+            percentile_value: Percentile value if using custom percentile baseline
             verbose: Show detailed progress
         """
         self.data_dir = Path(data_dir)
@@ -88,17 +93,39 @@ class SGDAutoDetector:
         self.frame_skip = frame_skip
         self.min_area = min_area
         self.include_waves = include_waves
+        self.baseline_method = baseline_method
+        self.percentile_value = percentile_value
         self.verbose = verbose
-        
-        # Initialize detector with area-specific model selection
+
+        # Parse baseline method parameters
+        baseline_params = {}
+        if baseline_method == 'upper_quartile':
+            baseline_params = {'baseline_method': 'upper_quartile'}
+        elif baseline_method == 'percentile_80':
+            baseline_params = {'baseline_method': 'upper_percentile', 'percentile_value': 80}
+        elif baseline_method == 'percentile_90':
+            baseline_params = {'baseline_method': 'upper_percentile', 'percentile_value': 90}
+        elif baseline_method == 'trimmed_mean':
+            baseline_params = {'baseline_method': 'trimmed_mean', 'trim_percentage': 25}
+        else:  # median
+            baseline_params = {'baseline_method': 'median'}
+
+        # Initialize improved detector with baseline method
+        # Get the model path for ML segmentation
         model_path = self.select_area_model(self.data_dir)
-        self.detector = IntegratedSGDDetector(
+
+        self.detector = ImprovedSGDDetector(
+            base_path=str(self.data_dir),
             temp_threshold=self.temp_threshold,
             min_area=self.min_area,
-            base_path=str(self.data_dir),
-            ml_model_path=model_path
+            use_ml=True,
+            ml_model_path=model_path,
+            **baseline_params
         )
-        
+
+        # Note: ImprovedSGDDetector inherits from IntegratedSGDDetector
+        # so it should have ML support if needed
+
         # Load available frames
         self.frames = []
         self.rgb_files = []
@@ -686,7 +713,14 @@ Examples:
                        help='Minimum SGD area in pixels (default: 50)')
     parser.add_argument('--waves', action='store_true',
                        help='Include wave/foam areas in ocean mask')
-    
+
+    # Baseline temperature method
+    parser.add_argument('--baseline', type=str, default='median',
+                       choices=['median', 'upper_quartile', 'percentile_80', 'percentile_90', 'trimmed_mean'],
+                       help='Method for calculating ocean baseline temperature (default: median)')
+    parser.add_argument('--percentile', type=float, default=75,
+                       help='Custom percentile value if using percentile baseline (default: 75)')
+
     # Multi-threshold analysis options
     parser.add_argument('--interval-step', type=float, default=None,
                        help='Temperature interval for multi-threshold analysis (e.g., 0.5)')
@@ -1022,6 +1056,8 @@ Examples:
                 frame_skip=args.skip,
                 min_area=args.area,
                 include_waves=args.waves,
+                baseline_method=args.baseline,
+                percentile_value=args.percentile,
                 verbose=not args.quiet
             )
             
