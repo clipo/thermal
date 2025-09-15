@@ -1214,6 +1214,20 @@ Creates comparison visualizations showing detection differences between:
 - 80th/90th percentiles
 - Trimmed mean
 
+#### `check_altitude_consistency.py`
+Verify altitude extraction consistency between frame footprints and SGD georeferencing:
+
+```bash
+python check_altitude_consistency.py /path/to/data
+```
+
+Outputs:
+- Altitude comparison between both systems (frame-by-frame)
+- Statistics showing min/max/average altitudes
+- Ground coverage impact at different altitudes
+- Verification that both systems use identical EXIF values
+- Warning if altitudes don't match or are outside typical survey range
+
 ### KML Verification Tools
 
 #### `test_kml_paths.py`
@@ -1554,6 +1568,27 @@ Without these steps, cold rocks, shadows, and land features would create false p
 - Automatic extraction of matching RGB region
 - Proper scaling for pixel-perfect alignment
 
+#### Altitude and Ground Coverage
+
+The system automatically extracts flight altitude from EXIF metadata for accurate ground coverage calculations:
+
+- **Automatic EXIF extraction**: Reads GPS altitude from image metadata (no hardcoded defaults)
+- **Consistent georeferencing**: Both SGD detection and frame footprints use identical altitude values
+- **Accurate ground coverage**: Calculates exact footprint size based on altitude and FOV (45° thermal)
+- **Verification tool**: `check_altitude_consistency.py` ensures both systems use the same altitude
+
+Example ground coverage at different altitudes (45° FOV, 640x512 pixels):
+- 300m: 248.5m wide, 0.39m/pixel
+- 350m: 289.9m wide, 0.45m/pixel
+- 400m: 331.4m wide, 0.52m/pixel
+- 450m: 372.8m wide, 0.58m/pixel
+- 500m: 414.2m wide, 0.65m/pixel
+
+Verify altitude consistency:
+```bash
+python check_altitude_consistency.py /path/to/data
+```
+
 #### Orientation/Heading Correction
 The system automatically handles drone orientation for accurate georeferencing:
 - **Dual-source heading extraction**:
@@ -1581,6 +1616,24 @@ The system automatically handles drone orientation for accurate georeferencing:
 - Conversion: °C = Raw/10 - 273.15
 - Typical ocean: 24-26°C
 - SGD plumes: 1-3°C cooler
+
+#### Ocean Baseline Temperature Methods
+
+The system offers multiple ocean baseline calculation methods to handle various water conditions:
+
+- **Median (default)**: Standard median of all ocean temperatures
+- **Upper Quartile**: Uses 75th percentile, better for cold-water dominated frames
+- **Percentile 80/90**: Uses 80th or 90th percentile for extreme cold conditions
+- **Trimmed Mean**: Averages middle 50% of values, excluding extremes
+
+Choose the method based on your specific conditions:
+```bash
+# For frames with significant cold water (upwelling, currents)
+python sgd_autodetect.py --data /path/to/data --baseline upper_quartile
+
+# For extreme conditions with very cold water dominating
+python sgd_autodetect.py --data /path/to/data --baseline percentile_90
+```
 
 ### SGD Detection Algorithm
 1. Segment ocean from land/rocks
