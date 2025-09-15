@@ -60,6 +60,7 @@ class SGDAutoDetector:
                  baseline_method='median',
                  percentile_value=75,
                  window_size=0,
+                 edge_aware=False,
                  verbose=True):
         """
         Initialize automated SGD detector
@@ -98,6 +99,7 @@ class SGDAutoDetector:
         self.baseline_method = baseline_method
         self.percentile_value = percentile_value
         self.window_size = window_size
+        self.edge_aware = edge_aware
         self.verbose = verbose
 
         # Parse baseline method parameters
@@ -118,18 +120,34 @@ class SGDAutoDetector:
         model_path = self.select_area_model(self.data_dir)
 
         if window_size > 0:
-            # Use moving average detector for more stable baselines
-            from sgd_detector_moving_avg import MovingAverageSGDDetector
-            self.detector = MovingAverageSGDDetector(
-                data_dir=str(self.data_dir),
-                model_name=model_path,
-                temp_threshold=self.temp_threshold,
-                min_area=self.min_area,
-                window_size=self.window_size,
-                **baseline_params
-            )
-            if self.verbose:
-                print(f"✓ Using moving average baseline (window={window_size} frames)")
+            # Check if edge-aware is also requested
+            if hasattr(self, 'edge_aware') and self.edge_aware:
+                from sgd_detector_edge_aware import EdgeAwareSGDDetector
+                self.detector = EdgeAwareSGDDetector(
+                    data_dir=str(self.data_dir),
+                    model_name=model_path,
+                    temp_threshold=self.temp_threshold,
+                    min_area=self.min_area,
+                    window_size=self.window_size,
+                    edge_buffer=50,
+                    edge_shore_distance=20,
+                    **baseline_params
+                )
+                if self.verbose:
+                    print(f"✓ Using edge-aware moving average (window={window_size}, edge buffer=50px)")
+            else:
+                # Use standard moving average detector
+                from sgd_detector_moving_avg import MovingAverageSGDDetector
+                self.detector = MovingAverageSGDDetector(
+                    data_dir=str(self.data_dir),
+                    model_name=model_path,
+                    temp_threshold=self.temp_threshold,
+                    min_area=self.min_area,
+                    window_size=self.window_size,
+                    **baseline_params
+                )
+                if self.verbose:
+                    print(f"✓ Using moving average baseline (window={window_size} frames)")
         else:
             # Use standard improved detector
             self.detector = ImprovedSGDDetector(
@@ -740,6 +758,8 @@ Examples:
                        help='Custom percentile value if using percentile baseline (default: 75)')
     parser.add_argument('--window', type=int, default=0,
                        help='Moving average window size for baseline (0=disabled, 5=recommended for turns)')
+    parser.add_argument('--edge-aware', action='store_true',
+                       help='Enable edge-aware detection for better frame-to-frame continuity')
 
     # Multi-threshold analysis options
     parser.add_argument('--interval-step', type=float, default=None,
@@ -1079,6 +1099,7 @@ Examples:
                 baseline_method=args.baseline,
                 percentile_value=args.percentile,
                 window_size=args.window,
+                edge_aware=args.edge_aware,
                 verbose=not args.quiet
             )
             
