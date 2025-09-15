@@ -59,10 +59,11 @@ class SGDAutoDetector:
                  include_waves=False,
                  baseline_method='median',
                  percentile_value=75,
+                 window_size=0,
                  verbose=True):
         """
         Initialize automated SGD detector
-        
+
         Args:
             data_dir: Directory containing MAX_*.JPG and IRX_*.irg files
             output_file: Output KML filename
@@ -73,6 +74,7 @@ class SGDAutoDetector:
             include_waves: Include wave areas in ocean mask
             baseline_method: Method for calculating ocean baseline ('median', 'upper_quartile', etc.)
             percentile_value: Percentile value if using custom percentile baseline
+            window_size: Moving average window size (0=disabled, 5=recommended)
             verbose: Show detailed progress
         """
         self.data_dir = Path(data_dir)
@@ -95,6 +97,7 @@ class SGDAutoDetector:
         self.include_waves = include_waves
         self.baseline_method = baseline_method
         self.percentile_value = percentile_value
+        self.window_size = window_size
         self.verbose = verbose
 
         # Parse baseline method parameters
@@ -114,14 +117,29 @@ class SGDAutoDetector:
         # Get the model path for ML segmentation
         model_path = self.select_area_model(self.data_dir)
 
-        self.detector = ImprovedSGDDetector(
-            base_path=str(self.data_dir),
-            temp_threshold=self.temp_threshold,
-            min_area=self.min_area,
-            use_ml=True,
-            ml_model_path=model_path,
-            **baseline_params
-        )
+        if window_size > 0:
+            # Use moving average detector for more stable baselines
+            from sgd_detector_moving_avg import MovingAverageSGDDetector
+            self.detector = MovingAverageSGDDetector(
+                data_dir=str(self.data_dir),
+                model_name=model_path,
+                temp_threshold=self.temp_threshold,
+                min_area=self.min_area,
+                window_size=self.window_size,
+                **baseline_params
+            )
+            if self.verbose:
+                print(f"✓ Using moving average baseline (window={window_size} frames)")
+        else:
+            # Use standard improved detector
+            self.detector = ImprovedSGDDetector(
+                base_path=str(self.data_dir),
+                temp_threshold=self.temp_threshold,
+                min_area=self.min_area,
+                use_ml=True,
+                ml_model_path=model_path,
+                **baseline_params
+            )
 
         # Note: ImprovedSGDDetector inherits from IntegratedSGDDetector
         # so it should have ML support if needed
@@ -720,6 +738,8 @@ Examples:
                        help='Method for calculating ocean baseline temperature (default: median)')
     parser.add_argument('--percentile', type=float, default=75,
                        help='Custom percentile value if using percentile baseline (default: 75)')
+    parser.add_argument('--window', type=int, default=0,
+                       help='Moving average window size for baseline (0=disabled, 5=recommended for turns)')
 
     # Multi-threshold analysis options
     parser.add_argument('--interval-step', type=float, default=None,
@@ -1058,6 +1078,7 @@ Examples:
                 include_waves=args.waves,
                 baseline_method=args.baseline,
                 percentile_value=args.percentile,
+                window_size=args.window,
                 verbose=not args.quiet
             )
             
