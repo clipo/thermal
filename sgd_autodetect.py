@@ -61,6 +61,8 @@ class SGDAutoDetector:
                  percentile_value=75,
                  window_size=0,
                  edge_aware=False,
+                 filter_glint=False,
+                 glint_threshold=0.15,
                  verbose=True):
         """
         Initialize automated SGD detector
@@ -100,6 +102,8 @@ class SGDAutoDetector:
         self.percentile_value = percentile_value
         self.window_size = window_size
         self.edge_aware = edge_aware
+        self.filter_glint = filter_glint
+        self.glint_threshold = glint_threshold
         self.verbose = verbose
 
         # Parse baseline method parameters
@@ -156,6 +160,8 @@ class SGDAutoDetector:
                 min_area=self.min_area,
                 use_ml=True,
                 ml_model_path=model_path,
+                detect_glint=self.filter_glint,
+                glint_area_threshold=self.glint_threshold,
                 **baseline_params
             )
 
@@ -761,6 +767,12 @@ Examples:
     parser.add_argument('--edge-aware', action='store_true',
                        help='Enable edge-aware detection for better frame-to-frame continuity')
 
+    # Sun glint detection options
+    parser.add_argument('--filter-glint', action='store_true',
+                       help='Enable sun glint detection to filter false positives from turns')
+    parser.add_argument('--glint-threshold', type=float, default=0.15,
+                       help='Area threshold for glint detection (0.15 = 15%% of ocean area)')
+
     # Multi-threshold analysis options
     parser.add_argument('--interval-step', type=float, default=None,
                        help='Temperature interval for multi-threshold analysis (e.g., 0.5)')
@@ -1100,6 +1112,8 @@ Examples:
                 percentile_value=args.percentile,
                 window_size=args.window,
                 edge_aware=args.edge_aware,
+                filter_glint=args.filter_glint,
+                glint_threshold=args.glint_threshold,
                 verbose=not args.quiet
             )
             

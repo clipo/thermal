@@ -11,6 +11,7 @@ from pathlib import Path
 from sgd_detector_integrated import IntegratedSGDDetector
 from scipy import ndimage
 from skimage import measure
+from sgd_glint_detector import SunGlintDetector
 
 
 class ImprovedSGDDetector(IntegratedSGDDetector):
@@ -32,7 +33,9 @@ class ImprovedSGDDetector(IntegratedSGDDetector):
                  percentile_value=75,
                  trim_percentage=25,
                  use_ml=True,
-                 ml_model_path="segmentation_model.pkl"):
+                 ml_model_path="segmentation_model.pkl",
+                 detect_glint=True,
+                 glint_area_threshold=0.15):
         """
         Initialize improved SGD detector.
 
@@ -60,6 +63,12 @@ class ImprovedSGDDetector(IntegratedSGDDetector):
         self.baseline_method = baseline_method
         self.percentile_value = percentile_value
         self.trim_percentage = trim_percentage
+
+        # Sun glint detection
+        self.detect_glint = detect_glint
+        self.glint_area_threshold = glint_area_threshold
+        if self.detect_glint:
+            self.glint_detector = SunGlintDetector(area_threshold=glint_area_threshold)
 
     def calculate_ocean_baseline(self, ocean_temps):
         """
@@ -239,6 +248,56 @@ class ImprovedSGDDetector(IntegratedSGDDetector):
             })
 
         return sgd_mask, plume_info, characteristics
+
+    def process_frame(self, frame_number, visualize=False, include_waves=False):
+        """
+        Process a single frame with sun glint detection.
+
+        Args:
+            frame_number: Frame number to process
+            visualize: Whether to visualize results
+            include_waves: Whether to include wave areas in ocean mask
+
+        Returns:
+            dict: Frame processing results with glint detection
+        """
+        # Call parent process_frame
+        result = super().process_frame(frame_number, visualize=False, include_waves=include_waves)
+
+        if result is None:
+            return None
+
+        # Add sun glint detection if enabled
+        if self.detect_glint and result.get('data') and result.get('masks'):
+            rgb = result['data'].get('rgb_aligned')
+            thermal = result['data'].get('thermal')
+            ocean_mask = result['masks'].get('ocean')
+            sgd_mask = result.get('sgd_mask')
+
+            if rgb is not None and thermal is not None and ocean_mask is not None:
+                # Check for sun glint
+                glint_analysis = self.glint_detector.detect_turn_glint(
+                    rgb, thermal, ocean_mask, sgd_mask,
+                    check_continuity=True
+                )
+
+                result['glint_analysis'] = glint_analysis
+
+                # If glint detected with high confidence, flag the frame
+                if glint_analysis['has_glint']:
+                    print(f"  ⚠ Sun glint detected in frame {frame_number}: {glint_analysis['summary']}")
+
+                    # Optionally remove SGD detections from glint frames
+                    if glint_analysis['confidence'] > 0.7:  # High confidence glint
+                        result['plume_info'] = []  # Clear SGD detections
+                        result['sgd_mask'] = np.zeros_like(sgd_mask, dtype=bool) if sgd_mask is not None else None
+                        result['characteristics'] = {}
+                        result['glint_filtered'] = True
+
+        if visualize:
+            self.visualize_detection(result)
+
+        return result
 
     def compare_baseline_methods(self, frame_number):
         """
