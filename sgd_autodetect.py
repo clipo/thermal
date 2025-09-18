@@ -695,30 +695,6 @@ class SGDAutoDetector:
             print("  - Lowering temperature threshold")
             print("  - Including wave areas (--waves)")
             print("  - Reducing minimum area")
-        
-        # Generate frame footprints after completion
-        footprint_output = self.output_file.replace('.kml', '-footprint.kml')
-        print(f"\nGenerating frame footprints...")
-        try:
-            import subprocess
-            result = subprocess.run(
-                ['python', 'generate_frame_footprints.py',
-                 '--data', str(self.data_dir),
-                 '--output', footprint_output],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            if result.returncode == 0:
-                print(f"✓ Frame footprints saved: {footprint_output}")
-            else:
-                print(f"⚠ Frame footprint generation failed: {result.stderr}")
-        except subprocess.CalledProcessError as e:
-            print(f"⚠ Could not generate frame footprints: {e.stderr}")
-        except FileNotFoundError:
-            print("⚠ generate_frame_footprints.py not found in current directory")
-        except Exception as e:
-            print(f"⚠ Unexpected error generating frame footprints: {e}")
 
         print("\n" + "="*60)
         print("Done!")
@@ -1313,7 +1289,40 @@ Examples:
         print(f"🗺️  Aggregated KML: sgd_output/{args.output}")
         print(f"📊 Aggregated summary: {summary_path}")
         print("="*60)
-    
+
+    # Generate frame footprints for the entire flight (once at the end)
+    print("\nGenerating frame footprints for entire flight...")
+
+    # Determine which directory to use for footprints
+    footprint_data_dir = args.data  # Use the base directory
+
+    # Determine output name for footprint
+    if args.output.endswith('.kml'):
+        footprint_output = Path("sgd_output") / args.output.replace('.kml', '-footprint.kml')
+    else:
+        footprint_output = Path("sgd_output") / (args.output + '-footprint.kml')
+
+    try:
+        import subprocess
+        result = subprocess.run(
+            ['python', 'generate_frame_footprints.py',
+             '--data', str(footprint_data_dir),
+             '--output', str(footprint_output)],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        if result.returncode == 0:
+            print(f"✓ Frame footprints saved: {footprint_output}")
+        else:
+            print(f"⚠ Frame footprint generation failed: {result.stderr}")
+    except subprocess.CalledProcessError as e:
+        print(f"⚠ Could not generate frame footprints: {e.stderr}")
+    except FileNotFoundError:
+        print("⚠ generate_frame_footprints.py not found in current directory")
+    except Exception as e:
+        print(f"⚠ Unexpected error generating frame footprints: {e}")
+
     sys.exit(0)
 
 

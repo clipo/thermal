@@ -68,6 +68,7 @@ This toolkit processes paired thermal (640×512) and RGB (4096×3072) images fro
 - **Frame Navigation**: Enhanced controls (±1, ±5, ±10, ±25 frames)
 - **Survey Management**: Start fresh surveys while preserving previous data
 - **Progress Tracking**: Real-time progress bars and statistics
+- **Frame Footprints**: Automatic generation of survey coverage KML files
 
 ## Detection Pipeline
 
@@ -1733,6 +1734,7 @@ All outputs are organized in the `sgd_output/` directory with clear naming conve
 ```
 sgd_output/
 ├── your_output.kml                 # Main KML with SGD polygons
+├── your_output-footprint.kml       # Survey frame coverage footprints (auto-generated)
 ├── your_output_merged.kml          # Merged overlapping polygons
 ├── your_output_summary.json        # Detection statistics
 └── your_output.geojson            # GeoJSON format (if enabled)
