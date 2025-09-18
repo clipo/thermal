@@ -696,6 +696,30 @@ class SGDAutoDetector:
             print("  - Including wave areas (--waves)")
             print("  - Reducing minimum area")
         
+        # Generate frame footprints after completion
+        footprint_output = self.output_file.replace('.kml', '-footprint.kml')
+        print(f"\nGenerating frame footprints...")
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['python', 'generate_frame_footprints.py',
+                 '--data', str(self.data_dir),
+                 '--output', footprint_output],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            if result.returncode == 0:
+                print(f"✓ Frame footprints saved: {footprint_output}")
+            else:
+                print(f"⚠ Frame footprint generation failed: {result.stderr}")
+        except subprocess.CalledProcessError as e:
+            print(f"⚠ Could not generate frame footprints: {e.stderr}")
+        except FileNotFoundError:
+            print("⚠ generate_frame_footprints.py not found in current directory")
+        except Exception as e:
+            print(f"⚠ Unexpected error generating frame footprints: {e}")
+
         print("\n" + "="*60)
         print("Done!")
         return self.stats
