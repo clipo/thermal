@@ -247,7 +247,21 @@ class IntegratedSGDDetector:
         ocean_mask = morphology.remove_small_objects(ocean_mask, min_size=100)
         land_mask = morphology.remove_small_objects(land_mask, min_size=100)
         wave_mask = morphology.remove_small_objects(wave_mask, min_size=25)
-        
+
+        # Keep only the largest contiguous ocean area
+        # This prevents small landlocked areas from being misclassified as ocean
+        from skimage import measure
+        ocean_labels = measure.label(ocean_mask, connectivity=2)
+        if ocean_labels.max() > 0:
+            # Find the largest connected component
+            unique_labels, counts = np.unique(ocean_labels[ocean_labels > 0], return_counts=True)
+            if len(unique_labels) > 0:
+                largest_label = unique_labels[np.argmax(counts)]
+                ocean_mask = (ocean_labels == largest_label)
+
+                # Update land mask to include the removed small "ocean" areas
+                land_mask = ~(ocean_mask | wave_mask)
+
         # Fill small holes
         ocean_mask = morphology.remove_small_holes(ocean_mask, area_threshold=200)
         land_mask = morphology.remove_small_holes(land_mask, area_threshold=200)
