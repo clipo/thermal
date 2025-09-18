@@ -1296,24 +1296,22 @@ Examples:
     # Determine which directory to use for footprints
     footprint_data_dir = args.data  # Use the base directory
 
-    # Determine output name for footprint
-    if args.output.endswith('.kml'):
-        footprint_output = Path("sgd_output") / args.output.replace('.kml', '-footprint.kml')
-    else:
-        footprint_output = Path("sgd_output") / (args.output + '-footprint.kml')
+    # Determine output name for footprint (without sgd_output/ prefix since generate_frame_footprints.py adds it)
+    output_basename = Path(args.output).stem  # Get base name without extension
+    footprint_output = f"{output_basename}-footprint.kml"
 
     try:
         import subprocess
         result = subprocess.run(
             ['python', 'generate_frame_footprints.py',
              '--data', str(footprint_data_dir),
-             '--output', str(footprint_output)],
+             '--output', footprint_output],
             capture_output=True,
             text=True,
             check=True
         )
         if result.returncode == 0:
-            print(f"✓ Frame footprints saved: {footprint_output}")
+            print(f"✓ Frame footprints saved: sgd_output/{footprint_output}")
         else:
             print(f"⚠ Frame footprint generation failed: {result.stderr}")
     except subprocess.CalledProcessError as e:
