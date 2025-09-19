@@ -256,8 +256,16 @@ class IntegratedSGDDetector:
             # Find the largest connected component
             unique_labels, counts = np.unique(ocean_labels[ocean_labels > 0], return_counts=True)
             if len(unique_labels) > 0:
-                largest_label = unique_labels[np.argmax(counts)]
-                ocean_mask = (ocean_labels == largest_label)
+                largest_count = np.max(counts)
+                # Only keep if the largest area is significant (>5% of image)
+                # This prevents keeping small misclassified patches when drone is over land
+                total_pixels = ocean_mask.size
+                if largest_count > total_pixels * 0.05:  # At least 5% of image
+                    largest_label = unique_labels[np.argmax(counts)]
+                    ocean_mask = (ocean_labels == largest_label)
+                else:
+                    # No significant ocean area - drone is over land
+                    ocean_mask = np.zeros_like(ocean_mask, dtype=bool)
 
                 # Update land mask to include the removed small "ocean" areas
                 land_mask = ~(ocean_mask | wave_mask)
@@ -288,8 +296,9 @@ class IntegratedSGDDetector:
         """Detect SGD plumes in thermal data"""
         # Get ocean statistics
         ocean_temps = thermal[masks['ocean']]
-        
+
         if len(ocean_temps) == 0:
+            # No ocean in frame (drone over land)
             return np.zeros_like(thermal, dtype=bool), [], {}
         
         # Robust statistics
@@ -387,11 +396,27 @@ class IntegratedSGDDetector:
         else:
             masks_for_sgd = masks
         
+        # Check if there's any ocean in the frame
+        ocean_fraction = masks_for_sgd['ocean'].sum() / masks_for_sgd['ocean'].size
+        if ocean_fraction < 0.01:  # Less than 1% ocean
+            print(f"  No ocean detected (drone over land)")
+            result = {
+                'frame_number': frame_number,
+                'data': data,
+                'masks': masks,
+                'sgd_mask': np.zeros_like(data['thermal'], dtype=bool),
+                'plume_info': [],
+                'characteristics': {'no_ocean': True, 'ocean_fraction': ocean_fraction}
+            }
+            if visualize:
+                self.visualize_detection(result)
+            return result
+
         # Detect SGD
         sgd_mask, plume_info, characteristics = self.detect_sgd_plumes(
             data['thermal'], masks_for_sgd
         )
-        
+
         print(f"  Found {len(plume_info)} SGD plumes")
         if characteristics:
             print(f"  Temperature anomaly: {characteristics['temp_anomaly']:.1f}°C")

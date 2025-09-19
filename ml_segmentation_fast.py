@@ -174,8 +174,16 @@ class FastMLSegmenter:
             # Find the largest connected component
             unique_labels, counts = np.unique(ocean_labels[ocean_labels > 0], return_counts=True)
             if len(unique_labels) > 0:
-                largest_label = unique_labels[np.argmax(counts)]
-                ocean_mask = (ocean_labels == largest_label)
+                largest_count = np.max(counts)
+                # Only keep if the largest area is significant (>5% of image)
+                # This prevents keeping small misclassified patches when drone is over land
+                total_pixels = ocean_mask.size
+                if largest_count > total_pixels * 0.05:  # At least 5% of image
+                    largest_label = unique_labels[np.argmax(counts)]
+                    ocean_mask = (ocean_labels == largest_label)
+                else:
+                    # No significant ocean area - drone is over land
+                    ocean_mask = np.zeros_like(ocean_mask, dtype=bool)
 
                 # Update land mask to include the removed small "ocean" areas
                 land_mask = ~(ocean_mask | wave_mask)
