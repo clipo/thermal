@@ -1165,6 +1165,12 @@ python sgd_viewer.py --data data/your_survey
 - `--window INT`: Moving average window size for baseline (0=disabled, 5=recommended for turns)
 - `--edge-aware`: Enable edge-aware detection for better frame-to-frame SGD continuity
 
+#### Sun Glint Filtering
+- `--filter-glint`: Enable sun glint detection to filter false positives from drone turns
+- `--glint-threshold FLOAT`: Area threshold for glint detection (default: 0.15 = 15% of ocean area)
+  - Lower values (0.10): More aggressive filtering
+  - Higher values (0.20): Less aggressive, only obvious glint
+
 #### Multi-Threshold Analysis
 - `--interval-step FLOAT`: Temperature interval for multi-threshold analysis (e.g., 0.5)
 - `--interval-step-number INT`: Number of threshold steps to analyze (default: 4)
@@ -1883,6 +1889,38 @@ frame,datetime,centroid_lat,centroid_lon,area_m2,area_pixels,temperature_anomaly
   ```
 - **Why it matters**: Standard detection requires SGDs within 5 pixels of shoreline. At frame edges, the shoreline may be cut off, causing valid SGDs to be rejected. Edge-aware detection ensures natural continuation across the 90%+ overlap between consecutive frames.
 - **Frame overlap analyzer**: Use `analyze_frame_overlap.py` to diagnose continuity issues between specific frames
+
+### ✅ Sun Glint Detection for False Positive Filtering (NEW!)
+- **Problem solved**: Rapid drone turns can cause sun glint that creates false cold anomalies mimicking SGD
+- **Multi-factor detection**: Analyzes RGB brightness, thermal patterns, and frame-to-frame continuity
+- **Automatic filtering**: Frames with high-confidence glint (>70%) have SGD detections removed
+- **Command-line control**: Use `--filter-glint` to enable
+  ```bash
+  # Enable sun glint filtering with default threshold
+  python sgd_autodetect.py --data "/path" --output output.kml --filter-glint
+
+  # Adjust glint sensitivity (0.10 = more aggressive, 0.20 = less aggressive)
+  python sgd_autodetect.py --data "/path" --output output.kml --filter-glint --glint-threshold 0.10
+  ```
+- **Why it matters**: Sun reflections during turns can create large cold areas that look like SGD. This feature prevents these false positives from being included in results.
+- **Best for**: Morning/evening flights, surveys with rapid heading changes, low sun angle conditions
+
+### ✅ Improved Ocean/Land Segmentation (NEW!)
+- **Problem solved**: Small misclassified patches and frames with no ocean were causing false SGD detections on land
+- **Minimum area threshold**: Ocean must cover >5% of image to be considered valid
+- **Largest component only**: Keeps only the largest contiguous ocean area, removing isolated patches
+- **No-ocean detection**: Properly handles frames where drone flies over land before reaching ocean
+- **Automatic filtering**: Small landlocked "ocean" patches are converted to land
+- **Why it matters**: Prevents SGD detection on land areas and handles flights that start inland
+- **Implementation**: Applied to both ML-based and rule-based segmentation methods
+
+### ✅ Automatic Frame Footprint Generation (NEW!)
+- **Problem solved**: Need to visualize survey coverage area alongside SGD detections
+- **Automatic generation**: Frame footprints KML created automatically after SGD detection completes
+- **Output naming**: Saved as `{output}-footprint.kml` in sgd_output directory
+- **Coverage visualization**: Shows ground footprint of all processed frames
+- **Why it matters**: Helps understand survey coverage and identify any gaps in data collection
+- **Usage**: Automatically runs unless an error occurs; view alongside SGD results in Google Earth
 
 ### ✅ Enhanced KML Output with Source File References (NEW!)
 - **Full file paths in KML descriptions**: Each SGD placemark now includes:
