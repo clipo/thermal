@@ -288,35 +288,26 @@ def get_configuration_interactive():
                 print_info("You can install later with: bash scripts/setup_sam.sh")
 
         if sam_available:
-            # Create prompts
-            print_info("\nSAM Prompt Creation")
-            print_info("Create prompts by clicking on representative image")
-            print_info("Controls:")
-            print_info("  - Numbers 1-4: Select class (ocean/land/rock/wave)")
-            print_info("  - Left click: Add foreground point")
-            print_info("  - Right click: Add background point")
-            print_info("  - S: Preview segmentation")
-            print_info("  - W: Save prompts")
-            print_info("  - Q: Quit\n")
+            # Create prompts using the new streamlined tool
+            print_info("\nSAM Prompt Creator & Batch Processor")
+            print_info("")
+            print_info("Simple workflow:")
+            print_info("  1. Left-click ocean areas (blue dots)")
+            print_info("  2. Right-click land areas to exclude (red X's)")
+            print_info("  3. Press W to save prompts")
+            print_info("  4. Press → to test on more images (optional)")
+            print_info("  5. Press P to process ALL images → DONE!")
+            print_info("")
+            print_warning("SAM prompts are image-specific - one set per flight usually works!")
+            print_info("")
 
             create_prompts = ask_question(
-                "Create SAM prompts now?",
+                "Create SAM prompts and process images now?",
                 default="y",
                 validation=validate_yes_no
             ).lower() in ['y', 'yes']
 
             if create_prompts:
-                # Use the new SAM-only prompt creator
-                print_info("\nLaunching SAM prompt creator...")
-                print_info("This tool lets you:")
-                print_info("  - Left-click ocean areas (blue points)")
-                print_info("  - Right-click land areas (red X's) to exclude")
-                print_info("  - See segmentation results immediately")
-                print_info("  - Press W to save (green border = saved)")
-                print_info("")
-                print_warning("IMPORTANT: SAM prompts are image-specific!")
-                print_info("You'll need to create prompts for each flight or similar image set.")
-                print_info("")
 
                 # Find a sample image
                 data_path = Path(config['data_dir'])
