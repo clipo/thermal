@@ -306,32 +306,54 @@ def get_configuration_interactive():
             ).lower() in ['y', 'yes']
 
             if create_prompts:
-                sam_path = Path(__file__).parent / "sam_segmenter.py"
-                try:
-                    result = subprocess.run(
-                        [sys.executable, str(sam_path), "--interactive", "--data", config['data_dir']],
-                        check=False
-                    )
-                    if result.returncode == 0:
-                        print_success("SAM prompts created!")
-                        # List available prompts
-                        prompts_dir = Path("prompts")
-                        if prompts_dir.exists():
-                            prompt_files = sorted(prompts_dir.glob("sam_prompts_*.json"),
-                                                key=lambda p: p.stat().st_mtime, reverse=True)
-                            if prompt_files:
-                                print_success(f"Found {len(prompt_files)} prompt files:")
-                                for i, pf in enumerate(prompt_files[:5], 1):
-                                    print(f"  {i}. {pf.name}")
+                # Use the comparison tool - it's simpler and shows results
+                print_info("\nLaunching interactive comparison tool...")
+                print_info("This tool lets you:")
+                print_info("  - Click on ocean and land areas")
+                print_info("  - See immediate results")
+                print_info("  - Compare with Random Forest if available")
+                print_info("")
 
-                                # Ask which to use
-                                config['sam_prompts'] = str(prompt_files[0])
-                                print_info(f"Will use: {prompt_files[0].name}")
-                    else:
-                        print_warning("Prompt creator exited. Continuing with wizard...")
-                except FileNotFoundError:
-                    print_error(f"Could not find SAM segmenter at {sam_path}")
-                    print_info("Continuing with wizard...")
+                # Find a sample image
+                data_path = Path(config['data_dir'])
+                rgb_images = list(data_path.glob("MAX_*.JPG"))
+                if not rgb_images:
+                    print_error(f"No MAX_*.JPG images found in {config['data_dir']}")
+                else:
+                    sample_image = str(rgb_images[len(rgb_images)//2])  # Use middle image
+                    print_info(f"Using sample image: {Path(sample_image).name}")
+
+                    # Check for RF model
+                    rf_model = "models/segmentation_model.pkl"
+                    rf_arg = f"--rf-model {rf_model}" if Path(rf_model).exists() else ""
+
+                    compare_path = Path(__file__).parent / "compare_sam_rf_interactive.py"
+                    try:
+                        result = subprocess.run(
+                            f'{sys.executable} {str(compare_path)} --image "{sample_image}" {rf_arg}',
+                            shell=True,
+                            check=False
+                        )
+                        if result.returncode == 0:
+                            print_success("SAM prompts created!")
+                            # List available prompts
+                            prompts_dir = Path("prompts")
+                            if prompts_dir.exists():
+                                prompt_files = sorted(prompts_dir.glob("sam_prompts_*.json"),
+                                                    key=lambda p: p.stat().st_mtime, reverse=True)
+                                if prompt_files:
+                                    print_success(f"Found {len(prompt_files)} prompt files:")
+                                    for i, pf in enumerate(prompt_files[:5], 1):
+                                        print(f"  {i}. {pf.name}")
+
+                                    # Ask which to use
+                                    config['sam_prompts'] = str(prompt_files[0])
+                                    print_info(f"Will use: {prompt_files[0].name}")
+                        else:
+                            print_warning("Prompt creator exited. Continuing with wizard...")
+                    except Exception as e:
+                        print_error(f"Error launching comparison tool: {e}")
+                        print_info("Continuing with wizard...")
             else:
                 print_info("Skipping prompt creation")
                 # Check for existing prompts

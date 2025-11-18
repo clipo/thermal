@@ -171,8 +171,55 @@ class InteractiveComparator:
         elif event.key == 'enter':
             self.segment_and_compare()
 
+        elif event.key == 'w':
+            self.save_prompts()
+
         elif event.key == 'q':
             plt.close()
+
+    def save_prompts(self):
+        """Save SAM prompts to JSON file"""
+        if not self.ocean_points and not self.land_points:
+            print("⚠️  No points to save! Add some points first.")
+            return
+
+        from pathlib import Path
+        from datetime import datetime
+        import json
+
+        # Create prompts directory
+        prompts_dir = Path("prompts")
+        prompts_dir.mkdir(exist_ok=True)
+
+        # Generate filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = prompts_dir / f"sam_prompts_{timestamp}.json"
+
+        # Format prompts
+        prompts = {}
+
+        if self.ocean_points:
+            prompts['ocean'] = {
+                'points': self.ocean_points,
+                'labels': [1] * len(self.ocean_points)  # All foreground
+            }
+
+        if self.land_points:
+            prompts['land'] = {
+                'points': self.land_points,
+                'labels': [1] * len(self.land_points)  # All foreground
+            }
+
+        # Save
+        with open(filename, 'w') as f:
+            json.dump(prompts, f, indent=2)
+
+        print(f"\n✓ Saved prompts to: {filename}")
+        print(f"  Ocean points: {len(self.ocean_points)}")
+        print(f"  Land points: {len(self.land_points)}")
+        print("\nYou can use these prompts with:")
+        print(f"  python scripts/sgd_detect_with_sam.py --prompts {filename}")
+        print()
 
     def update_display(self):
         """Update the display"""
@@ -211,7 +258,8 @@ POINTS ADDED:
   Land (red): {len(self.land_points)}
 
 KEYBOARD:
-  ENTER - Segment
+  ENTER - Segment & compare
+  W - Save prompts to file
   C - Clear points
   Q - Quit
 
@@ -219,10 +267,13 @@ STATUS:
   SAM: {'Ready' if SAM_AVAILABLE else 'Not available'}
   Random Forest: {'Ready' if self.rf_segmenter else 'Not available'}
 
-Add 3-5 ocean points,
-then press ENTER to segment!
+WORKFLOW:
+1. Click ocean points (left)
+2. Click land points (right)
+3. Press ENTER to see results
+4. Press W to save when happy!
         """, transform=self.axes[0, 1].transAxes,
-                              fontsize=11, family='monospace', va='center')
+                              fontsize=10, family='monospace', va='center')
         self.axes[0, 1].axis('off')
 
         # Bottom two will show results after segmentation

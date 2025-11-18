@@ -239,6 +239,7 @@ class InteractivePrompter:
     def __init__(self, segmenter, image_path):
         self.segmenter = segmenter
         self.image = segmenter.load_image(image_path)
+        self.classes = segmenter.classes  # Copy class list
         self.prompts = {class_name: {'points': [], 'labels': []}
                        for class_name in segmenter.classes}
         self.current_class = 'ocean'
