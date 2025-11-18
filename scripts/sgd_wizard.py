@@ -618,8 +618,8 @@ def run_analysis(config):
         str(script_path),
         "--data", config['data_dir'],
         "--output", str(Path(config['output_dir']) / config['output_name']),
-        "--temp-threshold", str(config['temp_threshold']),
-        "--min-area", str(config['min_area']),
+        "--temp", str(config['temp_threshold']),  # Fixed: was --temp-threshold
+        "--area", str(config['min_area']),        # Fixed: was --min-area
     ]
 
     # Add detector type
@@ -631,12 +631,11 @@ def run_analysis(config):
     # Add ML options
     if config['use_ml'] and 'ml_model' in config:
         cmd.extend(["--model", config['ml_model']])
-    else:
-        cmd.append("--no-ml")
+    # Note: sgd_autodetect.py doesn't have --no-ml flag, it just won't use ML if no --model
 
     # Add advanced options
     if config.get('detect_glint', True):
-        cmd.append("--detect-glint")
+        cmd.append("--filter-glint")  # Fixed: was --detect-glint
 
     print_info(f"Running command:")
     print(f"{Colors.CYAN}{' '.join(cmd)}{Colors.ENDC}\n")
