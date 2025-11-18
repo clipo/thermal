@@ -305,54 +305,100 @@ class InteractivePrompter:
         for ax in self.axes:
             ax.clear()
 
-        # Show original image
+        # Left panel: Original image with clickable area
         self.ax_image.imshow(self.image)
-        self.ax_image.set_title(f'Click to add {self.current_class} points\n(Left=foreground, Right=background)')
+
+        # Show colored border to indicate current class
+        color_map = {
+            'ocean': 'blue',
+            'land': 'green',
+            'rock': 'gray',
+            'wave': 'cyan'
+        }
+        border_color = color_map.get(self.current_class, 'white')
+
+        self.ax_image.set_title(
+            f'👆 CLICK ON THE IMAGE 👆\n'
+            f'Currently selecting: {self.current_class.upper()} ({border_color})\n'
+            f'Left-click = include in {self.current_class}, Right-click = exclude',
+            fontsize=11, fontweight='bold', color=border_color
+        )
         self.ax_image.axis('off')
 
-        # Show points
+        # Add border
+        for spine in self.ax_image.spines.values():
+            spine.set_edgecolor(border_color)
+            spine.set_linewidth(4)
+            spine.set_visible(True)
+
+        # Middle panel: Show all your clicks with colors
         self.ax_points.imshow(self.image)
+
         for class_name, color in self.segmenter.class_colors.items():
             points = self.prompts[class_name]['points']
             labels = self.prompts[class_name]['labels']
             if points:
                 points = np.array(points)
-                fg_points = points[np.array(labels) == 1]
-                bg_points = points[np.array(labels) == 0]
+                # Only show "include" points (labels == 1)
+                include_points = points[np.array(labels) == 1]
 
-                if len(fg_points) > 0:
-                    self.ax_points.scatter(fg_points[:, 0], fg_points[:, 1],
-                                          c=[color], s=200, marker='o',
-                                          edgecolors='white', linewidths=2,
-                                          label=f'{class_name} (fg)')
-                if len(bg_points) > 0:
-                    self.ax_points.scatter(bg_points[:, 0], bg_points[:, 1],
-                                          c=[color], s=200, marker='x',
-                                          linewidths=3,
-                                          label=f'{class_name} (bg)')
+                if len(include_points) > 0:
+                    # Convert RGB color to matplotlib format
+                    color_norm = [c/255.0 for c in color]
+                    self.ax_points.scatter(include_points[:, 0], include_points[:, 1],
+                                          c=[color_norm], s=300, marker='o',
+                                          edgecolors='white', linewidths=3,
+                                          label=f'{class_name} ({len(include_points)} points)')
 
-        self.ax_points.set_title('Prompts')
+        self.ax_points.set_title('YOUR CLICKS\n(colored dots show what you marked)',
+                                fontsize=11, fontweight='bold')
         self.ax_points.axis('off')
-        self.ax_points.legend(loc='upper right', fontsize=8)
+        if any(self.prompts[c]['points'] for c in self.classes):
+            self.ax_points.legend(loc='upper right', fontsize=9)
 
-        # Instructions
-        self.ax_result.text(0.1, 0.9, """
-KEYBOARD SHORTCUTS:
-  1       Ocean mode
-  2       Land mode
-  3       Rock mode
-  4       Wave mode
+        # Right panel: Instructions (always visible, doesn't go away)
+        instructions = f"""
+╔══════════════════════════════════════╗
+║      HOW TO USE THIS TOOL            ║
+╔══════════════════════════════════════╗
 
-  S       Segment and show
-  C       Clear current class
-  W       Save prompts
-  Q       Quit
+STEP 1: SELECT WHAT TO MARK
+  Press 1 = Ocean (blue water)
+  Press 2 = Land (shore, rocks, sand)
+  Press 3 = Rock (if separate from land)
+  Press 4 = Wave (white foam)
 
-MOUSE:
-  Left    Add foreground point
-  Right   Add background point
-        """, transform=self.ax_result.transAxes,
-        fontsize=10, family='monospace', va='top')
+STEP 2: CLICK ON IMAGE (left panel)
+  Left Click  = "Include this"
+  Right Click = "Exclude this"
+
+  Example: Press 1, then left-click
+  on blue water 5-6 times
+
+STEP 3: PREVIEW YOUR WORK
+  Press S = See segmentation result
+  Press C = Clear current class
+
+STEP 4: SAVE WHEN HAPPY
+  Press W = Save prompts to file
+  Press Q = Quit
+
+CURRENT STATUS:
+  Selecting: {self.current_class.upper()}
+
+  Ocean: {len([p for p in self.prompts['ocean']['points']])} clicks
+  Land:  {len([p for p in self.prompts['land']['points']])} clicks
+  Rock:  {len([p for p in self.prompts['rock']['points']])} clicks
+  Wave:  {len([p for p in self.prompts['wave']['points']])} clicks
+
+TIP: 5-6 clicks per class is usually enough!
+Press S to preview your segmentation.
+        """
+
+        self.ax_result.text(0.05, 0.95, instructions,
+                           transform=self.ax_result.transAxes,
+                           fontsize=9, family='monospace', va='top',
+                           bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
         self.ax_result.axis('off')
 
         plt.draw()
@@ -410,10 +456,18 @@ MOUSE:
 
     def run(self):
         """Run the interactive prompter"""
-        print("\nInteractive SAM Prompter")
-        print("=" * 50)
-        print("Click on the image to add foreground/background points")
-        print("Press S to segment, W to save prompts, Q to quit")
+        print("\n" + "="*70)
+        print("INTERACTIVE SAM PROMPT CREATOR")
+        print("="*70)
+        print("\n📖 SIMPLE TUTORIAL:")
+        print("  1. Press '1' on your keyboard (selects Ocean)")
+        print("  2. Left-click on blue water in the image 5-6 times")
+        print("  3. Press '2' on your keyboard (selects Land)")
+        print("  4. Left-click on shore/rocks/land 5-6 times")
+        print("  5. Press 'S' to see the result")
+        print("  6. Press 'W' to save prompts when happy")
+        print("\n💡 TIP: The instructions stay visible on the right side!")
+        print("="*70 + "\n")
         plt.show()
 
 
