@@ -34,27 +34,53 @@ except ImportError:
 class IntegratedSGDDetector:
     """SGD Detector with built-in RGB-thermal alignment"""
     
-    def __init__(self, temp_threshold=1.0, min_area=50, base_path="data/100MEDIA", 
-                 use_ml=True, ml_model_path="segmentation_model.pkl"):
+    def __init__(self, temp_threshold=1.0, min_area=50, base_path="data/100MEDIA",
+                 use_ml=True, ml_model_path="segmentation_model.pkl",
+                 use_sam=False, sam_prompts_path=None):
         """
         Initialize integrated SGD detector
-        
+
         Parameters:
         - temp_threshold: Temperature difference (°C) below ocean mean for SGD
         - min_area: Minimum area (pixels) for valid SGD plume
         - base_path: Path to data directory
         - use_ml: Use ML segmentation if available (default True)
         - ml_model_path: Path to ML model file (default "segmentation_model.pkl")
+        - use_sam: Use SAM segmentation instead of Random Forest (default False)
+        - sam_prompts_path: Path to SAM prompts JSON file (required if use_sam=True)
         """
         self.temp_threshold = temp_threshold
         self.min_area = min_area
         self.base_path = Path(base_path)
         self.use_ml = use_ml
+        self.use_sam = use_sam
         self.ml_model_path = ml_model_path
-        
-        # Initialize ML segmenter if requested and available
+        self.sam_prompts_path = sam_prompts_path
+
+        # Initialize segmenter (SAM or Random Forest)
         self.ml_segmenter = None
-        if self.use_ml and ML_AVAILABLE:
+
+        if self.use_sam:
+            # Try to use SAM
+            try:
+                from sgd_toolkit.segmentation.sam_segmenter import SAMSegmenter
+                if sam_prompts_path and Path(sam_prompts_path).exists():
+                    self.ml_segmenter = SAMSegmenter(
+                        model_type='auto',  # Auto-select based on GPU (DGX→ViT-H, M3→ViT-B)
+                        prompts_path=sam_prompts_path
+                    )
+                    print(f"Using SAM-based segmentation with prompts: {sam_prompts_path}")
+                else:
+                    print(f"SAM prompts not found at {sam_prompts_path}")
+                    print("Create prompts with: python scripts/sam_segmenter.py --interactive")
+                    self.use_sam = False
+            except ImportError:
+                print("SAM not installed. Run: bash scripts/setup_sam.sh")
+                print("Falling back to Random Forest segmentation.")
+                self.use_sam = False
+
+        # Fall back to Random Forest if SAM not used/available
+        if not self.use_sam and self.use_ml and ML_AVAILABLE:
             self.ml_segmenter = FastMLSegmenter(model_path=ml_model_path)
             if self.ml_segmenter.classifier is not None:
                 print(f"Using fast ML-based segmentation with model: {ml_model_path}")
