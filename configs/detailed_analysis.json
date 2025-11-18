@@ -1,0 +1,20 @@
+{
+  "_description": "Detailed analysis configuration - Maximum sensitivity and comprehensive output",
+  "data_dir": "data/100MEDIA",
+  "output_name": "detailed_analysis",
+  "output_dir": "sgd_output",
+  "temp_threshold": 0.3,
+  "min_area": 25,
+  "detector": "improved",
+  "baseline_method": "upper_quartile",
+  "use_ml": true,
+  "ml_model": "segmentation_model.pkl",
+  "detect_glint": true,
+  "min_shore_distance": 3,
+  "max_shore_distance": 250,
+  "export_kml": true,
+  "export_geojson": true,
+  "export_csv": true,
+  "created_at": "2025-01-18T10:00:00",
+  "version": "1.0"
+}

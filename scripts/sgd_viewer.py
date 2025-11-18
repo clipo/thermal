@@ -11,12 +11,12 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button
 from matplotlib.patches import Circle
-from sgd_detector_integrated import IntegratedSGDDetector
+from sgd_toolkit.detectors import IntegratedSGDDetector
 try:
-    from sgd_georef_polygons import SGDPolygonGeoref
+    from sgd_toolkit.georeferencing.polygon_georef import SGDPolygonGeoref
     POLYGON_SUPPORT = True
 except ImportError:
-    from sgd_georef import SGDGeoref
+    from sgd_toolkit.georeferencing import SGDGeoref
     POLYGON_SUPPORT = False
 from pathlib import Path
 import numpy as np

@@ -30,6 +30,25 @@ ocean_output/
 thermal_alignment.json
 sgd_detections.geojson
 
+# Cache and temporary files
+*_cache.pkl
+exif_analysis.json
+sgd_aggregate.json
+temporal_data_cache.pkl
+
+# User-generated config files (keep templates)
+sgd_config.json
+my_*.json
+!configs/*.json
+
+# SAM prompts (user-specific, but keep examples and README)
+prompts/*.json
+!prompts/example_*.json
+!prompts/README.md
+
+# SAM model checkpoints (large files)
+models/sam/*.pth
+
 # IDE
 .idea/
 .vscode/

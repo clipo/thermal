@@ -12,7 +12,7 @@ Usage:
 import argparse
 import sys
 from pathlib import Path
-from generate_frame_footprints import ThermalFrameMapper
+from sgd_toolkit.georeferencing.footprint_generator import ThermalFrameMapper
 
 # The ThermalFrameMapper now includes proper heading extraction and rotation
 

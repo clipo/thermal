@@ -7,7 +7,7 @@ Provides more stable detection across frames by averaging ocean temperatures
 import numpy as np
 from collections import deque
 from pathlib import Path
-from sgd_detector_improved import ImprovedSGDDetector
+from sgd_toolkit.detectors.improved import ImprovedSGDDetector
 from scipy import ndimage
 from skimage import measure
 

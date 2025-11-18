@@ -23,14 +23,13 @@ from tqdm import tqdm
 import time
 
 # Import core detection modules
-from sgd_detector_integrated import IntegratedSGDDetector
-from sgd_detector_improved import ImprovedSGDDetector
+from sgd_toolkit.detectors import IntegratedSGDDetector, ImprovedSGDDetector
 try:
-    from sgd_georef_polygons import SGDPolygonGeoref
+    from sgd_toolkit.georeferencing.polygon_georef import SGDPolygonGeoref
     POLYGON_SUPPORT = True
 except ImportError:
     print("Warning: Polygon support not available, using point-based georeferencing")
-    from sgd_georef import SGDGeoref
+    from sgd_toolkit.georeferencing import SGDGeoref
     POLYGON_SUPPORT = False
 
 

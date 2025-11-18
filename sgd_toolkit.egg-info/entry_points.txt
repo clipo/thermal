@@ -1,0 +1,5 @@
+[console_scripts]
+sgd-autodetect = scripts.sgd_autodetect:main
+sgd-coverage = scripts.generate_coverage_map:main
+sgd-train = scripts.train_segmentation:main
+sgd-viewer = scripts.sgd_viewer:main

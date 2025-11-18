@@ -290,7 +290,55 @@ class SegmentationTrainer:
         # Auto-save every 10 samples
         if len(self.training_data) % 10 == 0:
             self.save_training_data()
-    
+
+    def on_key(self, event):
+        """Handle keyboard shortcuts"""
+        key = event.key
+
+        # Navigation keys
+        if key in ['n', 'right']:
+            self.next_frame(None)
+        elif key in ['p', 'left']:
+            self.prev_frame(None)
+        elif key == 'r':
+            self.random_frame(None)
+        elif key == ']':
+            self.skip_forward(5)
+        elif key == '}':
+            self.skip_forward(10)
+        elif key == '[':
+            self.skip_backward(5)
+        elif key == '{':
+            self.skip_backward(10)
+
+        # Action keys
+        elif key == 't':
+            self.train_classifier(None)
+        elif key == 's':
+            self.test_classifier(None)
+        elif key == 'c':
+            self.clear_frame_labels(None)
+        elif key == 'q':
+            self.save_and_exit(None)
+
+        # Number keys for quick label selection
+        elif key == '1':
+            self.current_label = 'ocean'
+            self.radio.set_active(0)
+            self.update_display()
+        elif key == '2':
+            self.current_label = 'land'
+            self.radio.set_active(1)
+            self.update_display()
+        elif key == '3':
+            self.current_label = 'rock'
+            self.radio.set_active(2)
+            self.update_display()
+        elif key == '4':
+            self.current_label = 'wave'
+            self.radio.set_active(3)
+            self.update_display()
+
     def update_display(self):
         """Update the display"""
         # Clear axes
@@ -362,7 +410,34 @@ class SegmentationTrainer:
             self.current_frame_idx -= 1
             self.load_frame(self.frames[self.current_frame_idx])
             self.update_display()
-    
+
+    def skip_forward(self, n):
+        """Skip forward n frames"""
+        new_idx = min(self.current_frame_idx + n, len(self.frames) - 1)
+        if new_idx != self.current_frame_idx:
+            self.current_frame_idx = new_idx
+            self.load_frame(self.frames[self.current_frame_idx])
+            self.update_display()
+            self.show_status(f"Skipped to frame {self.current_frame_idx + 1}/{len(self.frames)}", 'blue')
+
+    def skip_backward(self, n):
+        """Skip backward n frames"""
+        new_idx = max(self.current_frame_idx - n, 0)
+        if new_idx != self.current_frame_idx:
+            self.current_frame_idx = new_idx
+            self.load_frame(self.frames[self.current_frame_idx])
+            self.update_display()
+            self.show_status(f"Skipped to frame {self.current_frame_idx + 1}/{len(self.frames)}", 'blue')
+
+    def random_frame(self, event):
+        """Jump to a random frame"""
+        import random
+        new_idx = random.randint(0, len(self.frames) - 1)
+        self.current_frame_idx = new_idx
+        self.load_frame(self.frames[self.current_frame_idx])
+        self.update_display()
+        self.show_status(f"Random frame {self.current_frame_idx + 1}/{len(self.frames)}", 'cyan')
+
     def train_classifier(self, event):
         """Train a classifier on collected data"""
         if len(self.training_data) < 40:
@@ -584,27 +659,40 @@ class SegmentationTrainer:
         self.btn_clear.on_clicked(self.clear_frame_labels)
         self.btn_save.on_clicked(self.save_and_exit)
         
-        # Connect click handler
+        # Connect event handlers
         self.fig.canvas.mpl_connect('button_press_event', self.on_click)
-        
+        self.fig.canvas.mpl_connect('key_press_event', self.on_key)
+
         # Instructions
         ax_inst = plt.subplot(2, 3, 6)
         ax_inst.axis('off')
         instructions = """
 INSTRUCTIONS:
-1. Select label type (ocean/land/rock/wave)
-2. Click on image regions to label them
-3. Navigate frames with Prev/Next
-4. Press 'Train' when you have enough labels
-5. Press 'Test' to see ML segmentation
-6. Press 'Save & Continue' to proceed to detection
+Click on regions to label them for training
 
-Tips:
-- Label diverse examples
-- Include edge cases
-- Label from multiple frames
-- Need 40+ samples to train
-- IMPORTANT: Press 'Train' before 'Save & Continue'
+NAVIGATION:
+  N/→     Next frame
+  P/←     Previous frame
+  R       Random frame
+  ]       Skip +5 frames
+  }       Skip +10 frames
+  [       Skip -5 frames
+  {       Skip -10 frames
+
+LABELING:
+  1       Ocean mode
+  2       Land mode
+  3       Rock mode
+  4       Wave mode
+
+ACTIONS:
+  T       Train classifier
+  S       Test/segment
+  C       Clear labels
+  Q       Save & quit
+
+Tips: Label 5-10 diverse frames
+      Need 40+ samples to train
         """
         ax_inst.text(0.1, 0.9, instructions, transform=ax_inst.transAxes,
                     fontsize=9, family='monospace', va='top')

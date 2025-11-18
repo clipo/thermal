@@ -5,7 +5,7 @@ Handles SGD detection at frame boundaries to ensure continuity across overlappin
 """
 
 import numpy as np
-from sgd_detector_moving_avg import MovingAverageSGDDetector
+from sgd_toolkit.detectors.temporal import MovingAverageSGDDetector
 from scipy import ndimage
 from skimage import measure
 

@@ -1,0 +1,46 @@
+{
+  "description": "Example SAM prompts for coastal rocky environment",
+  "environment": "Rocky shoreline with clear ocean",
+  "date_created": "2025-01-18",
+  "image_source": "Autel 640T RGB imagery (4096x3072)",
+  "usage": "Load with: python scripts/sam_segmenter.py --prompts prompts/example_coastal_rocky.json",
+
+  "ocean": {
+    "points": [
+      [500, 1500],
+      [1000, 1800],
+      [1500, 2000]
+    ],
+    "labels": [1, 1, 1],
+    "notes": "Click multiple ocean locations (deep water, shallow water, different lighting)"
+  },
+
+  "land": {
+    "points": [
+      [300, 500],
+      [800, 700],
+      [1200, 400]
+    ],
+    "labels": [1, 1, 1],
+    "notes": "Include vegetation, sand, and dry land areas"
+  },
+
+  "rock": {
+    "points": [
+      [200, 1200],
+      [600, 1400],
+      [400, 1100]
+    ],
+    "labels": [1, 1, 1],
+    "notes": "Rocky shores, cliffs, and boulders at ocean boundary"
+  },
+
+  "wave": {
+    "points": [
+      [900, 1600],
+      [1100, 1700]
+    ],
+    "labels": [1, 1],
+    "notes": "White foam, breaking waves, whitecaps"
+  }
+}

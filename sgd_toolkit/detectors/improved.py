@@ -8,10 +8,10 @@ baseline calculations to handle cases where cold plumes dominate the frame.
 
 import numpy as np
 from pathlib import Path
-from sgd_detector_integrated import IntegratedSGDDetector
+from sgd_toolkit.detectors.base import IntegratedSGDDetector
 from scipy import ndimage
 from skimage import measure
-from sgd_glint_detector import SunGlintDetector
+from sgd_toolkit.utils.glint_detector import SunGlintDetector
 
 
 class ImprovedSGDDetector(IntegratedSGDDetector):
