@@ -306,12 +306,16 @@ def get_configuration_interactive():
             ).lower() in ['y', 'yes']
 
             if create_prompts:
-                # Use the comparison tool - it's simpler and shows results
-                print_info("\nLaunching interactive comparison tool...")
+                # Use the new SAM-only prompt creator
+                print_info("\nLaunching SAM prompt creator...")
                 print_info("This tool lets you:")
-                print_info("  - Click on ocean and land areas")
-                print_info("  - See immediate results")
-                print_info("  - Compare with Random Forest if available")
+                print_info("  - Left-click ocean areas (blue points)")
+                print_info("  - Right-click land areas (red X's) to exclude")
+                print_info("  - See segmentation results immediately")
+                print_info("  - Press W to save (green border = saved)")
+                print_info("")
+                print_warning("IMPORTANT: SAM prompts are image-specific!")
+                print_info("You'll need to create prompts for each flight or similar image set.")
                 print_info("")
 
                 # Find a sample image
@@ -323,23 +327,19 @@ def get_configuration_interactive():
                     sample_image = str(rgb_images[len(rgb_images)//2])  # Use middle image
                     print_info(f"Using sample image: {Path(sample_image).name}")
 
-                    # Check for RF model
-                    rf_model = "models/segmentation_model.pkl"
-                    rf_arg = f"--rf-model {rf_model}" if Path(rf_model).exists() else ""
-
-                    compare_path = Path(__file__).parent / "compare_sam_rf_interactive.py"
+                    creator_path = Path(__file__).parent / "sam_prompt_creator.py"
                     try:
                         result = subprocess.run(
-                            f'{sys.executable} {str(compare_path)} --image "{sample_image}" {rf_arg}',
+                            f'{sys.executable} {str(creator_path)} --image "{sample_image}"',
                             shell=True,
                             check=False
                         )
                         if result.returncode == 0:
-                            print_success("SAM prompts created!")
+                            print_success("SAM prompt creator closed")
                             # List available prompts
                             prompts_dir = Path("prompts")
                             if prompts_dir.exists():
-                                prompt_files = sorted(prompts_dir.glob("sam_prompts_*.json"),
+                                prompt_files = sorted(prompts_dir.glob("sam_*.json"),
                                                     key=lambda p: p.stat().st_mtime, reverse=True)
                                 if prompt_files:
                                     print_success(f"Found {len(prompt_files)} prompt files:")
