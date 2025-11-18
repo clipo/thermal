@@ -130,20 +130,20 @@ class SAMPromptCreator:
     def run(self):
         """Run interactive prompt creator"""
         print("="*70)
-        print("SAM PROMPT CREATOR & TESTER")
+        print("SAM PROMPT CREATOR & BATCH PROCESSOR")
         print("="*70)
         print("\nWORKFLOW:")
         print("  1. Click ocean/land points on first image")
         print("  2. Press W to save prompts")
-        print("  3. Press → to test on next images")
-        print("  4. If segmentation looks good on all → Done!")
-        print("  5. If not → adjust points or create new prompts")
+        print("  3. Press P to process ALL images → DONE!")
+        print("  (Or press → to test on a few more images first)")
         print("\nCONTROLS:")
         print("  Left Click:  Add OCEAN point (blue)")
         print("  Right Click: Add LAND point (red) to exclude")
+        print("  Press 'w':   Save prompts")
+        print("  Press 'p':   Process ALL images with saved prompts")
         print("  Press '→':   Next image (test prompts)")
         print("  Press '←':   Previous image")
-        print("  Press 'w':   Save prompts")
         print("  Press 'c':   Clear all points")
         print("  Press 'q':   Quit")
         print(f"\nFound {len(self.all_images)} images in directory")
@@ -196,6 +196,14 @@ class SAMPromptCreator:
 
         elif event.key == 'w':
             self.save_prompts()
+
+        elif event.key == 'p':
+            # Batch process all images
+            if self.saved:
+                plt.close()  # Close GUI
+                self.batch_process_all()
+            else:
+                print("⚠️  Save prompts first (press W)")
 
         elif event.key == 'right':
             # Next image - test prompts
@@ -258,8 +266,106 @@ class SAMPromptCreator:
         print(f"\n✓ Saved prompts to: {filename}")
         print(f"  Ocean points: {len(self.ocean_points)}")
         print(f"  Land points: {len(self.land_points)}")
+        print(f"\nFound {len(self.all_images)} images in this directory")
+        print(f"You can now:")
+        print(f"  1. Press 'p' to Process ALL images with these prompts")
+        print(f"  2. Press → to test on a few more images first")
+        print(f"  3. Press 'q' to quit and run detection manually")
 
         self.update_display()  # Refresh to show saved status
+
+    def batch_process_all(self):
+        """Process all images with saved prompts"""
+        if not self.saved:
+            print("⚠️  Save prompts first (press W)")
+            return
+
+        print("\n" + "="*70)
+        print(f"BATCH PROCESSING: {len(self.all_images)} images")
+        print("="*70)
+        print(f"Using prompts: {self.saved_filename}")
+        print(f"Ocean points: {len(self.ocean_points)}")
+        print(f"Land points: {len(self.land_points)}")
+        print()
+
+        # Ask for confirmation
+        response = input(f"Process all {len(self.all_images)} images? (y/n): ").strip().lower()
+        if response not in ['y', 'yes']:
+            print("Cancelled batch processing")
+            return
+
+        # Ask for output directory
+        output_dir = input("Output directory [sgd_output]: ").strip() or "sgd_output"
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        # Process all images
+        print(f"\nProcessing {len(self.all_images)} images...")
+        print("This may take a while...\n")
+
+        results = []
+        for i, image_path in enumerate(self.all_images, 1):
+            # Load image
+            img = cv2.imread(str(image_path))
+            if img is None:
+                print(f"⚠️  [{i}/{len(self.all_images)}] Failed to load: {image_path.name}")
+                continue
+
+            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+            # Set image for SAM
+            self.sam_predictor.set_image(img_rgb)
+
+            # Segment with current prompts
+            all_points = self.ocean_points + self.land_points
+            all_labels = [1] * len(self.ocean_points) + [0] * len(self.land_points)
+
+            masks, scores, _ = self.sam_predictor.predict(
+                point_coords=np.array(all_points),
+                point_labels=np.array(all_labels),
+                multimask_output=True,
+            )
+
+            # Use best mask
+            best_idx = np.argmax(scores)
+            ocean_mask = masks[best_idx]
+
+            # Calculate ocean percentage
+            ocean_pct = np.sum(ocean_mask) / ocean_mask.size * 100
+
+            # Save mask
+            mask_filename = output_path / f"mask_{image_path.stem}.npy"
+            np.save(mask_filename, ocean_mask)
+
+            results.append({
+                'image': image_path.name,
+                'ocean_percent': ocean_pct,
+                'mask_file': str(mask_filename)
+            })
+
+            # Progress
+            if i % 10 == 0 or i == len(self.all_images):
+                print(f"[{i}/{len(self.all_images)}] {image_path.name}: {ocean_pct:.1f}% ocean")
+
+        # Save results summary
+        summary_file = output_path / "segmentation_summary.json"
+        with open(summary_file, 'w') as f:
+            json.dump({
+                'prompts_file': str(self.saved_filename),
+                'total_images': len(self.all_images),
+                'processed': len(results),
+                'results': results
+            }, f, indent=2)
+
+        print("\n" + "="*70)
+        print("✓ BATCH PROCESSING COMPLETE!")
+        print("="*70)
+        print(f"Processed: {len(results)}/{len(self.all_images)} images")
+        print(f"Masks saved to: {output_path}/")
+        print(f"Summary: {summary_file}")
+        print()
+        print("Next step: Run SGD detection with these masks")
+        print("="*70 + "\n")
 
     def update_display(self):
         """Update the display"""
@@ -350,11 +456,18 @@ class SAMPromptCreator:
                                     fontsize=10, color='green',
                                     bbox=dict(boxstyle='round,pad=0.3',
                                             facecolor='white', alpha=0.8))
-                # Testing prompt
+                # Main action prompt - process all
                 self.axes[1].text(self.w/2, 150,
-                                'Press → to test on other images',
+                                f'Press P to Process ALL {len(self.all_images)} images',
                                 ha='center', va='top',
-                                fontsize=12, color='green',
+                                fontsize=14, fontweight='bold', color='green',
+                                bbox=dict(boxstyle='round,pad=0.5',
+                                        facecolor='lightgreen', alpha=0.9))
+                # Secondary option - test first
+                self.axes[1].text(self.w/2, 200,
+                                'Or press → to test on a few more images first',
+                                ha='center', va='top',
+                                fontsize=11, color='darkgreen',
                                 bbox=dict(boxstyle='round,pad=0.3',
                                         facecolor='white', alpha=0.8))
             elif self.ocean_points or self.land_points:
