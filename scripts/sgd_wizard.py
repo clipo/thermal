@@ -454,8 +454,16 @@ def get_configuration_interactive():
         config['baseline_method'] = baseline_choice.split(' - ')[0]
 
     # ===== ML Segmentation =====
-    # Only ask about ML if user didn't already configure segmentation
-    if config.get('segmentation_type') == 'Skip (use existing)':
+    # Only ask about ML if user chose "Skip" in section 2
+    # If they chose SAM or Random Forest, don't ask again
+    seg_type = config.get('segmentation_type', '')
+
+    if 'SAM' in seg_type or 'Random Forest' in seg_type:
+        # User already configured segmentation, skip this section
+        print_info("ℹ Skipping ML configuration (already configured segmentation in section 2)")
+        config['use_ml'] = False
+    else:
+        # User chose "Skip" - ask about ML segmentation
         print_section("7. Machine Learning Segmentation")
 
         # Check for available models
@@ -481,10 +489,6 @@ def get_configuration_interactive():
                 "ML model file name",
                 default="segmentation_model.pkl"
             )
-    else:
-        # User already configured SAM or Random Forest, skip this section
-        print_info("Skipping ML configuration (already configured in section 2)")
-        config['use_ml'] = False
 
     # ===== Advanced Options =====
     print_section("8. Advanced Options")
