@@ -409,9 +409,9 @@ class SAMPromptCreator:
 
             # Show title with testing status
             if self.saved and self.current_index > 0:
-                title = f'TESTING: {ocean_pct:.1f}% ocean\nPress → for next image'
+                title = f'TESTING: {ocean_pct:.1f}% ocean\n⚡ Press P to process ALL | → for next image'
             elif self.saved:
-                title = f'SAVED: {ocean_pct:.1f}% ocean\nPress → to test on next images'
+                title = f'SAVED: {ocean_pct:.1f}% ocean\n⚡ Press P to process ALL | → to test first'
             else:
                 title = f'SAM Result: {ocean_pct:.1f}% ocean\nPress W to save'
 
@@ -437,6 +437,14 @@ class SAMPromptCreator:
                                 fontsize=11, color='blue',
                                 bbox=dict(boxstyle='round,pad=0.3',
                                         facecolor='white', alpha=0.8))
+                # BIG CALL TO ACTION - Process All
+                self.axes[1].text(self.w/2, 160,
+                                f'⚡ Press P to Process ALL {len(self.all_images)} Images ⚡',
+                                ha='center', va='top',
+                                fontsize=15, fontweight='bold',
+                                color='white',
+                                bbox=dict(boxstyle='round,pad=0.7',
+                                        facecolor='darkgreen', alpha=0.95, edgecolor='yellow', linewidth=3))
             elif self.saved:
                 # Green border for saved
                 self.axes[1].add_patch(Rectangle((0, 0), self.w, self.h,
