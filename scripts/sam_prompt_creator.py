@@ -105,6 +105,47 @@ class SAMPromptCreator:
             print("Already at first image")
             return False
 
+    def cleanup_ocean_mask(self, ocean_mask):
+        """
+        Clean up ocean mask by removing landlocked regions
+
+        Ocean should touch the image border - any "ocean" surrounded
+        by land is likely a pond/lake/error and should be removed.
+        """
+        from skimage import morphology, measure
+
+        if not np.any(ocean_mask):
+            return ocean_mask
+
+        h, w = ocean_mask.shape
+
+        # Label all connected ocean regions
+        ocean_labels = measure.label(ocean_mask, connectivity=2)
+
+        if ocean_labels.max() == 0:
+            return ocean_mask
+
+        # Find which regions touch the border
+        border_labels = set()
+        # Top and bottom edges
+        border_labels.update(ocean_labels[0, :])
+        border_labels.update(ocean_labels[-1, :])
+        # Left and right edges
+        border_labels.update(ocean_labels[:, 0])
+        border_labels.update(ocean_labels[:, -1])
+        border_labels.discard(0)  # Remove background label
+
+        # Keep only regions that touch the border
+        cleaned_mask = np.zeros_like(ocean_mask, dtype=bool)
+        for label in border_labels:
+            cleaned_mask |= (ocean_labels == label)
+
+        # Also remove small noise
+        if np.any(cleaned_mask):
+            cleaned_mask = morphology.remove_small_objects(cleaned_mask, min_size=100)
+
+        return cleaned_mask
+
     def run_sam(self):
         """Segment with SAM using current points"""
         if len(self.ocean_points) == 0 and len(self.land_points) == 0:
@@ -123,9 +164,14 @@ class SAMPromptCreator:
             multimask_output=True,
         )
 
-        # Return best mask
+        # Get best mask and clean it up
         best_idx = np.argmax(scores)
-        return masks[best_idx]
+        ocean_mask = masks[best_idx]
+
+        # Remove landlocked regions
+        ocean_mask = self.cleanup_ocean_mask(ocean_mask)
+
+        return ocean_mask
 
     def run(self):
         """Run interactive prompt creator"""
@@ -327,6 +373,9 @@ class SAMPromptCreator:
             # Use best mask
             best_idx = np.argmax(scores)
             ocean_mask = masks[best_idx]
+
+            # Clean up ocean mask - remove landlocked regions
+            ocean_mask = self.cleanup_ocean_mask(ocean_mask)
 
             # Calculate ocean percentage
             ocean_pct = np.sum(ocean_mask) / ocean_mask.size * 100

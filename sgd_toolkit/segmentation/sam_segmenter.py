@@ -232,14 +232,26 @@ class SAMSegmenter:
         if np.any(land_mask):
             land_mask = morphology.remove_small_objects(land_mask, min_size=100)
 
-        # Keep only largest ocean contiguous area
+        # Keep only ocean regions that touch the image border
+        # (removes landlocked ponds/lakes/errors)
         if np.any(ocean_mask):
             ocean_labels = measure.label(ocean_mask, connectivity=2)
             if ocean_labels.max() > 0:
-                unique_labels, counts = np.unique(ocean_labels[ocean_labels > 0], return_counts=True)
-                if len(unique_labels) > 0:
-                    largest_label = unique_labels[np.argmax(counts)]
-                    ocean_mask = (ocean_labels == largest_label)
+                # Find which regions touch the border
+                border_labels = set()
+                # Top and bottom edges
+                border_labels.update(ocean_labels[0, :])
+                border_labels.update(ocean_labels[-1, :])
+                # Left and right edges
+                border_labels.update(ocean_labels[:, 0])
+                border_labels.update(ocean_labels[:, -1])
+                border_labels.discard(0)  # Remove background label
+
+                # Keep only regions that touch the border
+                cleaned_mask = np.zeros_like(ocean_mask, dtype=bool)
+                for label in border_labels:
+                    cleaned_mask |= (ocean_labels == label)
+                ocean_mask = cleaned_mask
 
         # Combine rock into land (for compatibility)
         land_mask = land_mask | rock_mask

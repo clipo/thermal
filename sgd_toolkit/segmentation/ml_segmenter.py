@@ -166,24 +166,38 @@ class FastMLSegmenter:
         ocean_mask = morphology.remove_small_objects(ocean_mask, min_size=100)
         land_mask = morphology.remove_small_objects(land_mask, min_size=100)
 
-        # Keep only the largest contiguous ocean area
-        # This prevents small landlocked areas from being misclassified as ocean
+        # Keep only ocean regions that touch the image border
+        # This prevents landlocked areas (ponds/lakes/errors) from being kept as ocean
         from skimage import measure
         ocean_labels = measure.label(ocean_mask, connectivity=2)
         if ocean_labels.max() > 0:
-            # Find the largest connected component
-            unique_labels, counts = np.unique(ocean_labels[ocean_labels > 0], return_counts=True)
-            if len(unique_labels) > 0:
-                largest_count = np.max(counts)
-                # Only keep if the largest area is significant (>5% of image)
-                # This prevents keeping small misclassified patches when drone is over land
+            # Find which regions touch the border
+            border_labels = set()
+            # Top and bottom edges
+            border_labels.update(ocean_labels[0, :])
+            border_labels.update(ocean_labels[-1, :])
+            # Left and right edges
+            border_labels.update(ocean_labels[:, 0])
+            border_labels.update(ocean_labels[:, -1])
+            border_labels.discard(0)  # Remove background label
+
+            if border_labels:
+                # Keep only regions that touch the border
+                cleaned_mask = np.zeros_like(ocean_mask, dtype=bool)
+                for label in border_labels:
+                    cleaned_mask |= (ocean_labels == label)
+                ocean_mask = cleaned_mask
+
+                # Check if result is significant (>5% of image)
+                # This prevents keeping small patches when drone is over land
                 total_pixels = ocean_mask.size
-                if largest_count > total_pixels * 0.05:  # At least 5% of image
-                    largest_label = unique_labels[np.argmax(counts)]
-                    ocean_mask = (ocean_labels == largest_label)
-                else:
+                ocean_count = np.sum(ocean_mask)
+                if ocean_count < total_pixels * 0.05:
                     # No significant ocean area - drone is over land
                     ocean_mask = np.zeros_like(ocean_mask, dtype=bool)
+            else:
+                # No ocean touches border - drone is over land
+                ocean_mask = np.zeros_like(ocean_mask, dtype=bool)
 
                 # Update land mask to include the removed small "ocean" areas
                 land_mask = ~(ocean_mask | wave_mask)
