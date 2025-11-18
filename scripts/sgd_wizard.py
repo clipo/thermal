@@ -454,31 +454,37 @@ def get_configuration_interactive():
         config['baseline_method'] = baseline_choice.split(' - ')[0]
 
     # ===== ML Segmentation =====
-    print_section("7. Machine Learning Segmentation")
+    # Only ask about ML if user didn't already configure segmentation
+    if config.get('segmentation_type') == 'Skip (use existing)':
+        print_section("7. Machine Learning Segmentation")
 
-    # Check for available models
-    models_dir = Path("models")
-    if models_dir.exists():
-        model_files = list(models_dir.glob("*.pkl"))
-        if model_files:
-            print_success(f"Found {len(model_files)} trained models")
-            print_info("Available models:")
-            for model in model_files:
-                print(f"  - {model.name}")
+        # Check for available models
+        models_dir = Path("models")
+        if models_dir.exists():
+            model_files = list(models_dir.glob("*.pkl"))
+            if model_files:
+                print_success(f"Found {len(model_files)} trained models")
+                print_info("Available models:")
+                for model in model_files:
+                    print(f"  - {model.name}")
 
-    use_ml = ask_question(
-        "Use ML segmentation? (y/n)",
-        default="y",
-        validation=validate_yes_no
-    ).lower() in ['y', 'yes']
+        use_ml = ask_question(
+            "Use ML segmentation? (y/n)",
+            default="y",
+            validation=validate_yes_no
+        ).lower() in ['y', 'yes']
 
-    config['use_ml'] = use_ml
+        config['use_ml'] = use_ml
 
-    if use_ml:
-        config['ml_model'] = ask_question(
-            "ML model file name",
-            default="segmentation_model.pkl"
-        )
+        if use_ml:
+            config['ml_model'] = ask_question(
+                "ML model file name",
+                default="segmentation_model.pkl"
+            )
+    else:
+        # User already configured SAM or Random Forest, skip this section
+        print_info("Skipping ML configuration (already configured in section 2)")
+        config['use_ml'] = False
 
     # ===== Advanced Options =====
     print_section("8. Advanced Options")
