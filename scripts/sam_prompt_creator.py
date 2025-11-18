@@ -288,16 +288,14 @@ class SAMPromptCreator:
         print(f"Land points: {len(self.land_points)}")
         print()
 
-        # Ask for confirmation
-        response = input(f"Process all {len(self.all_images)} images? (y/n): ").strip().lower()
-        if response not in ['y', 'yes']:
-            print("Cancelled batch processing")
-            return
-
-        # Ask for output directory
-        output_dir = input("Output directory [sgd_output]: ").strip() or "sgd_output"
+        # Use default output directory (no confirmation needed - user already pressed P!)
+        output_dir = "sgd_output"
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
+
+        print(f"Output directory: {output_path}")
+        print(f"Starting batch processing...")
+        print()
 
         # Process all images
         print(f"\nProcessing {len(self.all_images)} images...")
