@@ -638,7 +638,7 @@ python scripts/sam_segmenter.py --interactive --data data/100MEDIA
 
 ### 🚀 SAM Quick Start (Advanced Users with GPU)
 
-For users with NVIDIA GPUs, SAM provides superior segmentation accuracy. See the [SAM Quick Start Guide](docs/SAM_QUICKSTART.md) for a 5-minute setup walkthrough.
+For users with NVIDIA GPUs or Apple Silicon (M1/M2/M3), SAM provides superior segmentation accuracy and AI-based SGD detection. See the [SAM Quick Start Guide](docs/SAM_QUICKSTART.md) for a 5-minute setup walkthrough.
 
 **TL;DR:**
 ```bash
@@ -648,12 +648,24 @@ bash scripts/setup_sam.sh
 # 2. Test installation
 python scripts/sam_segmenter.py --test
 
-# 3. Create prompts (2 min)
+# 3. Create prompts for ocean/land segmentation (2 min)
 python scripts/sam_segmenter.py --interactive --data data/100MEDIA
 
-# 4. Compare with Random Forest
+# 4. Compare with Random Forest segmentation
 python scripts/compare_segmentation.py --image data/100MEDIA/MAX_0001.JPG --interactive
+
+# 5. NEW: Test SAM-based SGD detection (interactive, high accuracy)
+python scripts/test_sam_sgd_detection.py \
+    --rgb data/100MEDIA/MAX_0001.JPG \
+    --thermal data/100MEDIA/IRX_0001.irg
 ```
+
+**SAM-Based SGD Detection (NEW):**
+- Interactive click-to-detect workflow
+- AI segments SGD features with high precision
+- Side-by-side comparison with threshold method
+- Ideal for validation and research where accuracy is critical
+- Access via wizard: Choose "sam" detection method in Section 4
 
 After installation, choose your processing mode:
 
