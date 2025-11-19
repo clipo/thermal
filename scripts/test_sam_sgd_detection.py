@@ -104,6 +104,9 @@ class SAMSGDDetector:
         self.sgd_points = []
         self.sam_masks = []
 
+        # Track colorbars to avoid duplicates
+        self.colorbars = {}
+
     def get_device(self):
         """Get best available device"""
         try:
@@ -260,6 +263,12 @@ class SAMSGDDetector:
 
     def update_display(self):
         """Update the display"""
+        # Remove old colorbars to prevent accumulation
+        for key in list(self.colorbars.keys()):
+            if self.colorbars[key] is not None:
+                self.colorbars[key].remove()
+        self.colorbars.clear()
+
         # Clear all axes
         for ax in self.axes.flat:
             ax.clear()
@@ -273,7 +282,7 @@ class SAMSGDDetector:
                                      vmin=-2, vmax=2, interpolation='nearest')
         self.axes[0, 0].set_title(f'Thermal Deviations from Baseline ({self.ocean_median:.1f}°C)\nClick on cold spots (blue)',
                                  fontweight='bold')
-        plt.colorbar(im1, ax=self.axes[0, 0], label='ΔT (°C)')
+        self.colorbars['deviation'] = plt.colorbar(im1, ax=self.axes[0, 0], label='ΔT (°C)')
 
         # Draw SGD points
         if self.sgd_points:
@@ -288,7 +297,7 @@ class SAMSGDDetector:
         im2 = self.axes[1, 0].imshow(self.masked_thermal, cmap='plasma',
                                      interpolation='nearest')
         self.axes[1, 0].set_title('Absolute Ocean Temperature', fontweight='bold')
-        plt.colorbar(im2, ax=self.axes[1, 0], label='Temperature (°C)')
+        self.colorbars['absolute'] = plt.colorbar(im2, ax=self.axes[1, 0], label='Temperature (°C)')
 
         # Top right: SAM detection results
         if len(self.sgd_points) > 0 and len(self.sam_masks) > 0:
