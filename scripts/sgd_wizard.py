@@ -403,19 +403,40 @@ def get_configuration_interactive():
     # ===== Detection Parameters =====
     print_section("4. Detection Parameters")
 
-    print_info("Temperature threshold: How much cooler (°C) than ocean to detect as SGD")
-    config['temp_threshold'] = float(ask_question(
-        "Temperature threshold (°C)",
-        default="0.5",
-        validation=validate_positive_number
-    ))
+    # Choose detection method
+    print_info("Detection method: Choose how to identify SGD features")
+    detection_method_options = [
+        "threshold - Automatic temperature-based detection (fast, for batch processing)",
+        "sam - SAM-based interactive detection (more accurate, manual review)"
+    ]
 
-    print_info("Minimum area: Smallest plume size to detect (pixels)")
-    config['min_area'] = int(ask_question(
-        "Minimum plume area (pixels)",
-        default="50",
-        validation=validate_positive_number
-    ))
+    detection_method = ask_question(
+        "Select detection method",
+        default=detection_method_options[0],
+        options=detection_method_options
+    )
+
+    config['detection_method'] = detection_method.split(' - ')[0]
+
+    if config['detection_method'] == 'threshold':
+        print_info("Temperature threshold: How much cooler (°C) than ocean to detect as SGD")
+        config['temp_threshold'] = float(ask_question(
+            "Temperature threshold (°C)",
+            default="0.5",
+            validation=validate_positive_number
+        ))
+
+        print_info("Minimum area: Smallest plume size to detect (pixels)")
+        config['min_area'] = int(ask_question(
+            "Minimum plume area (pixels)",
+            default="50",
+            validation=validate_positive_number
+        ))
+    else:
+        # SAM-based detection - use defaults for now
+        config['temp_threshold'] = 0.5
+        config['min_area'] = 50
+        print_info("SAM detection uses interactive feature selection")
 
     # ===== Detector Type =====
     print_section("5. Detector Configuration")
@@ -558,6 +579,7 @@ def display_configuration(config):
     print(f"  Output Directory: {config['output_dir']}")
 
     print(f"\n{Colors.BOLD}Detection Parameters:{Colors.ENDC}")
+    print(f"  Detection Method: {config.get('detection_method', 'threshold').upper()}")
     print(f"  Temperature Threshold: {config['temp_threshold']}°C")
     print(f"  Minimum Area: {config['min_area']} pixels")
     print(f"  Detector: {config['detector']}")
@@ -605,12 +627,112 @@ def load_configuration(filepath):
         print_error(f"Invalid JSON in configuration file: {filepath}")
         sys.exit(1)
 
+def run_sam_detection(config):
+    """Run SAM-based interactive SGD detection"""
+
+    print_section("SAM-Based SGD Detection")
+
+    print_info("SAM detection provides an interactive workflow for precise SGD identification.")
+    print_info("You'll review images one-by-one, clicking on cold spots to identify SGD features.")
+    print()
+
+    # Find RGB and thermal pairs
+    data_dir = Path(config['data_dir'])
+    rgb_files = sorted(data_dir.glob("MAX_*.JPG"))
+
+    if not rgb_files:
+        print_error(f"No RGB images (MAX_*.JPG) found in {data_dir}")
+        return False
+
+    print_info(f"Found {len(rgb_files)} images to process")
+    print()
+
+    # Guide user through SAM workflow
+    print(f"{Colors.BOLD}SAM Detection Workflow:{Colors.ENDC}")
+    print("  1. The interactive tool will open showing thermal data")
+    print("  2. Look at the thermal deviation map (top left)")
+    print("  3. Click on cold spots (blue areas) to mark potential SGD")
+    print("  4. Press 'S' to run SAM segmentation")
+    print("  5. Compare SAM results (red) with threshold method (green)")
+    print("  6. Press 'Q' when done reviewing")
+    print()
+
+    response = input(f"{Colors.CYAN}Ready to start SAM detection? (y/n): {Colors.ENDC}")
+    if response.lower() != 'y':
+        print_info("SAM detection cancelled")
+        return False
+
+    # Launch interactive tool on first image
+    rgb_path = rgb_files[0]
+    thermal_path = data_dir / rgb_path.name.replace("MAX_", "IRX_").replace(".JPG", ".irg")
+
+    if not thermal_path.exists():
+        print_error(f"Thermal file not found: {thermal_path}")
+        return False
+
+    # Check if ocean mask exists
+    output_dir = Path(config['output_dir']) / config['output_name']
+    ocean_mask_dir = output_dir / "ocean_masks"
+    ocean_mask_path = ocean_mask_dir / f"{rgb_path.stem}_ocean.npy"
+
+    cmd = [
+        sys.executable,
+        str(Path(__file__).parent / "test_sam_sgd_detection.py"),
+        "--rgb", str(rgb_path),
+        "--thermal", str(thermal_path)
+    ]
+
+    if ocean_mask_path.exists():
+        cmd.extend(["--ocean-mask", str(ocean_mask_path)])
+        print_info(f"Using existing ocean mask: {ocean_mask_path.name}")
+    else:
+        print_info("Using automatic ocean detection (basic color threshold)")
+
+    print()
+    print_info("Launching SAM detection tool...")
+    print(f"{Colors.CYAN}{' '.join(cmd)}{Colors.ENDC}\n")
+
+    try:
+        subprocess.run(cmd, check=True)
+        print()
+        print_success("SAM detection tool closed")
+
+        # Offer to process more images
+        print()
+        print_info("SAM detection is currently an interactive tool for manual review.")
+        print_info("To process more images, run the tool again on different image pairs.")
+        print()
+        print(f"{Colors.BOLD}Next steps:{Colors.ENDC}")
+        print(f"  • Review your findings")
+        print(f"  • For batch processing, use threshold-based detection instead")
+        print(f"  • Or process each image manually with:")
+        print(f"    python scripts/test_sam_sgd_detection.py --rgb <RGB> --thermal <THERMAL>")
+        print()
+
+        return True
+
+    except subprocess.CalledProcessError as e:
+        print_error(f"\nSAM detection failed with error code {e.returncode}")
+        return False
+    except FileNotFoundError:
+        print_error("\nCould not find test_sam_sgd_detection.py")
+        print_info("Make sure you're running this script from the correct directory")
+        return False
+    except KeyboardInterrupt:
+        print()
+        print_info("SAM detection interrupted by user")
+        return False
+
 def run_analysis(config):
     """Run the SGD analysis with the given configuration"""
 
     print_section("Running Analysis")
 
-    # Build command
+    # Handle SAM-based detection differently
+    if config.get('detection_method') == 'sam':
+        return run_sam_detection(config)
+
+    # Build command for threshold-based detection
     script_path = Path(__file__).parent / "sgd_autodetect.py"
 
     cmd = [
