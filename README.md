@@ -32,6 +32,12 @@ A **production-ready** Python toolkit for detecting submarine groundwater discha
   - [Automated Batch Processing](#automated-batch-processing-sgd_autodetectpy)
   - [Interactive Processing](#which-script-should-i-use)
 - [Machine Learning Segmentation](#machine-learning-segmentation)
+- [SAM - Interactive Ocean Segmentation](#sam-segment-anything-model---interactive-ocean-segmentation)
+  - [How It Works](#how-it-works-1)
+  - [SAM Prompt Creator (Interactive)](#sam-prompt-creator-interactive)
+  - [Using SAM with SGD Detection](#using-sam-with-sgd-detection)
+  - [Prompt Strategy](#prompt-strategy)
+  - [Performance](#performance)
 - [Why Raw Thermal Data is Essential](#why-raw-thermal-data-is-essential)
 - [Recent Enhancements](#recent-enhancements)
 - [Technical Details](#technical-details)
@@ -56,7 +62,8 @@ This toolkit processes paired thermal (640×512) and RGB (4096×3072) images fro
 
 ### Core Capabilities
 - **Thermal Analysis**: Process Autel 640T thermal images (deciKelvin format)
-- **Ocean Segmentation**: ML-based segmentation to isolate ocean from land and waves
+- **Ocean Segmentation**: ML-based (Random Forest) or SAM-based (point-and-click) segmentation
+- **SAM Integration**: Click a few points on one image, segment entire surveys automatically
 - **SGD Detection**: Identify cold freshwater plumes near shorelines (1-3°C cooler)
 - **Georeferencing**: Automatic GPS + orientation extraction for accurate mapping
 - **Polygon Export**: Export actual plume outlines as georeferenced polygons
@@ -1957,99 +1964,110 @@ This flexibility allows you to:
 - Test different models without affecting production data
 - Adjust duplicate detection distance based on survey resolution
 
-## SAM (Segment Anything Model) - Advanced Segmentation Alternative
+## SAM (Segment Anything Model) - Interactive Ocean Segmentation
 
-### Overview
+Meta's **Segment Anything Model (SAM)** provides a powerful alternative to Random Forest segmentation. Instead of training on hundreds of labeled pixels, you simply **click a few points** on one image and SAM segments the entire survey. No per-site training needed.
 
-For users with GPU resources (NVIDIA GPUs), Meta's **Segment Anything Model (SAM)** provides a powerful alternative to Random Forest segmentation. SAM is a foundation model that can perform zero-shot segmentation using simple prompts, without requiring extensive training data for each environment.
+### How It Works
 
-### Why Consider SAM?
+![SAM Workflow Overview](docs/images/sam_workflow_overview.png)
 
-**Advantages over Random Forest:**
-- **Zero-shot learning**: Works on new environments without retraining
-- **Superior boundary detection**: More accurate ocean/land boundaries
-- **Better generalization**: Handles varied lighting and conditions
-- **Prompt-based**: Define classes with just a few point clicks
-- **GPU acceleration**: Fast inference on NVIDIA hardware
+**3-step workflow:**
+1. **Click** ocean and land points on a single image
+2. **SAM segments** the ocean boundary automatically
+3. **Batch process** all frames with the same prompts
 
-**When to use Random Forest instead:**
-- No GPU available (SAM requires GPU for practical use)
-- Very limited compute resources
-- Need for ultra-fast CPU-based processing
-- Already have well-trained RF models for your specific environment
+### SAM vs Random Forest
+
+| Feature | Random Forest | SAM |
+|---------|--------------|-----|
+| Setup | Train on 100+ labeled pixels per class | Click 3-5 ocean + 2-3 land points |
+| New environments | Retrain model for each site | Same clicks work across sites |
+| Boundary accuracy | Good | Excellent |
+| Speed (per frame) | ~0.08-0.15s (CPU) | ~0.2-0.5s (GPU/MPS) |
+| Hardware | CPU only | GPU, Apple Silicon (MPS), or CPU |
 
 ### Installation
 
-Run the setup script to install SAM and download model weights:
-
 ```bash
+# Install SAM and download model weights
 bash scripts/setup_sam.sh
+# Choose ViT-B (375MB) for testing, ViT-H (2.5GB) for production
 ```
 
-This will:
-1. Install SAM from Facebook Research GitHub
-2. Let you choose model size:
-   - **ViT-H (Huge)**: 2.5GB - Best accuracy (recommended for DGX/workstations)
-   - **ViT-L (Large)**: 1.2GB - Good accuracy, faster
-   - **ViT-B (Base)**: 375MB - Fastest, good for testing
-3. Download checkpoint to `models/sam/`
-
-**Test installation:**
+**Verify installation:**
 ```bash
 python scripts/sam_segmenter.py --test
 ```
 
-### Creating Segmentation Prompts
+**Supported hardware:**
+- NVIDIA GPU (CUDA) - fastest
+- Apple Silicon M1/M2/M3/M4 (MPS) - good performance
+- CPU - slower but works everywhere
 
-SAM uses point prompts to define classes. Launch the interactive prompter:
+### SAM Prompt Creator (Interactive)
 
-```bash
-python scripts/sam_segmenter.py --interactive --data data/100MEDIA
-```
-
-**Interactive controls:**
-- **Numbers 1-4**: Select class (ocean/land/rock/wave)
-- **Left click**: Add foreground point (include this in class)
-- **Right click**: Add background point (exclude this from class)
-- **S key**: Segment with current prompts (preview)
-- **W key**: Save prompts to JSON
-- **C key**: Clear prompts for current class
-- **Q key**: Quit
-
-**Workflow:**
-1. Press `1` to select ocean class
-2. Left-click several ocean locations (deep water, shallow water)
-3. Right-click non-ocean areas if needed (refinement)
-4. Press `S` to preview segmentation
-5. Repeat for classes 2 (land), 3 (rock), 4 (wave)
-6. Press `W` to save prompts as JSON
-
-Prompts are saved to `prompts/sam_prompts_TIMESTAMP.json` and can be reused across similar imagery.
-
-### Comparing SAM vs Random Forest
-
-Test both approaches side-by-side:
+The prompt creator is the recommended way to use SAM. Launch it on any image from your survey:
 
 ```bash
-# Interactive comparison - create SAM prompts on the fly
-python scripts/compare_segmentation.py \
-  --image data/100MEDIA/MAX_0001.JPG \
-  --rf-model models/segmentation_model.pkl \
-  --interactive
-
-# Or use saved prompts
-python scripts/compare_segmentation.py \
-  --image data/100MEDIA/MAX_0001.JPG \
-  --rf-model models/segmentation_model.pkl \
-  --sam-prompts prompts/sam_prompts_20250118_120000.json
+python scripts/sam_prompt_creator.py --image data/100MEDIA/MAX_0100.JPG
 ```
 
-The comparison tool shows:
-- Original image
-- Random Forest segmentation
-- SAM segmentation
-- Class distribution statistics
-- Difference analysis
+![SAM Prompt Creator Interface](docs/images/sam_prompt_creator.png)
+
+**The interface has two panels:**
+- **Left**: Your image with click points (blue circles = ocean, red X = land)
+- **Right**: Live SAM segmentation result (updates after each click)
+
+#### Controls
+
+![SAM Controls](docs/images/sam_controls.png)
+
+| Control | Action |
+|---------|--------|
+| **Left Click** | Add ocean point (blue circle) |
+| **Right Click** | Add land point (red X) to exclude |
+| **W** | Save prompts to JSON file |
+| **P** | Batch process ALL images with saved prompts |
+| **Arrow keys** | Test prompts on next/previous image |
+| **C** | Clear all points and start over |
+| **Q** | Quit |
+
+#### Recommended Workflow
+
+1. **Pick a representative frame** from mid-survey (not first or last)
+2. **Left-click 3-5 ocean points**: deep water, shallow water, dark water, light water
+3. **Right-click 2-3 land points**: rock, vegetation, anything that's not ocean
+4. SAM segments automatically after each click - check the right panel
+5. **Press W** to save prompts
+6. **Press right-arrow** to test on a few other frames - the same prompts apply
+7. If happy, **press P** to batch-process all images
+
+**Tips for best results:**
+- Click diverse water types (deep blue, turquoise, shadow, bright)
+- Place land points right at the shoreline boundary
+- 5-8 total clicks is usually sufficient
+- Prompts transfer well within a single flight
+
+### Using SAM with SGD Detection
+
+After creating prompts, use them directly in the detection pipeline:
+
+```bash
+# Via the interactive wizard (easiest)
+python sgd_wizard.py
+# Choose "sam" when asked about segmentation method
+
+# Or directly with autodetect
+python scripts/sgd_autodetect.py \
+  --data data/100MEDIA \
+  --output survey_sgd.kml \
+  --use-sam \
+  --sam-prompts prompts/sam_MAX_0100_prompts.json
+
+# Interactive viewer with SAM segmentation
+python scripts/sgd_viewer.py --data data/100MEDIA --use-sam
+```
 
 ### Batch Processing with SAM
 
@@ -2062,94 +2080,47 @@ python scripts/sam_segmenter.py \
   --output sgd_output/sam_masks/
 ```
 
-### Integration with SGD Detection Pipeline
+### Prompt Strategy
 
-To use SAM segmentation in SGD detection workflow:
+**One prompt per flight** works best in most cases:
+- Create prompts from a single representative frame
+- Test on 5-10 frames across the survey to verify
+- Re-create prompts only if conditions change dramatically (different coastline type, lighting)
 
-1. **Create or select prompts** for your environment:
-   ```bash
-   python scripts/sam_segmenter.py --interactive --data data/100MEDIA
-   ```
+**Create a prompt library** for recurring survey sites:
+- `prompts/rocky_shore_morning.json`
+- `prompts/sandy_beach_afternoon.json`
+- `prompts/volcanic_coast_overcast.json`
 
-2. **Test on representative images**:
-   ```bash
-   python scripts/compare_segmentation.py \
-     --image data/100MEDIA/MAX_0050.JPG \
-     --sam-prompts prompts/my_prompts.json
-   ```
+See [SAM Prompts Strategy Guide](docs/SAM_PROMPTS_STRATEGY.md) for detailed guidance.
 
-3. **Replace FastMLSegmenter** in detection code:
-   ```python
-   # In sgd_toolkit/detectors/base.py
-   from sam_segmenter import SAMSegmenter
-
-   def __init__(self, use_sam=True, sam_prompts='prompts/default.json'):
-       if use_sam:
-           self.segmenter = SAMSegmenter()
-           self.prompts = load_prompts(sam_prompts)
-       else:
-           self.segmenter = FastMLSegmenter()
-   ```
-
-### Performance Considerations
+### Performance
 
 **GPU Memory Requirements:**
-- ViT-H: ~8GB VRAM
-- ViT-L: ~4GB VRAM
-- ViT-B: ~2GB VRAM
+- ViT-B (Base): ~2GB - recommended for laptops and Apple Silicon
+- ViT-L (Large): ~4GB - good balance of speed and accuracy
+- ViT-H (Huge): ~8GB - best accuracy, recommended for workstations/DGX
 
-**Processing Speed (on NVIDIA DGX):**
-- ViT-H: ~0.3-0.5 seconds per frame
-- ViT-L: ~0.2-0.3 seconds per frame
-- ViT-B: ~0.1-0.2 seconds per frame
+**Processing Speed:**
 
-**Comparison to Random Forest:**
-- Random Forest (CPU): ~0.08-0.15 seconds per frame
-- SAM (GPU): ~0.2-0.5 seconds per frame
-- SAM provides better accuracy at cost of slightly slower processing
-
-### Best Practices for SAM
-
-1. **Prompt design**:
-   - Use 3-5 foreground points per class
-   - Add background points at class boundaries
-   - Test prompts on multiple representative frames
-
-2. **Prompt reuse**:
-   - Create prompt library for different conditions:
-     - `rocky_shore.json`
-     - `sandy_beach.json`
-     - `sunrise_lighting.json`
-     - `high_waves.json`
-   - Prompts transfer well to similar environments
-
-3. **Quality checks**:
-   - Always compare SAM vs Random Forest initially
-   - Validate on diverse sample images
-   - Check boundary accuracy at ocean/land interface
-
-4. **Hybrid approach**:
-   - Use SAM for high-value surveys (DGX processing)
-   - Use Random Forest for field processing (laptop)
-   - Both approaches produce compatible masks
+| Model | NVIDIA GPU | Apple Silicon (MPS) | CPU |
+|-------|-----------|-------------------|-----|
+| ViT-B | ~0.1-0.2s | ~0.3-0.5s | ~2-4s |
+| ViT-L | ~0.2-0.3s | ~0.5-1.0s | ~5-8s |
+| ViT-H | ~0.3-0.5s | ~1.0-2.0s | ~10-15s |
 
 ### Troubleshooting SAM
 
-**"CUDA out of memory" error:**
-- Use smaller model (ViT-L or ViT-B instead of ViT-H)
-- Close other GPU applications
-- Process in smaller batches
+**"CUDA out of memory":** Use ViT-B instead of ViT-H, or close other GPU applications.
 
 **Poor segmentation results:**
-- Add more foreground points in problem areas
-- Add background points at misclassified regions
-- Try prompts from different frames
-- Ensure image is in focus and well-exposed
+- Add more ocean points in problem areas (shallow water, shadow, turbid)
+- Add land points right at misclassified boundaries
+- Test on several frames - if inconsistent, add more points
 
-**Slow processing:**
-- Confirm GPU is being used: check "Using device: cuda" in output
-- Use smaller model for faster inference
-- Consider batch processing overnight for large surveys
+**MPS errors on Apple Silicon:** SAM falls back to CPU automatically. Some PyTorch MPS operations aren't fully supported yet.
+
+**Slow processing:** Confirm GPU/MPS is being used (check "Using device:" in output). Use ViT-B for fastest processing.
 
 ## Why Raw Thermal Data is Essential
 
