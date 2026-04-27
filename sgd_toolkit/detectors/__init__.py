@@ -13,10 +13,14 @@ from sgd_toolkit.detectors.base import IntegratedSGDDetector
 from sgd_toolkit.detectors.improved import ImprovedSGDDetector
 from sgd_toolkit.detectors.temporal import MovingAverageSGDDetector
 from sgd_toolkit.detectors.edge_aware import EdgeAwareSGDDetector
+from sgd_toolkit.detectors.redesigned import RedesignedSGDDetector
+from sgd_toolkit.detectors.spread import SpreadSGDDetector
 
 __all__ = [
     'IntegratedSGDDetector',
     'ImprovedSGDDetector',
     'MovingAverageSGDDetector',
     'EdgeAwareSGDDetector',
+    'RedesignedSGDDetector',
+    'SpreadSGDDetector',
 ]

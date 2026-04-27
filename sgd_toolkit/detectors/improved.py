@@ -35,7 +35,8 @@ class ImprovedSGDDetector(IntegratedSGDDetector):
                  use_ml=True,
                  ml_model_path="segmentation_model.pkl",
                  detect_glint=True,
-                 glint_area_threshold=0.15):
+                 glint_area_threshold=0.15,
+                 flat_field_path=None):
         """
         Initialize improved SGD detector.
 
@@ -58,7 +59,8 @@ class ImprovedSGDDetector(IntegratedSGDDetector):
                         min_area=min_area,
                         base_path=base_path,
                         use_ml=use_ml,
-                        ml_model_path=ml_model_path)
+                        ml_model_path=ml_model_path,
+                        flat_field_path=flat_field_path)
 
         self.baseline_method = baseline_method
         self.percentile_value = percentile_value

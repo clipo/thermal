@@ -62,6 +62,7 @@ class SGDAutoDetector:
                  edge_aware=False,
                  filter_glint=False,
                  glint_threshold=0.15,
+                 detector_type='auto',
                  verbose=True):
         """
         Initialize automated SGD detector
@@ -103,6 +104,7 @@ class SGDAutoDetector:
         self.edge_aware = edge_aware
         self.filter_glint = filter_glint
         self.glint_threshold = glint_threshold
+        self.detector_type = detector_type
         self.verbose = verbose
 
         # Parse baseline method parameters
@@ -122,7 +124,22 @@ class SGDAutoDetector:
         # Get the model path for ML segmentation
         model_path = self.select_area_model(self.data_dir)
 
-        if window_size > 0:
+        if detector_type == 'redesigned':
+            # Spatial baseline + coast-emerging region grower + rock/shadow filters.
+            from sgd_toolkit.detectors import RedesignedSGDDetector
+            self.detector = RedesignedSGDDetector(
+                base_path=str(self.data_dir),
+                temp_threshold=self.temp_threshold,
+                min_area=self.min_area,
+                use_ml=True,
+                ml_model_path=model_path,
+                detect_glint=self.filter_glint,
+                glint_area_threshold=self.glint_threshold,
+                **baseline_params,
+            )
+            if self.verbose:
+                print("✓ Using redesigned detector (spatial baseline + coast-emerging grower + FP filters)")
+        elif window_size > 0:
             # Check if edge-aware is also requested
             if hasattr(self, 'edge_aware') and self.edge_aware:
                 from sgd_detector_edge_aware import EdgeAwareSGDDetector
@@ -772,6 +789,10 @@ Examples:
     parser.add_argument('--glint-threshold', type=float, default=0.15,
                        help='Area threshold for glint detection (0.15 = 15%% of ocean area)')
 
+    parser.add_argument('--detector-type', type=str, default='auto',
+                       choices=['auto', 'redesigned'],
+                       help='"redesigned" enables the spatial-baseline + coast-emerging grower + rock/shadow filter pipeline. "auto" keeps the legacy detector chain.')
+
     # Multi-threshold analysis options
     parser.add_argument('--interval-step', type=float, default=None,
                        help='Temperature interval for multi-threshold analysis (e.g., 0.5)')
@@ -1113,6 +1134,7 @@ Examples:
                 edge_aware=args.edge_aware,
                 filter_glint=args.filter_glint,
                 glint_threshold=args.glint_threshold,
+                detector_type=args.detector_type,
                 verbose=not args.quiet
             )
             

@@ -36,7 +36,8 @@ class IntegratedSGDDetector:
     
     def __init__(self, temp_threshold=1.0, min_area=50, base_path="data/100MEDIA",
                  use_ml=True, ml_model_path="segmentation_model.pkl",
-                 use_sam=False, sam_prompts_path=None):
+                 use_sam=False, sam_prompts_path=None,
+                 flat_field_path=None):
         """
         Initialize integrated SGD detector
 
@@ -48,6 +49,11 @@ class IntegratedSGDDetector:
         - ml_model_path: Path to ML model file (default "segmentation_model.pkl")
         - use_sam: Use SAM segmentation instead of Random Forest (default False)
         - sam_prompts_path: Path to SAM prompts JSON file (required if use_sam=True)
+        - flat_field_path: Optional path to an .npz flat-field (vignette) produced
+            by scripts/build_flat_field.py. When provided, the per-pixel bias is
+            subtracted from every loaded thermal frame — corrects the sensor's
+            radial temperature bias (center colder than edges) that would
+            otherwise confuse SGD detection.
         """
         self.temp_threshold = temp_threshold
         self.min_area = min_area
@@ -56,6 +62,19 @@ class IntegratedSGDDetector:
         self.use_sam = use_sam
         self.ml_model_path = ml_model_path
         self.sam_prompts_path = sam_prompts_path
+
+        # Flat-field (vignette) correction
+        self.flat_field_path = flat_field_path
+        self.vignette = None
+        if flat_field_path is not None:
+            from sgd_toolkit.calibration.vignette import load_vignette
+
+            self.vignette = load_vignette(flat_field_path)
+            print(
+                f"Loaded flat-field: {flat_field_path}  "
+                f"bias range [{float(self.vignette.bias.min()):+.3f}, "
+                f"{float(self.vignette.bias.max()):+.3f}] °C"
+            )
 
         # Initialize segmenter (SAM or Random Forest)
         self.ml_segmenter = None
@@ -180,7 +199,11 @@ class IntegratedSGDDetector:
             temp_celsius = (raw_thermal / 10.0) - 273.15
         else:
             raise FileNotFoundError(f"Thermal not found: {irg_path}")
-        
+
+        # Apply flat-field (vignette) correction if configured.
+        if self.vignette is not None and self.vignette.bias.shape == temp_celsius.shape:
+            temp_celsius = temp_celsius - self.vignette.bias
+
         return {
             'frame_number': frame_number,
             'rgb_full': rgb_full,

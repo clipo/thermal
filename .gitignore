@@ -49,6 +49,12 @@ prompts/*.json
 # SAM model checkpoints (large files)
 models/sam/*.pth
 
+# Per-flight derived flat-fields (regenerated from data; not source of truth)
+models/flat_fields/
+
+# Claude Code session state (local only)
+.claude/
+
 # IDE
 .idea/
 .vscode/
