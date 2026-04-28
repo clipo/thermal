@@ -54,12 +54,15 @@ FIGURES = [
      "lava-tube outlets feeding the surf zone."),
     ("Figure 5",
      CLOSEUPS / "flight10_anakena_to_west_Anakena_Bay_closeup.png",
-     "Anakena and Ovahe (north coast). Four coast-anchored plumes "
-     "across this 2.2 km stretch — three concentrated at the rocky "
-     "Ovahe headland on the west side of the frame, plus one weaker "
-     "plume offshore of Anakena's sandy beach itself. The modest "
-     "Σ_anomaly (~1,800 m²·°C) is consistent with this coast's small "
-     "upstream drainage basin and modest groundwater throughput."),
+     "Anakena Bay (north coast, Ahu Nau Nau). Per-frame detector "
+     "view of the iconic sandy beach where Hotu Matu'a is said to "
+     "have first landed. Two plumes — the larger one (Σ ≈ 1,400 m²·°C, "
+     "peak ~0.7 °C) sits in the bay just offshore of the beach itself, "
+     "where freshwater is known to seep through the sand and rocks; "
+     "a smaller plume hugs the rocky east point. Note: the canonical "
+     "coast-anchored product is more conservative at this site and "
+     "retains only the eastern plume — the per-frame detector view is "
+     "shown here so the bay-interior signal is visible."),
     ("Figure 6",
      CLOSEUPS / "flight11_hivahiva_to_hangapiko_Hivahiva-Hangapiko_closeup.png",
      "Hivahiva-Hangapiko (south coast). Ten plumes along the south "

@@ -161,8 +161,13 @@ python scripts/figures/build_site_closeup.py --slug flight8_hekii_west \
     --polygon-source coastal --center -27.0858 -109.2999 --box-m 700 \
     --label "Hekii West" --contour-level 0
 python scripts/figures/build_site_closeup.py --slug flight10_anakena_to_west \
-    --polygon-source coastal --center -27.0658 -109.3358 --box-m 2200 \
+    --polygon-source detector --center -27.0727 -109.3231 --box-m 600 \
     --label "Anakena Bay" --contour-level 0
+# Anakena Beach uses the per-frame detector source: the canonical
+# coast-anchored filter retains only one small plume on the east point
+# at this site (the bay-interior plume gets dropped by coast-touching +
+# cliff-zone filters). The detector polygons capture the actual SGD
+# signal in the bay that the more stringent canonical product misses.
 python scripts/figures/build_site_closeup.py \
     --slug flight11_hivahiva_to_hangapiko --polygon-source coastal \
     --box-m 700 --label "Hivahiva-Hangapiko" --contour-level 0
