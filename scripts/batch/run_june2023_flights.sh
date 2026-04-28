@@ -39,7 +39,7 @@ for combined in data/june2023_*_combined; do
 
   log="$LOG_DIR/${slug}.log"
 
-  python -u scripts/run_coast_stretch.py \
+  python -u scripts/pipeline/run_coast_stretch.py \
     --detector spread \
     --data "$combined" \
     --start "$((10#$first))" --end "$((10#$last))" \

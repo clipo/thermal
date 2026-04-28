@@ -45,7 +45,7 @@ except ImportError as e:  # pragma: no cover
     raise SystemExit("matplotlib is required (used for polygon rasterization)")
 
 
-THERMAL = Path(__file__).resolve().parent.parent
+THERMAL = Path(__file__).resolve().parent.parent.parent
 SGD_OUTPUT = THERMAL / "sgd_output"
 
 

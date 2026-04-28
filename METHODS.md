@@ -111,7 +111,7 @@ they answer different questions:
 Output: `<slug>_sgd.geojson` per flight, master KML at
 `sgd_output/rapa_nui_all_sgd_sigma.kml`.
 
-Pipeline (in `scripts/run_coast_stretch.py` + `sgd_toolkit/detectors/spread.py`):
+Pipeline (in `scripts/pipeline/run_coast_stretch.py` + `sgd_toolkit/detectors/spread.py`):
 
 1. Per-frame cold-water detection using a per-frame thermal threshold
    plus a wave-inclusive ocean mask (`thermal_refine.py` extends ocean
@@ -132,7 +132,7 @@ published in earlier work. Captures cold cores, not the diluted halo.
 Output: `<slug>_sgd_raster.geojson` per flight, master KML at
 `sgd_output/rapa_nui_all_sgd_sigma_raster.kml`.
 
-Pipeline (`scripts/derive_polygons_from_raster.py`):
+Pipeline (`scripts/pipeline/derive_polygons_from_raster.py`):
 
 1. Take the per-flight anomaly raster.
 2. Apply quality filters: `obs_count ≥ 5`, `anomaly ≤ 3 °C`,
@@ -169,7 +169,7 @@ polygon per connected cold region, which made entire bays look like
 Output: `<slug>_sgd_coastal.geojson` per flight, master KML at
 `sgd_output/rapa_nui_all_sgd_coastal.kml`.
 
-Pipeline (`scripts/derive_plumes_coast_anchored.py`):
+Pipeline (`scripts/pipeline/derive_plumes_coast_anchored.py`):
 
 1. Compute coastline as water cells adjacent to land in the satellite
    water mask.
@@ -205,7 +205,7 @@ in m²·°C, integrated over the polygon footprint. This metric is
   normalises out absolute temperature differences),
 - the basis for cross-site / cross-season comparison.
 
-Computed by `scripts/recompute_polygon_intensity.py`, which integrates
+Computed by `scripts/pipeline/recompute_polygon_intensity.py`, which integrates
 each polygon's footprint over the per-flight raster and writes
 `sigma_anomaly_m2c`, `mean_anomaly_in_polygon_c`,
 `peak_anomaly_in_polygon_c`, `polygon_water_fraction`,
@@ -244,7 +244,7 @@ segmentation would fix this part — see §6.)
 
 ### Correction (post-hoc, no pipeline rebuild required)
 
-**Current production: OSM coastline mask** (`scripts/derive_water_mask_osm.py`).
+**Current production: OSM coastline mask** (`scripts/pipeline/derive_water_mask_osm.py`).
 Fetches Rapa Nui coastline from OpenStreetMap via the Overpass API
 (131 hand-mapped ways with 9344 nodes), builds a Shapely MultiPolygon
 for the island, and rasterizes that polygon per-flight at the
@@ -259,8 +259,8 @@ tile was captured vs when the drone flew. OSM coastline is
 hand-mapped, tide-independent (typically defined at mean-high-water),
 and free of pixel-classification noise.
 
-`scripts/derive_water_mask.py` (HSV-based) and
-`scripts/extend_water_mask_with_drone.py` (drone-obs union) are
+`scripts/alternative_water_masks/derive_water_mask.py` (HSV-based) and
+`scripts/alternative_water_masks/extend_water_mask_with_drone.py` (drone-obs union) are
 retained for reproducing earlier results but are no longer the
 production source.
 
@@ -271,7 +271,7 @@ freshwater emerges into the bay). Sandy-bottom water reads green or
 turquoise in satellite imagery, not blue, so HSV classifies it as
 land, dropping the entire Hanga Nui SGD signal.
 
-`scripts/extend_water_mask_with_drone.py` unions the satellite mask
+`scripts/alternative_water_masks/extend_water_mask_with_drone.py` unions the satellite mask
 with cells where the drone's per-frame ocean segmenter persistently
 classified the cell as ocean (`obs_count >= 5`). The drone's RGB
 segmenter, working on close-range high-resolution imagery, correctly
@@ -297,8 +297,8 @@ Add new entries to this table with rationale when other flights need
 the same treatment. Run:
 
 ```bash
-python scripts/extend_water_mask_with_drone.py --slug <flight_slug>
-python scripts/recompute_polygon_intensity.py --slug <flight_slug>
+python scripts/alternative_water_masks/extend_water_mask_with_drone.py --slug <flight_slug>
+python scripts/pipeline/recompute_polygon_intensity.py --slug <flight_slug>
 # then re-run the master aggregators
 ```
 
@@ -485,7 +485,7 @@ The three master KMLs are complementary views to load in Google Earth:
 
 | Idea | Status | Notes |
 |---|---|---|
-| SAM2 satellite tile water mask | Tested, not adopted | SAM2-segment + mean-color classifier mistakes cliff face for water (gray-blue mean). HSV per-pixel is more reliable for tropical Pacific water. Hybrid (SAM2 segments + per-pixel HSV inside) prepared but not deployed. Script kept at `scripts/derive_water_mask_sam2.py`. |
+| SAM2 satellite tile water mask | Tested, not adopted | SAM2-segment + mean-color classifier mistakes cliff face for water (gray-blue mean). HSV per-pixel is more reliable for tropical Pacific water. Hybrid (SAM2 segments + per-pixel HSV inside) prepared but not deployed. Script kept at `scripts/alternative_water_masks/derive_water_mask_sam2.py`. |
 | SAM2 per-frame drone RGB segmentation | Not yet tried | Would catch cliff shadows that the rule-based segmenter misses; feasible on Apple Silicon MPS at ~50–100 ms/frame. Cost: ~25–50 min for ~30 k frames. **Worth doing** if we want to address cause #2 above. |
 | DEM-aware projection (SRTM 30 m) | Not yet tried | Proper fix for cause #1. Requires modifying `footprint_generator.calculate_footprint_corners()` to ray-march each pixel ray against terrain elevation. Significant code change but clean. |
 | Coastline-segment SGD density | Tooling ready | `sample_coastline.py` + `sgd_proximity.py` accept a coastline GeoJSON polyline and produce per-segment Σ_anomaly. Awaits a Rapa Nui shoreline polyline (OSM extract or hand-digitised). |
@@ -715,53 +715,53 @@ change something material.
 
 ```bash
 # 1. (If anomaly rasters changed) rebuild rasters
-bash scripts/build_all_anomaly_rasters.sh
+bash scripts/pipeline/build_all_anomaly_rasters.sh
 
 # 2. Build / rebuild satellite water masks (HSV from Esri tiles)
-python scripts/derive_water_mask.py --all --force
+python scripts/alternative_water_masks/derive_water_mask.py --all --force
 # 25-June is too big for zoom 16; rebuild it at zoom 15
-python scripts/derive_water_mask.py --slug june2023_25_june_23 --zoom 15 --force
+python scripts/alternative_water_masks/derive_water_mask.py --slug june2023_25_june_23 --zoom 15 --force
 
 # 2b. TARGETED drone-extension for documented sandy-bay sites only.
 #     Do NOT apply globally — cliff-coast flights re-introduce
 #     projection-bug artifacts. See METHODS.md §3 for the table.
-python scripts/extend_water_mask_with_drone.py \
+python scripts/alternative_water_masks/extend_water_mask_with_drone.py \
     --slug june2023_23_june_23_tongariki_flights
 
 # 3. Recompute polygon Σ_anomaly with water-mask correction
-python scripts/recompute_polygon_intensity.py --all
+python scripts/pipeline/recompute_polygon_intensity.py --all
 
 # 4. Derive raster-thresholded polygons (uses water mask)
-python scripts/derive_polygons_from_raster.py --all
+python scripts/pipeline/derive_polygons_from_raster.py --all
 
 # 5. Re-render per-flight anomaly PNGs with obs+outlier filters but
 #    NOT the water mask (preserves continuous Vaihu signal).
-python scripts/mask_anomaly_pngs.py --all --no-water-mask
+python scripts/pipeline/mask_anomaly_pngs.py --all --no-water-mask
 
 # 6. Refresh master KMLs
-python scripts/aggregate_sigma_anomaly_kml.py \
+python scripts/aggregate/aggregate_sigma_anomaly_kml.py \
     --output sgd_output/rapa_nui_all_sgd_sigma.kml \
     sgd_output/*_spread/*_sgd.geojson
 
-python scripts/aggregate_sigma_anomaly_kml.py \
+python scripts/aggregate/aggregate_sigma_anomaly_kml.py \
     --output sgd_output/rapa_nui_all_sgd_sigma_raster.kml \
     sgd_output/*_spread/*_sgd_raster.geojson
 
-python scripts/aggregate_anomaly_kml.py
+python scripts/aggregate/aggregate_anomaly_kml.py
 # → sgd_output/rapa_nui_all_anomaly.kml (master GroundOverlay KML)
 
 # 7. Refresh cross-flight comparison + figures
-python scripts/build_polygon_comparison_summary.py
-python scripts/build_island_overview.py
-python scripts/build_island_overview.py --polygon-source raster
-python scripts/build_flight_ranking.py
-python scripts/build_flight_ranking.py --polygon-source raster
+python scripts/aggregate/build_polygon_comparison_summary.py
+python scripts/figures/build_island_overview.py
+python scripts/figures/build_island_overview.py --polygon-source raster
+python scripts/figures/build_flight_ranking.py
+python scripts/figures/build_flight_ranking.py --polygon-source raster
 
 # 8. (Optional) refresh per-flight validation figures
-python scripts/build_validation_figure.py --all
+python scripts/figures/build_validation_figure.py --all
 
 # 9. (Optional) refresh hero closeups
-python scripts/build_site_closeup.py --slug vaihu_full --center -27.16838 -109.38511 --box-m 700 --label "Vaihu Harbor"
-python scripts/build_site_closeup.py --slug june2023_23_june_23_tongariki_flights --center -27.126 -109.276 --box-m 600 --label "Hanga Nui (Ahu Tongariki)"
+python scripts/figures/build_site_closeup.py --slug vaihu_full --center -27.16838 -109.38511 --box-m 700 --label "Vaihu Harbor"
+python scripts/figures/build_site_closeup.py --slug june2023_23_june_23_tongariki_flights --center -27.126 -109.276 --box-m 600 --label "Hanga Nui (Ahu Tongariki)"
 # ... and similarly for other sites
 ```

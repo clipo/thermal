@@ -13,7 +13,7 @@ from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 
-THERMAL = Path(__file__).resolve().parent.parent
+THERMAL = Path(__file__).resolve().parent.parent.parent
 PAPER_MD = THERMAL / "PAPER_METHODS.md"
 OUT_DOCX = THERMAL / "PAPER_METHODS.docx"
 FIG_DIR = THERMAL / "sgd_output" / "figures"

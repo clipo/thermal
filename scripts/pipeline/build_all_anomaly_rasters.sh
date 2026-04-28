@@ -44,7 +44,7 @@ for combined in data/*_combined; do
   echo "==========================="
 
   log="$LOG_DIR/${slug}.log"
-  python -u scripts/build_anomaly_raster.py \
+  python -u scripts/pipeline/build_anomaly_raster.py \
     --data "$combined" \
     --output "${outdir}/${slug}_anomaly" \
     --grid-resolution-m 1.0 2>&1 | tee "$log" \

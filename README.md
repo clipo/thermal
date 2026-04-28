@@ -1,3 +1,110 @@
+# Quantitative SGD pipeline (this work, 2026-04-28)
+
+> **Looking for**: how SGD plumes are detected, mapped, and quantified
+> across the entire Rapa Nui coast for cross-site comparison and the
+> archaeology-correlation paper. For the original interactive
+> detection toolkit (`sgd_wizard.py`, `sgd_autodetect.py`, etc.), see
+> the existing sections below this one.
+
+The quantitative pipeline produces three master products from 29
+thermal-drone flights covering the entire coast of Rapa Nui:
+
+![Island-wide SGD map](docs/images/sgd_pipeline/island_overview.png)
+
+*Figure 1 — 415 coast-anchored SGD plumes detected across 29 flights
+(June 2023 + January 2024), point size and colour scale with each
+plume's threshold-independent Σ_anomaly metric (m² · °C). Source:
+`sgd_output/rapa_nui_all_sgd_coastal.kml`.*
+
+## Three polygon products
+
+| Product | When to use |
+|---|---|
+| **Coast-anchored plumes** (canonical) | Each polygon documents a coastal source (`source_lat`/`source_lon`). Best for the paper's archaeology-correlation question. |
+| **Raster watershed polygons** | One polygon per local cold peak; full plume halo. Good for "how much cold-water content per location". |
+| **Detector polygons** | Conservative discrete cold cores from per-frame detection + density clustering. Most defensible for "where was SGD detected". |
+
+Cross-flight comparison:
+
+![Detector vs raster comparison](docs/images/sgd_pipeline/polygon_comparison.png)
+
+## Site closeups
+
+Hand-picked validation sites overlaid on Esri WorldImagery:
+
+### Vaihu (Ahu Vaihu, textbook reference)
+
+![Vaihu Harbor closeup](docs/images/sgd_pipeline/vaihu_closeup.png)
+
+7 discrete plumes traced along the rocky shore and surf zone where
+freshwater is known to emerge through collapsed lava-tube outlets.
+Σ_anomaly = 11k m² · °C in the 700 m frame.
+
+### Hanga Nui at Ahu Tongariki
+
+![Hanga Nui closeup](docs/images/sgd_pipeline/hanga_nui_closeup.png)
+
+Plumes detected at the bay where the famous moai platform sits.
+Bay geometry typical of Rapa Nui's SGD-active sites: low-elevation
+beach and rocks, sheltered, with Poike's volcanic slopes inland.
+
+## Pipeline at a glance
+
+```
+Raw drone frames (Autel 640T thermal + RGB)
+    ↓
+[scripts/pipeline/build_anomaly_raster.py]
+    ↓
+Per-flight cold-anomaly raster (1 m grid, °C below baseline)
+    ↓                                        ↓
+[OSM coastline]                       [SRTM 30m DEM]
+[derive_water_mask_osm.py]            [derive_cliff_zone.py]
+    ↓                                        ↓
+Per-flight water mask              Per-flight cliff-zone mask
+    ↓
+[derive_plumes_coast_anchored.py]
+    ↓
+Coast-anchored plume polygons
+    ↓
+[aggregate/aggregate_sigma_anomaly_kml.py]
+    ↓
+Master KML (canonical)
+    ↓
+[figures/build_*]
+    ↓
+Publication figures + PAPER_METHODS.docx
+```
+
+## Where everything lives
+
+See [`REPRODUCE.md`](REPRODUCE.md) for the full directory tree, the
+end-to-end re-run recipe, and the validated headline numbers.
+
+For a script index by purpose see
+[`scripts/README.md`](scripts/README.md).
+
+## Compiled paper deliverable
+
+[`PAPER_METHODS.docx`](PAPER_METHODS.docx) — academic-paper-ready
+Methods section (~13 MB) with 7 figures embedded:
+- Figure 1: island-wide overview
+- Figures 2–6: site closeups (Vaihu, Hanga Nui, Hekii West, Anakena,
+  Hivahiva-Hangapiko)
+- Figure 7: Poike (cliff-coast control showing the cliff-zone
+  filter correctly suppressing spurious plumes)
+
+The Methods source is [`PAPER_METHODS.md`](PAPER_METHODS.md); regenerate
+the .docx with `python scripts/figures/build_methods_docx.py`.
+
+## Living methods doc
+
+[`METHODS.md`](METHODS.md) — full methodology + a running decisions
+log of every filter / threshold / approach we've tried and why,
+including dated entries for every iteration in the 2026-04-27 / 28
+work session that produced the current pipeline.
+
+---
+
 # Submarine Groundwater Discharge (SGD) Detection Toolkit
 
 A **production-ready** Python toolkit for detecting submarine groundwater discharge (cold freshwater seeps) in coastal waters using thermal and RGB imagery from Autel 640T UAV. Successfully tested with real Rapa Nui (Easter Island) survey data.
@@ -470,7 +577,7 @@ python scripts/sgd_autodetect.py --data data/100MEDIA --output results/sgd_detec
 python scripts/sgd_viewer.py --data data/100MEDIA
 
 # Generate survey coverage maps
-python scripts/generate_coverage_map.py --data data/ --search
+python scripts/coverage/generate_coverage_map.py --data data/ --search
 ```
 
 ### Installation on Specific Platforms
@@ -637,7 +744,7 @@ python scripts/sgd_viewer.py --data data/100MEDIA
 python scripts/train_segmentation.py --data data/100MEDIA
 
 # Generate Coverage Maps
-python scripts/generate_coverage_map.py --data data/ --search
+python scripts/coverage/generate_coverage_map.py --data data/ --search
 
 # SAM Segmentation (GPU-accelerated, advanced)
 python scripts/sam_segmenter.py --interactive --data data/100MEDIA
@@ -659,7 +766,7 @@ python scripts/sam_segmenter.py --test
 python scripts/sam_segmenter.py --interactive --data data/100MEDIA
 
 # 4. Compare with Random Forest segmentation
-python scripts/compare_segmentation.py --image data/100MEDIA/MAX_0001.JPG --interactive
+python scripts/legacy/compare_segmentation.py --image data/100MEDIA/MAX_0001.JPG --interactive
 
 # 5. NEW: Test SAM-based SGD detection (interactive, high accuracy)
 python scripts/test_sam_sgd_detection.py \
@@ -2010,7 +2117,7 @@ python scripts/sam_segmenter.py --test
 The prompt creator is the recommended way to use SAM. Launch it on any image from your survey:
 
 ```bash
-python scripts/sam_prompt_creator.py --image data/100MEDIA/MAX_0100.JPG
+python scripts/legacy/sam_prompt_creator.py --image data/100MEDIA/MAX_0100.JPG
 ```
 
 ![SAM Prompt Creator Interface](docs/images/sam_prompt_creator.png)

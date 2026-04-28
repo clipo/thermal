@@ -38,7 +38,7 @@ from pathlib import Path
 import numpy as np
 
 
-THERMAL = Path(__file__).resolve().parent.parent
+THERMAL = Path(__file__).resolve().parent.parent.parent
 SGD_OUTPUT = THERMAL / "sgd_output"
 
 

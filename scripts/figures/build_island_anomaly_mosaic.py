@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 
 
-THERMAL = Path(__file__).resolve().parent.parent
+THERMAL = Path(__file__).resolve().parent.parent.parent
 SGD_OUTPUT = THERMAL / "sgd_output"
 
 

@@ -27,7 +27,7 @@ import numpy as np
 from PIL import Image
 
 
-THERMAL = Path(__file__).resolve().parent.parent
+THERMAL = Path(__file__).resolve().parent.parent.parent
 SGD_OUTPUT = THERMAL / "sgd_output"
 
 

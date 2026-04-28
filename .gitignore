@@ -76,3 +76,6 @@ Thumbs.db
 
 # Top-level test data (not part of pipeline)
 test_search/
+
+# Top-level diagnostic dump
+diagnostic_report.json
