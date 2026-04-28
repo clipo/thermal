@@ -30,7 +30,8 @@ Cross-flight comparison:
 
 ## Site closeups
 
-Hand-picked validation sites overlaid on Esri WorldImagery:
+Hand-picked validation sites overlaid on Esri WorldImagery satellite
+tiles. All four use the canonical coast-anchored detector.
 
 ### Vaihu (Ahu Vaihu, textbook reference)
 
@@ -47,6 +48,23 @@ freshwater is known to emerge through collapsed lava-tube outlets.
 Plumes detected at the bay where the famous moai platform sits.
 Bay geometry typical of Rapa Nui's SGD-active sites: low-elevation
 beach and rocks, sheltered, with Poike's volcanic slopes inland.
+
+### Hanga o Honu at Ahu Hekii
+
+![Hekii closeup](docs/images/sgd_pipeline/hekii_west_closeup.png)
+
+4-plume cluster tightly grouped at the bay where Ahu Hekii sits — a
+classic low-elevation north-coast SGD hot zone with peaks above 1 °C
+below ambient. Total Σ_anomaly = 6,346 m² · °C.
+
+### Anakena Bay (Ahu Nau Nau)
+
+![Anakena closeup](docs/images/sgd_pipeline/anakena_closeup.png)
+
+Coast-anchored plumes from the June 2023 survey of the iconic sandy
+beach. A prominent central plume in the bay itself (Σ ≈ 1,400 m²·°C,
+peak ~1.1 °C) plus 4 satellite plumes at the beach edge and along the
+rocky points. Total Σ_anomaly = 2,743 m² · °C.
 
 ## Pipeline at a glance
 

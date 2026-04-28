@@ -708,6 +708,56 @@ change something material.
   is conservative + validated, raster is inclusive + threshold-
   explicit; they answer different questions and the comparison itself
   is informative.
+- **2026-04-28**: Reorganized scripts into `scripts/<subdir>/X.py`
+  layout (pipeline / aggregate / figures / coverage / tools /
+  diagnostics / batch / legacy / alternative_water_masks). 20 Python
+  scripts had `THERMAL = Path(__file__).resolve().parent.parent`
+  patched to `.parent.parent.parent` for the extra subdir. Three
+  shell drivers updated to call the new paths. No detector code
+  touched; runtime behavior unchanged.
+- **2026-04-28**: Moved root-level docs (METHODS.md, PAPER_METHODS.md,
+  PAPER_METHODS.docx, REPRODUCE.md, TECHNICAL_PAPER.md,
+  SEGMENTATION_ANALYSIS.md, TRAINING_IMPROVEMENTS.md) to `docs/`.
+  Cross-references updated in README.md, CLAUDE.md, scripts/README.md,
+  and `scripts/figures/build_methods_docx.py`.
+- **2026-04-28**: Packaging refresh. `requirements.txt` adds
+  `python-docx` (build_methods_docx) and `pandas` (data_aggregator);
+  `setup.py` drops the broken `entry_points` (scripts/ isn't an
+  importable package), adds `paper` and `sam` extras, refreshes
+  metadata. New `pyproject.toml` enables PEP-517 editable installs.
+  `*.egg-info/`, `build/`, `dist/`, `.eggs/` added to `.gitignore`
+  and the previously-committed `sgd_toolkit.egg-info/` was untracked.
+  `pip install -e .` now works clean.
+- **2026-04-28**: Paper Figure 4 (Hekii West) re-centered. Auto-
+  centering on `flight8_hekii_west` picks the strongest plume at
+  (-27.0753, -109.3131), which is in the Ovahe-area bay — wrong site.
+  The actual Hanga o Honu / Ahu Hekii bay is at (-27.0858, -109.2999),
+  where 4 strong coast-anchored plumes cluster (peaks >1 °C, total
+  Σ ≈ 6,346 m²·°C). Recipe in REPRODUCE.md pinned to the new center;
+  caption updated to name Ahu Hekii / Hanga o Honu explicitly.
+- **2026-04-28**: Paper Figure 5 (Anakena Bay) — coordinate + flight
+  source correction. The original (-27.0712, -109.318) center used
+  in REPRODUCE.md was ~600 m east of the actual Ahu Nau Nau / Anakena
+  Beach landing at (-27.0727, -109.3231); the rendered closeup
+  contained 0 polygons and unloaded "Map data not yet available"
+  satellite tiles. Re-rendered at the correct center. Initially
+  thought the canonical coast-anchored detector "missed" Anakena —
+  scoping error: I only inspected `flight10_anakena_to_west`, which
+  is Jan 2024 and retains only 1 weak coast-anchored plume here.
+  The June 2023 survey (`june2023_25_june_23`) covers the same bay
+  and produces 5 strong coast-anchored plumes (peaks 1.1-1.4 °C,
+  total Σ = 2,743 m²·°C) including a prominent central one in the
+  bay itself. Switched Figure 5 source from `flight10_anakena_to_west`
+  to `june2023_25_june_23`; caption now uses the canonical product
+  consistent with Figures 2-4 and 6-7. The Jan 2024 / June 2023
+  signal-strength delta at this site is genuine field variability
+  (different baselines, different time-of-day / season), not a
+  detector failure.
+- **2026-04-28**: Updated CLAUDE.md with verified site coordinates
+  (Vaihu, Hanga Nui, Anakena, Hanga o Honu / Ahu Hekii) and a
+  per-figure source table so future sessions don't re-trip the
+  Figure 4 (Ovahe vs Hekii) and Figure 5 (Jan 2024 vs June 2023)
+  traps.
 
 ---
 

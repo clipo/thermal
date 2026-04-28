@@ -27,6 +27,8 @@ data/
 !docs/
 !docs/images/
 !docs/images/*.png
+!docs/images/**/
+!docs/images/**/*.png
 
 # Output directories
 sgd_output/
