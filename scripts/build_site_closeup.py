@@ -367,6 +367,42 @@ def render(slug: str, center_lat: float, center_lon: float, box_m: float,
 
     visible_polys.sort(key=lambda p: p["props"].get("sigma_anomaly_m2c", 0.0))
 
+    # === Restrict raster display to inside polygons only ===
+    # The integrated cold-anomaly raster covers the entire flight strip,
+    # but for paper figures we want the colored shading to represent
+    # exactly what's inside each detected plume — not extend across
+    # the bay or onto adjacent inlets. Display only cells inside polygon
+    # rings (zero buffer).
+    if visible_polys:
+        from matplotlib.path import Path as MplPath
+        crop_gy, crop_gx = display.shape
+        grid_res = crop["grid_res"]
+        poly_mask = np.zeros((crop_gy, crop_gx), dtype=bool)
+        mpd_lat_loc = 111320.0
+        _crop_centerlat = 0.5 * (crop["minlat"] + crop["maxlat"])
+        mpd_lon_loc = 111320.0 * math.cos(math.radians(_crop_centerlat))
+        for p in visible_polys:
+            ring = p["ring"]
+            lons_r = np.array([c[0] for c in ring], dtype=np.float64)
+            lats_r = np.array([c[1] for c in ring], dtype=np.float64)
+            cs_r = (lons_r - crop["minlon"]) * mpd_lon_loc / grid_res
+            rs_r = (lats_r - crop["minlat"]) * mpd_lat_loc / grid_res
+            pts_r = np.column_stack([cs_r, rs_r])
+            cmin_r = max(0, int(math.floor(cs_r.min())))
+            cmax_r = min(crop_gx, int(math.ceil(cs_r.max())) + 1)
+            rmin_r = max(0, int(math.floor(rs_r.min())))
+            rmax_r = min(crop_gy, int(math.ceil(rs_r.max())) + 1)
+            if cmax_r <= cmin_r or rmax_r <= rmin_r:
+                continue
+            path_r = MplPath(pts_r)
+            cc_r, rr_r = np.meshgrid(np.arange(cmin_r, cmax_r) + 0.5,
+                                      np.arange(rmin_r, rmax_r) + 0.5)
+            inside_r = path_r.contains_points(
+                np.column_stack([cc_r.ravel(), rr_r.ravel()])
+            ).reshape(rr_r.shape)
+            poly_mask[rmin_r:rmax_r, cmin_r:cmax_r] |= inside_r
+        display = np.where(poly_mask, display, np.nan)
+
     # ---------------- figure ----------------
     fig, ax = plt.subplots(figsize=(12, 10), constrained_layout=False)
 
@@ -390,8 +426,8 @@ def render(slug: str, center_lat: float, center_lon: float, box_m: float,
     cb = fig.colorbar(im, ax=ax, shrink=0.62, pad=0.02,
                       label="Cold anomaly  (°C below ambient baseline)")
 
-    # 3) 0.3 °C contour outlining the plume envelope
-    if np.any(quality):
+    # 3) 0.3 °C contour outlining the plume envelope (only if requested)
+    if contour_level > 0 and np.any(quality):
         gy, gx = display.shape
         xs = np.linspace(crop["minlon"], crop["maxlon"], gx)
         ys = np.linspace(crop["minlat"], crop["maxlat"], gy)

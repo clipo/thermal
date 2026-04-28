@@ -100,40 +100,40 @@ def add_figure(doc, label, image_path, caption):
     print(f"  ✓ embedded {label} ({image_path.name})")
 
 
+def _flush_para(doc, buf):
+    """Emit buffered lines as ONE Word paragraph — collapse hard-wrapped
+    markdown line breaks into spaces so paragraphs flow naturally."""
+    if not buf:
+        return
+    text = " ".join(line.strip() for line in buf).strip()
+    text = re.sub(r"\s+", " ", text)
+    add_para(doc, text)
+
+
 def parse_markdown_into_doc(md_text: str, doc: Document):
     """Walk the markdown, emit headings/paragraphs into doc.
     Skip the trailing 'Figure captions' section (figures are embedded
-    inline in the FIGURES list)."""
-    # Split off the figure-captions section
+    inline in the FIGURES list later by main()). Hard-wrapped lines
+    in source markdown are collapsed into single Word paragraphs."""
     body = md_text.split("## Figure captions")[0]
-    # Convert headings + paragraphs
-    in_fence = False
-    buf = []
+    buf: list[str] = []
     for line in body.splitlines():
         if line.startswith("# "):
-            if buf:
-                add_para(doc, "\n".join(buf).strip()); buf = []
+            _flush_para(doc, buf); buf = []
             add_heading(doc, line[2:].strip(), level=0)
         elif line.startswith("## "):
-            if buf:
-                add_para(doc, "\n".join(buf).strip()); buf = []
+            _flush_para(doc, buf); buf = []
             add_heading(doc, line[3:].strip(), level=1)
         elif line.startswith("### "):
-            if buf:
-                add_para(doc, "\n".join(buf).strip()); buf = []
+            _flush_para(doc, buf); buf = []
             add_heading(doc, line[4:].strip(), level=2)
         elif line.startswith("---"):
             continue
         elif line.strip() == "":
-            if buf:
-                add_para(doc, "\n".join(buf).strip()); buf = []
+            _flush_para(doc, buf); buf = []
         else:
-            # Strip simple markdown emphasis markers; keep math notation as-is
-            line = re.sub(r"\\\[", "", line)
-            line = re.sub(r"\\\]", "", line)
             buf.append(line)
-    if buf:
-        add_para(doc, "\n".join(buf).strip())
+    _flush_para(doc, buf)
 
 
 def main():
