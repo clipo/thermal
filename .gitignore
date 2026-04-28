@@ -71,3 +71,8 @@ Thumbs.db
 
 # Keep sample data directory structure
 !data/.gitkeep
+# Word/Excel lock files
+~$*
+
+# Top-level test data (not part of pipeline)
+test_search/
