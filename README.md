@@ -72,12 +72,12 @@ Master KML (canonical)
     ↓
 [figures/build_*]
     ↓
-Publication figures + PAPER_METHODS.docx
+Publication figures + docs/PAPER_METHODS.docx
 ```
 
 ## Where everything lives
 
-See [`REPRODUCE.md`](REPRODUCE.md) for the full directory tree, the
+See [`docs/REPRODUCE.md`](docs/REPRODUCE.md) for the full directory tree, the
 end-to-end re-run recipe, and the validated headline numbers.
 
 For a script index by purpose see
@@ -85,7 +85,7 @@ For a script index by purpose see
 
 ## Compiled paper deliverable
 
-[`PAPER_METHODS.docx`](PAPER_METHODS.docx) — academic-paper-ready
+[`docs/PAPER_METHODS.docx`](docs/PAPER_METHODS.docx) — academic-paper-ready
 Methods section (~13 MB) with 7 figures embedded:
 - Figure 1: island-wide overview
 - Figures 2–6: site closeups (Vaihu, Hanga Nui, Hekii West, Anakena,
@@ -93,12 +93,12 @@ Methods section (~13 MB) with 7 figures embedded:
 - Figure 7: Poike (cliff-coast control showing the cliff-zone
   filter correctly suppressing spurious plumes)
 
-The Methods source is [`PAPER_METHODS.md`](PAPER_METHODS.md); regenerate
+The Methods source is [`docs/PAPER_METHODS.md`](docs/PAPER_METHODS.md); regenerate
 the .docx with `python scripts/figures/build_methods_docx.py`.
 
 ## Living methods doc
 
-[`METHODS.md`](METHODS.md) — full methodology + a running decisions
+[`docs/METHODS.md`](docs/METHODS.md) — full methodology + a running decisions
 log of every filter / threshold / approach we've tried and why,
 including dated entries for every iteration in the 2026-04-27 / 28
 work session that produced the current pipeline.
@@ -109,7 +109,7 @@ work session that produced the current pipeline.
 
 A **production-ready** Python toolkit for detecting submarine groundwater discharge (cold freshwater seeps) in coastal waters using thermal and RGB imagery from Autel 640T UAV. Successfully tested with real Rapa Nui (Easter Island) survey data.
 
-📚 **[Read the Technical Paper](TECHNICAL_PAPER.md)** - Comprehensive documentation of the thermal image processing challenges and our solutions
+📚 **[Read the Technical Paper](docs/TECHNICAL_PAPER.md)** - Comprehensive documentation of the thermal image processing challenges and our solutions
 
 > **🎉 FULLY OPERATIONAL - Ready for Scientific Use**
 > 
@@ -121,7 +121,7 @@ A **production-ready** Python toolkit for detecting submarine groundwater discha
 > - **👁️ Interactive** (`sgd_viewer.py`): Manual review and verification with visual feedback
 
 ## Table of Contents
-- [Technical Paper](TECHNICAL_PAPER.md) - In-depth technical documentation
+- [Technical Paper](docs/TECHNICAL_PAPER.md) - In-depth technical documentation
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [🧙 Interactive Wizard - The Easiest Way to Get Started](#-interactive-wizard---the-easiest-way-to-get-started)
@@ -2289,7 +2289,7 @@ Without these steps, cold rocks, shadows, and land features would create false p
 
 ## Technical Details
 
-> 📖 **For comprehensive technical documentation, see the [Technical Paper](TECHNICAL_PAPER.md)**
+> 📖 **For comprehensive technical documentation, see the [Technical Paper](docs/TECHNICAL_PAPER.md)**
 
 ### Image Alignment & Orientation
 - Thermal FOV is ~70% of RGB FOV (centered)
@@ -3074,7 +3074,7 @@ thermal/
 │
 ├── docs/                           # Documentation
 │   ├── README.md                  # This file
-│   ├── TECHNICAL_PAPER.md         # Technical documentation
+│   ├── docs/TECHNICAL_PAPER.md         # Technical documentation
 │   └── images/                    # Documentation images
 │
 ├── archive/                        # Historical code (for reference)

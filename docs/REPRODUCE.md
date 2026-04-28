@@ -12,10 +12,10 @@ regenerate, follow the steps below.
 
 ```
 thermal/
-├── METHODS.md              ← Living methods doc (current pipeline + decisions log)
-├── PAPER_METHODS.md        ← Academic-paper-ready Methods section (source)
-├── PAPER_METHODS.docx      ← ★ Compiled Methods .docx with 7 figures (paper deliverable)
-├── REPRODUCE.md            ← (this file)
+├── docs/METHODS.md              ← Living methods doc (current pipeline + decisions log)
+├── docs/PAPER_METHODS.md        ← Academic-paper-ready Methods section (source)
+├── docs/PAPER_METHODS.docx      ← ★ Compiled Methods .docx with 7 figures (paper deliverable)
+├── docs/REPRODUCE.md            ← (this file)
 ├── README.md               ← Toolkit user guide (existing detector pipeline)
 │
 ├── data/                   ← (gitignored) symlinks to raw drone frames
@@ -79,7 +79,7 @@ Just open these in Google Earth or a browser:
 | Whole-island anomaly raster overlay | `sgd_output/rapa_nui_all_anomaly.kml` |
 | Per-flight diagnostic | `sgd_output/<slug>_spread/<slug>_validation.png` |
 | Per-site hero figure | `sgd_output/figures/closeups/*_closeup.png` |
-| Compiled paper Methods | `PAPER_METHODS.docx` |
+| Compiled paper Methods | `docs/PAPER_METHODS.docx` |
 | Per-flight Σ_anomaly table | `sgd_output/polygon_intensity_summary.csv` |
 
 The KMLs all reference image PNGs by relative path, so they only
@@ -160,7 +160,7 @@ python scripts/figures/build_site_closeup.py \
 python scripts/figures/build_site_closeup.py --slug flight8_hekii_west \
     --polygon-source coastal --box-m 700 --label "Hekii West" --contour-level 0
 python scripts/figures/build_site_closeup.py --slug flight10_anakena_to_west \
-    --polygon-source coastal --center -27.0712 -109.318 --box-m 600 \
+    --polygon-source coastal --center -27.0658 -109.3358 --box-m 2200 \
     --label "Anakena Bay" --contour-level 0
 python scripts/figures/build_site_closeup.py \
     --slug flight11_hivahiva_to_hangapiko --polygon-source coastal \
@@ -173,7 +173,7 @@ python scripts/figures/build_site_closeup.py --slug june2023_2_july_23_poike_3 \
 python scripts/figures/build_methods_docx.py
 ```
 
-After step 12, `PAPER_METHODS.docx` at the project root has the
+After step 12, `docs/PAPER_METHODS.docx` at the project root has the
 current results embedded.
 
 ---
@@ -219,4 +219,4 @@ are deferred until it is and the time/compute is available:
   `sgd_toolkit/georeferencing/footprint_generator.py` to ray-march
   pixels against terrain instead of assuming flat ground.
 
-Both are detailed in `METHODS.md` under "What's still to address".
+Both are detailed in `docs/METHODS.md` under "What's still to address".

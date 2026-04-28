@@ -724,7 +724,7 @@ python scripts/alternative_water_masks/derive_water_mask.py --slug june2023_25_j
 
 # 2b. TARGETED drone-extension for documented sandy-bay sites only.
 #     Do NOT apply globally — cliff-coast flights re-introduce
-#     projection-bug artifacts. See METHODS.md §3 for the table.
+#     projection-bug artifacts. See docs/METHODS.md §3 for the table.
 python scripts/alternative_water_masks/extend_water_mask_with_drone.py \
     --slug june2023_23_june_23_tongariki_flights
 

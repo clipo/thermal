@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert PAPER_METHODS.md into a Word .docx with embedded site-closeup
+"""Convert docs/PAPER_METHODS.md into a Word .docx with embedded site-closeup
 figures, suitable for the Methods section of an academic paper.
 """
 
@@ -14,8 +14,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 
 THERMAL = Path(__file__).resolve().parent.parent.parent
-PAPER_MD = THERMAL / "PAPER_METHODS.md"
-OUT_DOCX = THERMAL / "PAPER_METHODS.docx"
+PAPER_MD = THERMAL / "docs/PAPER_METHODS.md"
+OUT_DOCX = THERMAL / "docs/PAPER_METHODS.docx"
 FIG_DIR = THERMAL / "sgd_output" / "figures"
 CLOSEUPS = FIG_DIR / "closeups"
 
@@ -52,10 +52,12 @@ FIGURES = [
      "ambient) typical of strong-flow lava-tube outlets."),
     ("Figure 5",
      CLOSEUPS / "flight10_anakena_to_west_Anakena_Bay_closeup.png",
-     "Anakena Bay. Four plumes detected in the small sandy-beach bay. "
-     "The relatively low Σ_anomaly here is consistent with Anakena's "
-     "geology — small drainage basin upstream, modest groundwater "
-     "throughput."),
+     "Anakena and Ovahe (north coast). Four coast-anchored plumes "
+     "across this 2.2 km stretch — three concentrated at the rocky "
+     "Ovahe headland on the west side of the frame, plus one weaker "
+     "plume offshore of Anakena's sandy beach itself. The modest "
+     "Σ_anomaly (~1,800 m²·°C) is consistent with this coast's small "
+     "upstream drainage basin and modest groundwater throughput."),
     ("Figure 6",
      CLOSEUPS / "flight11_hivahiva_to_hangapiko_Hivahiva-Hangapiko_closeup.png",
      "Hivahiva-Hangapiko (south coast). Ten plumes along the south "

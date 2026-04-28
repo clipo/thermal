@@ -37,10 +37,10 @@ per-flight cold-anomaly rasters and three parallel polygon products
   - `rapa_nui_all_sgd_coastal.kml` — 415 plumes (canonical)
   - `rapa_nui_all_sgd_sigma_raster.kml` — 1,066 plumes (full halo)
   - `rapa_nui_all_sgd_sigma.kml` — 1,789 polygons (detector)
-- **Paper Methods .docx**: `PAPER_METHODS.docx` at project root. Has 7
+- **Paper Methods .docx**: `docs/PAPER_METHODS.docx` at project root. Has 7
   embedded figures (overview + 6 site closeups). Source is
-  `PAPER_METHODS.md`. Compiled by `scripts/figures/build_methods_docx.py`.
-- **Reproducibility**: see `REPRODUCE.md` at project root for the full
+  `docs/PAPER_METHODS.md`. Compiled by `scripts/figures/build_methods_docx.py`.
+- **Reproducibility**: see `docs/REPRODUCE.md` at project root for the full
   end-to-end re-run sequence and where everything lives.
 
 ## Directory structure
@@ -82,8 +82,8 @@ When adding new scripts, place them in the appropriate subdirectory
 4. **Adaptive threshold ceiling at 0.55 °C** prevents strong-signal
    flights from setting thresholds so high that subtle bays in the
    same flight (Anakena, parts of Vaihu) are filtered out.
-5. **The paper Methods doc** (`PAPER_METHODS.docx`) regenerates from
-   `PAPER_METHODS.md` and the closeup PNGs. To update text or figures,
+5. **The paper Methods doc** (`docs/PAPER_METHODS.docx`) regenerates from
+   `docs/PAPER_METHODS.md` and the closeup PNGs. To update text or figures,
    edit those, then run `python scripts/figures/build_methods_docx.py`.
 
 ## What's still to address (in priority order)
@@ -100,17 +100,17 @@ When adding new scripts, place them in the appropriate subdirectory
 
 | File | Purpose |
 |---|---|
-| `METHODS.md` | Living methods doc + decisions log (append-only) |
-| `PAPER_METHODS.md` | Academic Methods section source |
-| `PAPER_METHODS.docx` | Compiled .docx paper deliverable |
-| `REPRODUCE.md` | How to validate and re-run everything |
+| `docs/METHODS.md` | Living methods doc + decisions log (append-only) |
+| `docs/PAPER_METHODS.md` | Academic Methods section source |
+| `docs/PAPER_METHODS.docx` | Compiled .docx paper deliverable |
+| `docs/REPRODUCE.md` | How to validate and re-run everything |
 | `scripts/README.md` | Categorised script index |
 | `data/dem/S28W110.hgt` | NASA SRTM 30 m DEM tile (Rapa Nui) |
 | `sgd_output/osm_coastline.json` | Cached OSM Rapa Nui coastline |
 
 ## When the user asks to re-run
 
-Open `REPRODUCE.md`. The end-to-end recipe is documented step-by-step.
+Open `docs/REPRODUCE.md`. The end-to-end recipe is documented step-by-step.
 For a clean re-run from raw frames you also need the external volume
 mounted at `/Volumes/RapaNui`.
 

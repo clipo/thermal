@@ -1,50 +1,65 @@
 # Core dependencies for SGD Detection Toolkit
 # IMPORTANT: scikit-learn 1.5.1 is required for model compatibility
-numpy>=1.26.0,<2.0  # Updated for SAM compatibility
+#
+# Quick install (recommended):
+#   pip install -r requirements.txt
+#
+# Editable install (for development):
+#   pip install -e .
+#
+# Reproducibility install (exact versions used in the paper):
+#   pip install -r requirements_exact.txt
+
+# --- Numerics & imaging core ----------------------------------------------
+numpy>=1.26.0,<2.0          # <2.0 pin retained for SAM/torch compatibility
+scipy>=1.7.0
 matplotlib>=3.3.0
 Pillow>=8.0.0
-scipy>=1.7.0
-scikit-image>=0.18.0
-scikit-learn==1.5.1  # EXACT version required for pre-trained model
-opencv-python>=4.5.0,<4.10.0  # For image processing
+opencv-python>=4.5.0,<4.10.0
 
-# Optional for progress bars
-tqdm>=4.60.0
+# --- Geospatial / segmentation -------------------------------------------
+scikit-image>=0.18.0        # watershed, peak_local_max, morphology
+scikit-learn==1.5.1         # EXACT version required for pre-trained model
+shapely>=2.0.0              # polygon geometry, unary_union, STRtree
 
-# For polygon merging (creates unified SGD distribution maps)
-shapely>=2.0.0
+# --- Data handling --------------------------------------------------------
+pandas>=1.5.0               # cross-flight summary tables (sgd_toolkit.utils.data_aggregator)
+piexif>=1.1.3               # EXIF GPS / orientation extraction
+tqdm>=4.60.0                # progress bars
 
-# For EXIF data extraction (GPS, timestamps, drone orientation)
-piexif>=1.1.3
-# Alternative: exifread>=3.0.0
+# --- Paper compilation ----------------------------------------------------
+python-docx>=0.8.11         # scripts/figures/build_methods_docx.py — compiles
+                             # docs/PAPER_METHODS.md → docs/PAPER_METHODS.docx
+                             # with embedded figures.
 
-# Optional for enhanced ML models (better segmentation accuracy)
-# xgboost>=2.0.0
-# lightgbm>=4.0.0
+# --- Standard-library only (no install needed) ----------------------------
+# urllib (Overpass API fetch in derive_water_mask_osm.py),
+# xml.etree (KML emission), json, csv, hashlib, etc.
 
 # ============================================================================
-# OPTIONAL: SAM (Segment Anything Model) - For AI-based segmentation & detection
+# OPTIONAL: SAM (Segment Anything Model) — alternative ocean segmenter
 # ============================================================================
-# SAM provides superior ocean/land segmentation and SGD detection accuracy
-# Requires GPU (CUDA/MPS) for good performance
+# SAM provides superior ocean/land segmentation for the per-frame detector.
+# Requires GPU (CUDA / Apple-Silicon MPS) for usable performance.
 #
-# To install SAM support:
+# To install SAM support, run from the project root:
 #   bash scripts/setup_sam.sh
 #
 # Or manually:
-#   pip install torch torchvision  # Install PyTorch for your platform first
+#   pip install torch torchvision   # pick the right wheel for your platform
 #   pip install git+https://github.com/facebookresearch/segment-anything.git
 #
-# PyTorch installation (choose one based on your system):
-# - CUDA (NVIDIA GPU): https://pytorch.org/get-started/locally/
-# - Apple Silicon (M1/M2/M3): pip install torch torchvision
-# - CPU only: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# PyTorch wheel selection:
+# - CUDA (NVIDIA GPU):    https://pytorch.org/get-started/locally/
+# - Apple Silicon:        pip install torch torchvision
+# - CPU only:             pip install torch torchvision \
+#                             --index-url https://download.pytorch.org/whl/cpu
 #
-# SAM dependencies (installed by setup_sam.sh):
-# torch>=2.0.0
-# torchvision>=0.15.0
-# segment-anything @ git+https://github.com/facebookresearch/segment-anything.git
+# Resolved SAM dependency set (see setup_sam.sh):
+#   torch>=2.0.0
+#   torchvision>=0.15.0
+#   segment-anything @ git+https://github.com/facebookresearch/segment-anything.git
 # ============================================================================
 
 # Note: For exact reproducibility across all systems, use:
-# pip install -r requirements_exact.txt
+#   pip install -r requirements_exact.txt

@@ -8,7 +8,7 @@ flat in this directory (rather than subdirectories) because shell
 scripts and documentation reference them as `scripts/X.py` — moving
 files would break those references.
 
-For the full methodology, see [`../METHODS.md`](../METHODS.md).
+For the full methodology, see [`../docs/METHODS.md`](../docs/METHODS.md).
 
 ---
 
@@ -47,7 +47,7 @@ End-to-end SGD detection from raw thermal/RGB drone frames.
 | `build_flight_ranking.py` | Per-flight horizontal bar chart of Σ_anomaly. |
 | `build_site_closeup.py` | Hero figure for a single site with satellite basemap + overlays (`--polygon-source detector|raster|coastal`). |
 | `build_validation_figure.py` | Per-flight 3-panel diagnostic: anomaly raster, polygon overlay, observation count. |
-| `build_methods_docx.py` | Convert `PAPER_METHODS.md` to `PAPER_METHODS.docx` with embedded figures for paper submission. |
+| `build_methods_docx.py` | Convert `docs/PAPER_METHODS.md` to `docs/PAPER_METHODS.docx` with embedded figures for paper submission. |
 
 ## 4. Detector + per-frame processing
 
@@ -105,6 +105,6 @@ End-to-end SGD detection from raw thermal/RGB drone frames.
 
 | Script | Purpose |
 |---|---|
-| `build_flat_field.py` | Per-flight flat-field correction (vignette). Currently disabled — empirical evidence showed it regressed at Vaihu (see METHODS.md decisions log). |
+| `build_flat_field.py` | Per-flight flat-field correction (vignette). Currently disabled — empirical evidence showed it regressed at Vaihu (see docs/METHODS.md decisions log). |
 | `compare_segmentation.py` | Compare segmenter outputs side by side. |
 | `sam_prompt_creator.py` | Hand-craft prompts for SAM segmentation. |

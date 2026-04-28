@@ -1,0 +1,7 @@
+# Modern build-system declaration. Project metadata is intentionally kept in
+# setup.py — this file exists so that `pip install -e .` works without falling
+# back to the deprecated legacy editable path.
+
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
