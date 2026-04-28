@@ -31,13 +31,13 @@ FIGURES = [
      "The full-resolution SVG and KML versions allow toggling individual "
      "flights and inspecting polygon attributes."),
     ("Figure 2",
-     CLOSEUPS / "vaihu_full_Vaihu_Harbor_closeup.png",
-     "Vaihu Harbor (textbook SGD reference site). Coast-anchored plumes "
-     "overlaid on Esri WorldImagery satellite tile. Eighteen discrete "
-     "plumes traced along the bay shoreline, with sources at the rocky "
-     "cape and inner harbour where freshwater is known to emerge through "
-     "collapsed lava-tube outlets. The 0.3 °C anomaly contour (red "
-     "dashed) shows the broader plume envelope."),
+     CLOSEUPS / "vaihu_full_Vaihu_(Ahu_Vaihu)_closeup.png",
+     "Vaihu (Ahu Vaihu, textbook SGD reference site on the south "
+     "coast). Coast-anchored plumes overlaid on Esri WorldImagery "
+     "satellite tile. Seven discrete plumes traced along the rocky "
+     "shore and surf zone, with sources where freshwater is known to "
+     "emerge through collapsed lava-tube outlets. Coloured shading "
+     "shows mean cold-anomaly inside each plume polygon."),
     ("Figure 3",
      CLOSEUPS / "june2023_23_june_23_tongariki_flights_Hanga_Nui_(Ahu_Tongariki)_closeup.png",
      "Hanga Nui at Ahu Tongariki. Five discrete plumes detected in the "

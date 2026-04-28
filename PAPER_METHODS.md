@@ -52,7 +52,7 @@ All processing is implemented in Python with scientific-Python ecosystem librari
 
 **Figure 1.** Island-wide SGD distribution. Coast-anchored SGD plumes detected across 29 thermal-drone flights of Rapa Nui (June 2023 and January 2024). Each point represents one plume polygon; size and colour scale with the polygon's Σ_anomaly (m² · °C of integrated cold-anomaly content). Background shaded blocks show flight footprints. The full-resolution KML version allows toggling individual flights and inspecting polygon attributes.
 
-**Figure 2.** Vaihu Harbor (textbook SGD reference site). Coast-anchored plumes overlaid on Esri WorldImagery satellite tile. Discrete plumes traced along the bay shoreline, with sources at the rocky cape and inner harbour where freshwater is known to emerge through collapsed lava-tube outlets. The 0.3 °C anomaly contour (red dashed) shows the broader plume envelope.
+**Figure 2.** Vaihu (Ahu Vaihu, textbook SGD reference site on the south coast). Coast-anchored plumes overlaid on Esri WorldImagery satellite tile. Seven discrete plumes traced along the rocky shore and surf zone, with sources where freshwater is known to emerge through collapsed lava-tube outlets. Coloured shading shows mean cold-anomaly inside each plume polygon.
 
 **Figure 3.** Hanga Nui at Ahu Tongariki. Discrete plumes detected in the bay where the famous moai platform is sited. Bay geometry typical of Rapa Nui's SGD-active sites: low-elevation beach and rocks, sheltered from the open Pacific, with Poike's volcanic slopes inland.
 
