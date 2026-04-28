@@ -14,9 +14,10 @@ for combined in data/june2023_*_combined; do
   [ -d "$combined" ] || continue
   slug=$(basename "$combined" | sed 's/_combined$//')
   outdir="sgd_output/${slug}_spread"
-  # Skip flights already processed (CSV exists) so this script can resume.
-  if [ -f "${outdir}/${slug}_sgd.csv" ]; then
-    echo "  ✓ already done: $slug — skipping"
+  # Resume option: skip flights with existing CSV when SGD_RESUME=1 in env.
+  # Default: always re-run (so schema upgrades to existing outputs propagate).
+  if [ "${SGD_RESUME:-0}" = "1" ] && [ -f "${outdir}/${slug}_sgd.csv" ]; then
+    echo "  ✓ already done: $slug — skipping (SGD_RESUME=1)"
     continue
   fi
   mkdir -p "$outdir"

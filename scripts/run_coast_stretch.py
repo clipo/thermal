@@ -100,7 +100,8 @@ def cluster_polygons_by_density_grid(
     max_site_diameter_m: float | None = None,
     local_adaptive_window_m: float | None = None,
     local_adaptive_fraction: float = 0.5,
-) -> tuple[list[tuple[Polygon, int]], dict]:
+    polygon_anomalies: list[float] | None = None,
+) -> tuple[list[tuple[Polygon, int, dict]], dict]:
     """Alternative site identification by observation-density on a fixed spatial grid.
 
     Chains are mathematically impossible: we rasterize each valid raw polygon
@@ -124,14 +125,20 @@ def cluster_polygons_by_density_grid(
     # Keep only valid single Polygons with reasonable area. MultiPolygons can
     # arise from shapely.buffer(0) fixup on self-intersecting rings; we split
     # them into their constituent polygons instead of discarding.
-    kept = []
+    kept: list[Polygon] = []
+    kept_anomalies: list[float] = []
+    use_anomalies = polygon_anomalies is not None and len(polygon_anomalies) == len(polys)
     for i, p in enumerate(polys):
         if p.is_empty or areas[i] <= 0 or areas[i] > max_raw_area_m2:
             continue
+        anom = float(polygon_anomalies[i]) if use_anomalies else 0.0
         if isinstance(p, MultiPolygon):
-            kept.extend(p.geoms)
+            for piece in p.geoms:
+                kept.append(piece)
+                kept_anomalies.append(anom)
         elif isinstance(p, Polygon):
             kept.append(p)
+            kept_anomalies.append(anom)
     if not kept:
         return [], {"max_peak_obs": 0, "min_observations_used": min_observations or 0}
 
@@ -164,17 +171,24 @@ def cluster_polygons_by_density_grid(
         return [], {"max_peak_obs": 0, "min_observations_used": min_observations or 0}
 
     counts = np.zeros((gy, gx), dtype=np.int32)
+    # Sum of per-polygon mean-anomaly contributions per cell. Used to compute
+    # mean_anomaly_c per merged region: anomaly_sum[mask] / counts[mask] gives
+    # per-cell average; mean over the region is mean of that. Equivalent to a
+    # frame-weighted mean anomaly for each merged polygon.
+    anomaly_sum = np.zeros((gy, gx), dtype=np.float32) if use_anomalies else None
 
     # Rasterize each polygon onto the counts grid.
     from skimage.draw import polygon as sk_polygon
 
-    for mp in meter_polys:
+    for idx, mp in enumerate(meter_polys):
         ext = np.array(mp.exterior.coords, dtype=np.float64)
         col = (ext[:, 0] - minx) / grid_resolution_m
         row = (ext[:, 1] - miny) / grid_resolution_m
         rr, cc = sk_polygon(row, col, shape=(gy, gx))
         if rr.size:
             counts[rr, cc] += 1
+            if anomaly_sum is not None:
+                anomaly_sum[rr, cc] += kept_anomalies[idx]
 
     max_peak_obs = int(counts.max()) if counts.size else 0
 
@@ -303,9 +317,28 @@ def cluster_polygons_by_density_grid(
             continue
         if isinstance(poly_ll, MultiPolygon):
             poly_ll = max(poly_ll.geoms, key=lambda g: g.area)
-        # Count: peak observation count inside the component.
+        # Aggregated stats per merged region
         peak_count = int(counts[mask].max())
-        results.append((poly_ll, peak_count))
+        median_obs_count = float(np.median(counts[mask]))
+        info = {
+            "peak_obs": peak_count,
+            "median_obs": median_obs_count,
+        }
+        if anomaly_sum is not None:
+            # Per-cell mean anomaly = anomaly_sum / counts (skip count==0).
+            with np.errstate(invalid="ignore", divide="ignore"):
+                per_cell_anomaly = np.where(counts > 0, anomaly_sum / counts, np.nan)
+            cell_vals = per_cell_anomaly[mask]
+            cell_vals = cell_vals[np.isfinite(cell_vals)]
+            if cell_vals.size:
+                info["mean_anomaly_c"] = float(cell_vals.mean())
+                info["min_anomaly_c"] = float(cell_vals.max())  # max anomaly = coldest
+                info["p90_anomaly_c"] = float(np.percentile(cell_vals, 90))
+            else:
+                info["mean_anomaly_c"] = 0.0
+                info["min_anomaly_c"] = 0.0
+                info["p90_anomaly_c"] = 0.0
+        results.append((poly_ll, peak_count, info))
 
     return results, diagnostics
 
@@ -543,11 +576,18 @@ def run(args) -> DetectionRun:
             run_stats.failures.append((fn, f"georef: {e}"))
             continue
 
+        # The georef strips temperature fields (it expects "mean_temp_diff" but
+        # the detector saves "temperature_anomaly"). Pair georef polygons with
+        # the corresponding plume_info entries by index so we can carry the
+        # full temperature record into the raw geojson.
         frame_polys_n = 0
-        for feat in georef_features:
+        baseline_c = float(chars.get("baseline_c", 0.0)) if isinstance(chars, dict) else 0.0
+        for feat_i, feat in enumerate(georef_features):
             poly_coords = feat.get("polygon")
             if not poly_coords or len(poly_coords) < 3:
                 continue
+            # Match georef feature back to detector plume by index
+            src = plume_info[feat_i] if feat_i < len(plume_info) else {}
             try:
                 p = Polygon(poly_coords)
                 if not p.is_valid:
@@ -558,9 +598,18 @@ def run(args) -> DetectionRun:
                 raw_records.append(
                     {
                         "frame": fn,
-                        "plume_id": feat.get("id"),
-                        "area_pixels": feat.get("area_pixels"),
-                        "mean_temp": feat.get("mean_temp"),
+                        "plume_id": src.get("id"),
+                        "area_pixels": int(src.get("area_pixels", 0) or 0),
+                        "mean_temp_c": float(src.get("mean_temp", 0.0) or 0.0),
+                        "min_temp_c": float(src.get("min_temp", 0.0) or 0.0),
+                        # Anomaly: how much COLDER than the flight's warm baseline.
+                        # SpreadSGDDetector stores it as `temperature_anomaly` =
+                        # mean_temp - baseline (negative). Flip sign here so
+                        # downstream code treats positive numbers as "X °C below
+                        # ambient" — more intuitive when ranking by intensity.
+                        "mean_anomaly_c": -float(src.get("temperature_anomaly", 0.0) or 0.0),
+                        "min_anomaly_c": float(baseline_c) - float(src.get("min_temp", 0.0) or 0.0),
+                        "baseline_c": baseline_c,
                     }
                 )
                 frame_polys_n += 1
@@ -599,6 +648,9 @@ def _merge_and_write(raw_polys, raw_records, run_stats, args, out_base):
             f"(grid {args.grid_resolution_m} m, min_observations={explicit_min}, "
             f"raw-area cap {args.max_raw_area_m2} m²)…"
         )
+        # Pull mean_anomaly_c from each raw record (saved by save_raw_polys_geojson)
+        # so the cluster step can compute per-merged-polygon temperature stats.
+        polygon_anomalies = [float(r.get("mean_anomaly_c", 0.0) or 0.0) for r in raw_records]
         density_sites, density_diag = cluster_polygons_by_density_grid(
             raw_polys,
             grid_resolution_m=args.grid_resolution_m,
@@ -608,13 +660,12 @@ def _merge_and_write(raw_polys, raw_records, run_stats, args, out_base):
             max_site_diameter_m=args.max_site_diameter_m if args.detector == "spread" else None,
             local_adaptive_window_m=args.local_adaptive_window_m,
             local_adaptive_fraction=args.local_adaptive_fraction,
+            polygon_anomalies=polygon_anomalies,
         )
-        # Reflect the auto-chosen value back to args/run_stats so the summary records it.
         args.min_observations = density_diag["min_observations_used"]
         run_stats.failures.append(("merge_diag", str(density_diag)))
-        # Short-circuit: density-grid already produced (polygon, peak_count).
         merged_info = []
-        for idx, (poly, peak_count) in enumerate(density_sites):
+        for idx, (poly, peak_count, info) in enumerate(density_sites):
             if not isinstance(poly, Polygon) or poly.is_empty:
                 continue
             poly = orient(poly, sign=1.0)
@@ -623,6 +674,13 @@ def _merge_and_write(raw_polys, raw_records, run_stats, args, out_base):
                 continue
             cx, cy = poly.centroid.x, poly.centroid.y
             tier_name, _ = area_tier(area_m2)
+            mean_anom = float(info.get("mean_anomaly_c", 0.0))
+            min_anom = float(info.get("min_anomaly_c", 0.0))
+            # intensity_index = area × strength.
+            # Combines spatial scale and per-cell coldness deviation; the
+            # primary value for cross-flight ranking. Higher = bigger and/or
+            # colder relative to that flight's ambient ocean.
+            intensity_index = area_m2 * mean_anom
             merged_info.append(
                 {
                     "id": idx,
@@ -632,6 +690,10 @@ def _merge_and_write(raw_polys, raw_records, run_stats, args, out_base):
                     "tier": tier_name,
                     "polygon": poly,
                     "n_observations": peak_count,
+                    "mean_anomaly_c": mean_anom,
+                    "min_anomaly_c": min_anom,
+                    "p90_anomaly_c": float(info.get("p90_anomaly_c", 0.0)),
+                    "intensity_index": intensity_index,
                 }
             )
         merged_info.sort(key=lambda r: r["area_m2"], reverse=True)
@@ -754,13 +816,21 @@ def write_kml(path: Path, merged_info: list[dict], header: str):
                 f"<innerBoundaryIs><LinearRing><coordinates>{hole_coords}</coordinates></LinearRing></innerBoundaryIs>"
             )
         inner_xml = "\n          ".join(inner_lines)
+        intensity = r.get("intensity_index", 0.0)
+        mean_anom = r.get("mean_anomaly_c", 0.0)
+        min_anom = r.get("min_anomaly_c", 0.0)
+        n_obs = r.get("n_observations", 1)
         lines.append(
             f"""
 <Placemark>
-  <name>SGD #{r['id']} — {r['area_m2']:.1f} m²</name>
+  <name>SGD #{r['id']} — {r['area_m2']:.1f} m² · ΔT {mean_anom:.2f}°C</name>
   <description><![CDATA[
     <b>Area:</b> {r['area_m2']:.2f} m²<br/>
-    <b>Tier:</b> {r['tier']}<br/>
+    <b>Mean anomaly:</b> {mean_anom:.3f} °C below ambient<br/>
+    <b>Coldest cell:</b> {min_anom:.3f} °C below ambient<br/>
+    <b>Intensity index (area × ΔT):</b> {intensity:.1f}<br/>
+    <b>Observation count:</b> {n_obs} frames<br/>
+    <b>Area tier:</b> {r['tier']}<br/>
     <b>Centroid:</b> {r['centroid_lat']:.6f}, {r['centroid_lon']:.6f}
   ]]></description>
   <styleUrl>#sgd_{r['tier']}</styleUrl>
@@ -795,6 +865,11 @@ def write_geojson(path: Path, merged_info: list[dict]):
                     "tier": r["tier"],
                     "centroid_lon": r["centroid_lon"],
                     "centroid_lat": r["centroid_lat"],
+                    "n_observations": r.get("n_observations", 1),
+                    "mean_anomaly_c": r.get("mean_anomaly_c", 0.0),
+                    "min_anomaly_c": r.get("min_anomaly_c", 0.0),
+                    "p90_anomaly_c": r.get("p90_anomaly_c", 0.0),
+                    "intensity_index": r.get("intensity_index", 0.0),
                 },
             }
         )
@@ -805,7 +880,10 @@ def write_geojson(path: Path, merged_info: list[dict]):
 def write_csv(path: Path, merged_info: list[dict]):
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["id", "area_m2", "tier", "centroid_lat", "centroid_lon", "n_observations"])
+        w.writerow(
+            ["id", "area_m2", "tier", "centroid_lat", "centroid_lon", "n_observations",
+             "mean_anomaly_c", "min_anomaly_c", "p90_anomaly_c", "intensity_index"]
+        )
         for r in merged_info:
             w.writerow(
                 [
@@ -815,6 +893,10 @@ def write_csv(path: Path, merged_info: list[dict]):
                     f"{r['centroid_lat']:.7f}",
                     f"{r['centroid_lon']:.7f}",
                     r.get("n_observations", 1),
+                    f"{r.get('mean_anomaly_c', 0.0):.4f}",
+                    f"{r.get('min_anomaly_c', 0.0):.4f}",
+                    f"{r.get('p90_anomaly_c', 0.0):.4f}",
+                    f"{r.get('intensity_index', 0.0):.2f}",
                 ]
             )
     print(f"  wrote {path}")
