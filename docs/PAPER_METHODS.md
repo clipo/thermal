@@ -56,7 +56,7 @@ All processing is implemented in Python with scientific-Python ecosystem librari
 
 **Figure 3.** Hanga Nui at Ahu Tongariki. Discrete plumes detected in the bay where the famous moai platform is sited. Bay geometry typical of Rapa Nui's SGD-active sites: low-elevation beach and rocks, sheltered from the open Pacific, with Poike's volcanic slopes inland.
 
-**Figure 4.** Hekii West. Discrete plumes along a known SGD hot zone on the east coast. Strong cold-anomaly signal (peak around 1 °C below ambient) typical of strong-flow lava-tube outlets.
+**Figure 4.** Hanga o Honu at Ahu Hekii (north coast). Four discrete plumes clustered tightly at the bay where Ahu Hekii sits — a classic low-elevation north-coast SGD hot zone. Strong cold-anomaly signal (peak above 1 °C below ambient) typical of well-developed lava-tube outlets feeding the surf zone.
 
 **Figure 5.** Anakena and Ovahe (north coast). Four coast-anchored plumes across this 2.2 km stretch — three concentrated at the rocky Ovahe headland on the west side of the frame, plus one weaker plume offshore of Anakena's sandy beach itself. The modest Σ_anomaly (~1,800 m²·°C) is consistent with this coast's small upstream drainage basin and modest groundwater throughput.
 

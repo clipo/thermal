@@ -158,7 +158,8 @@ python scripts/figures/build_site_closeup.py \
     --polygon-source coastal --center -27.1275 -109.2775 --box-m 700 \
     --label "Hanga Nui (Ahu Tongariki)" --contour-level 0
 python scripts/figures/build_site_closeup.py --slug flight8_hekii_west \
-    --polygon-source coastal --box-m 700 --label "Hekii West" --contour-level 0
+    --polygon-source coastal --center -27.0858 -109.2999 --box-m 700 \
+    --label "Hekii West" --contour-level 0
 python scripts/figures/build_site_closeup.py --slug flight10_anakena_to_west \
     --polygon-source coastal --center -27.0658 -109.3358 --box-m 2200 \
     --label "Anakena Bay" --contour-level 0

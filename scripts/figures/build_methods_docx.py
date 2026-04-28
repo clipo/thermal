@@ -47,9 +47,11 @@ FIGURES = [
      "inland."),
     ("Figure 4",
      CLOSEUPS / "flight8_hekii_west_Hekii_West_closeup.png",
-     "Hekii West. Twelve discrete plumes along a known SGD hot zone on "
-     "the east coast. Strong cold-anomaly signal (peak ~1 °C below "
-     "ambient) typical of strong-flow lava-tube outlets."),
+     "Hanga o Honu at Ahu Hekii (north coast). Four discrete plumes "
+     "clustered tightly at the bay where Ahu Hekii sits — a classic "
+     "low-elevation north-coast SGD hot zone. Strong cold-anomaly "
+     "signal (peak >1 °C below ambient) typical of well-developed "
+     "lava-tube outlets feeding the surf zone."),
     ("Figure 5",
      CLOSEUPS / "flight10_anakena_to_west_Anakena_Bay_closeup.png",
      "Anakena and Ovahe (north coast). Four coast-anchored plumes "
