@@ -53,16 +53,14 @@ FIGURES = [
      "signal (peak >1 °C below ambient) typical of well-developed "
      "lava-tube outlets feeding the surf zone."),
     ("Figure 5",
-     CLOSEUPS / "flight10_anakena_to_west_Anakena_Bay_closeup.png",
-     "Anakena Bay (north coast, Ahu Nau Nau). Per-frame detector "
-     "view of the iconic sandy beach where Hotu Matu'a is said to "
-     "have first landed. Two plumes — the larger one (Σ ≈ 1,400 m²·°C, "
-     "peak ~0.7 °C) sits in the bay just offshore of the beach itself, "
-     "where freshwater is known to seep through the sand and rocks; "
-     "a smaller plume hugs the rocky east point. Note: the canonical "
-     "coast-anchored product is more conservative at this site and "
-     "retains only the eastern plume — the per-frame detector view is "
-     "shown here so the bay-interior signal is visible."),
+     CLOSEUPS / "june2023_25_june_23_Anakena_Bay_closeup.png",
+     "Anakena Bay (north coast, Ahu Nau Nau). Coast-anchored plumes "
+     "from the June 2023 survey of the iconic sandy beach where Hotu "
+     "Matu'a is said to have first landed. Five plumes within the "
+     "600 m frame — a prominent central plume in the bay itself "
+     "(Σ ≈ 1,400 m²·°C, peak ~1.1 °C below ambient), with smaller "
+     "satellite plumes at the beach edge and along the rocky points "
+     "to either side. Total Σ_anomaly = 2,743 m²·°C across the bay."),
     ("Figure 6",
      CLOSEUPS / "flight11_hivahiva_to_hangapiko_Hivahiva-Hangapiko_closeup.png",
      "Hivahiva-Hangapiko (south coast). Ten plumes along the south "

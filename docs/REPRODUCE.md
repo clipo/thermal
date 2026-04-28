@@ -160,14 +160,15 @@ python scripts/figures/build_site_closeup.py \
 python scripts/figures/build_site_closeup.py --slug flight8_hekii_west \
     --polygon-source coastal --center -27.0858 -109.2999 --box-m 700 \
     --label "Hekii West" --contour-level 0
-python scripts/figures/build_site_closeup.py --slug flight10_anakena_to_west \
-    --polygon-source detector --center -27.0727 -109.3231 --box-m 600 \
+python scripts/figures/build_site_closeup.py --slug june2023_25_june_23 \
+    --polygon-source coastal --center -27.0727 -109.3231 --box-m 600 \
     --label "Anakena Bay" --contour-level 0
-# Anakena Beach uses the per-frame detector source: the canonical
-# coast-anchored filter retains only one small plume on the east point
-# at this site (the bay-interior plume gets dropped by coast-touching +
-# cliff-zone filters). The detector polygons capture the actual SGD
-# signal in the bay that the more stringent canonical product misses.
+# Anakena Beach is covered by both jan2024 (flight10_anakena_to_west)
+# and june2023 (june2023_25_june_23). The June 2023 survey produced
+# stronger coast-anchored plumes at the bay (peaks ~1.1-1.4 °C) so
+# that is what the paper figure uses. The Jan 2024 flight retained
+# only one weak coast-anchored plume here — likely a baseline / signal
+# strength difference between the two surveys, not a detector failure.
 python scripts/figures/build_site_closeup.py \
     --slug flight11_hivahiva_to_hangapiko --polygon-source coastal \
     --box-m 700 --label "Hivahiva-Hangapiko" --contour-level 0

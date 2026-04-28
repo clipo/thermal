@@ -58,7 +58,7 @@ All processing is implemented in Python with scientific-Python ecosystem librari
 
 **Figure 4.** Hanga o Honu at Ahu Hekii (north coast). Four discrete plumes clustered tightly at the bay where Ahu Hekii sits — a classic low-elevation north-coast SGD hot zone. Strong cold-anomaly signal (peak above 1 °C below ambient) typical of well-developed lava-tube outlets feeding the surf zone.
 
-**Figure 5.** Anakena Bay (north coast, Ahu Nau Nau). Per-frame detector view of the iconic sandy beach where Hotu Matu'a is said to have first landed. Two plumes — the larger one (Σ ≈ 1,400 m²·°C, peak ~0.7 °C below ambient) sits in the bay just offshore of the beach itself, where freshwater is known to seep through the sand and rocks; a smaller plume hugs the rocky east point. Note: the canonical coast-anchored product is more conservative at this site and retains only the eastern plume — the per-frame detector view is shown here so the bay-interior signal is visible.
+**Figure 5.** Anakena Bay (north coast, Ahu Nau Nau). Coast-anchored plumes from the June 2023 survey of the iconic sandy beach where Hotu Matu'a is said to have first landed. Five plumes within the 600 m frame — a prominent central plume in the bay itself (Σ ≈ 1,400 m²·°C, peak ~1.1 °C below ambient), with smaller satellite plumes at the beach edge and along the rocky points to either side. Total Σ_anomaly = 2,743 m²·°C across the bay.
 
 **Figure 6.** Hivahiva-Hangapiko (south coast). Plumes along the south coast bay system with strong cold signal at the rocky inshore zone.
 
