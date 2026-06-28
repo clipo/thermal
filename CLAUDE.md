@@ -40,6 +40,17 @@ per-flight cold-anomaly rasters and three parallel polygon products
 - **Paper Methods .docx** is at `docs/PAPER_METHODS.docx`. 7 figures
   embedded (overview + 6 site closeups). Source is `docs/PAPER_METHODS.md`.
   Compiled by `scripts/figures/build_methods_docx.py`.
+- **Whitepaper** (method + practitioners audience) at `docs/WHITEPAPER.md`
+  / `docs/WHITEPAPER.docx`. 12 figures embedded inline (island overview,
+  data/FOV, pipeline, two new schematics for cliff-exclusion and
+  Σ_anomaly, polygon comparison, 4 site closeups). Source is
+  `docs/WHITEPAPER.md`; figures are tracked `docs/images/` assets plus
+  `docs/images/whitepaper/` schematics built by
+  `scripts/figures/build_whitepaper_schematics.py`. Compile the .docx with
+  `scripts/figures/build_whitepaper_docx.py`. Design spec:
+  `docs/superpowers/specs/2026-06-28-sgd-whitepaper-design.md`. This is a
+  fresh document; the legacy `docs/TECHNICAL_PAPER.md` (HSV-era) is
+  superseded and left untouched.
 - **Reproducibility**: see `docs/REPRODUCE.md` for the full end-to-end
   re-run sequence and where everything lives.
 - **Packaging**: `pip install -e .` works (PEP-517 via `pyproject.toml`,
