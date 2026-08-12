@@ -207,47 +207,64 @@ The radial component does not cancel. It adds directly to `T − baseline` and
 competes with the 0.25 °C threshold on equal terms. We measured it, and it is
 present in every flight tested.
 
-Measured with the paired within-ground-cell design described below, on 100
-frames per flight:
+Measured with the paired within-ground-cell design described below:
 
-| Flight | Centre − edge | 95% CI | Profile span | Paired cells |
+| Flight | Centre − edge | 95% CI | Frames | Paired cells |
 |---|---|---|---|---|
-| `flight10_anakena_to_west` | −0.634 °C | [−1.148, −0.175] | 0.813 °C | 28,351 |
-| `flight11_hivahiva_to_hangapiko` | −0.396 °C | [−0.521, −0.271] | 0.452 °C | 30,508 |
-| `flight4_vaihu_east_full` | −0.212 °C | [−0.270, −0.153] | 0.274 °C | 38,464 |
-| `flight8_hekii_west` | −0.116 °C | [−0.330, +0.097] | 0.176 °C | 41,819 |
+| `flight10_anakena_to_west` | −0.634 °C | [−1.148, −0.175] | 100 consecutive | 28,351 |
+| `flight11_hivahiva_to_hangapiko` | −0.396 °C | [−0.521, −0.271] | 94 consecutive | 30,508 |
+| `flight4_vaihu_east_full` | −0.242 °C | [−0.344, −0.166] | 150 block-sampled | 71,122 |
+| `flight8_hekii_west` | −0.116 °C | [−0.330, +0.097] | 100 consecutive | 41,819 |
 
 The sign is negative in all four flights, meaning the frame centre reads
-colder, and the profile is monotone across all six radius bins in each case.
-Three of the four exclude zero. Flight 8 does not resolve the effect at this
-sample size, and its interval is consistent with anything up to 0.330 °C, so it
-bounds the effect rather than arguing against it. The mean across flights is
-−0.340 °C, which is larger than the 0.25 °C detection threshold.
+colder, and the profile is monotone across the radius bins in each case. Three
+of the four exclude zero. Flight 8 does not resolve the effect at its sample
+size, and its interval is consistent with anything up to 0.330 °C, so it bounds
+the effect rather than arguing against it.
 
-Two consequences follow, and both matter for how the correction is built.
+The effect is not geographic. The paired design holds the ground fixed, so
+coastline position, nearshore cooling, and real discharge plumes cancel before
+the profile is formed. A pattern of this sign and shape appearing at four
+different sites on different days is a property of the instrument or of the
+viewing geometry, not of any coastline.
 
-The effect is instrumental rather than geographic. The paired design holds the
-ground fixed, so coastline position, nearshore cooling, and real discharge
-plumes cancel before the profile is formed. A pattern that reproduces in sign
-and shape across four surveys at different sites on different days is a
-property of the camera.
+**Whether the magnitude differs between flights is not established.** The four
+numbers above use different sampling: flight 4 draws six contiguous blocks
+spread across the whole flight, the other three take the first ~100 consecutive
+frames, which confines each to one leg of its transect under near-constant sun
+and sea state. Flight 4 measured both ways agrees (−0.212 °C from the first 100
+frames, −0.242 °C block-sampled), so the effect itself is not a sampling
+artefact. But the apparent spread from −0.116 to −0.634 °C cannot be read as a
+real between-flight difference until the other three are re-measured the same
+way, and the flight 4 and flight 11 intervals do in fact overlap. Nothing here
+supports or refutes a per-flight correction.
 
-The magnitude is not constant between flights. The intervals for
-`flight4_vaihu_east_full` and `flight11_hivahiva_to_hangapiko` do not overlap,
-so the difference between −0.212 °C and −0.396 °C is not sampling noise. A
-single fixed flat field will therefore not serve. The correction has to be
-estimated per flight, which is what `estimate_vignette` in
-`sgd_toolkit/calibration/vignette.py` already does, and which matches that
-module's own statement that the bias is stable within one flight rather than
-across a campaign.
+**The cause is not settled between two candidates**, and they call for opposite
+responses. A sensor vignette, where the detector array self-heats at the
+centre, is fixed in image coordinates and would be corrected by a flat field.
+Sun glint, specular reflection off the water strongest at off-nadir view
+angles, is fixed relative to the solar azimuth, varies with time of day and sea
+state, and would be handled by glint masking rather than calibration. Applying
+a flat field to a glint artefact would encode one day's sun geometry as a
+calibration and then apply it to frames with different geometry.
 
-The measurement also includes off-nadir viewing geometry, not the sensor
-vignette alone. Water emissivity falls at high incidence angle, so frame-edge
-pixels should read colder from geometry by itself. The measured edge reads
-warmer, so geometry is partly cancelling the sensor term and the underlying
-vignette is likely larger than the numbers above. For detection purposes the
-combined effect is the relevant quantity, since that is what reaches the
-threshold.
+A third term is certainly present and works against the measured sign: water
+emissivity falls at high incidence angle, so frame edges should read colder
+from viewing geometry alone. The measured edge reads warmer, so this partly
+cancels whatever produces the centre-cold pattern, and the underlying term is
+larger than the numbers above. For detection purposes the combined effect is
+what matters, since that is what reaches the threshold.
+
+`scripts/diagnostics/sun_asymmetry_test.py` is the discriminator: it bins the
+same paired residual by angle in image-fixed and sun-relative coordinates, and
+whichever frame retains more angular amplitude is the one the effect lives in.
+It has not yet produced a conclusive answer, because solar azimuth is
+effectively constant within a single 12-minute flight, so the two coordinate
+frames are decoupled only by the drone's heading changes. Comparing flights
+flown at different times of day is the route that would settle it.
+
+Settling the cause only matters if a correction is warranted. As the next
+section shows, it is not, for the comparative claims the paper makes.
 
 No correction for this is applied. `flat_field_path` defaults to `None` in
 `sgd_toolkit/detectors/base.py`, no flat fields are used in production, and
@@ -383,17 +400,56 @@ Neighbouring ground cells are not independent, so confidence intervals come
 from a block bootstrap over 50 m spatial super-blocks rather than over
 individual cells.
 
+Frames are drawn as contiguous blocks spread across the flight
+(`--n-blocks`, `--block-len`) rather than as one run or a uniform stride.
+Consecutive frames are what supply the overlap the pairing needs, so a uniform
+stride across the flight destroys it. A single contiguous run keeps the overlap
+but confines the sample to one leg under near-constant sun and sea state.
+Blocks give both.
+
+The second, independent measurement is
+`scripts/diagnostics/single_frame_radial.py`, which produced the orange trace in
+Figure 1a. It has no projection, no ground grid and no pairing: it simply takes
+the most ocean-dominated raw frames and averages their residual azimuthally in
+image coordinates. Its purpose is to test whether the paired result could be an
+artefact of the footprint projection, which assumes a flat sea surface and
+models no lens distortion, so edge pixels could be assigned to ground cells
+they did not come from. The two methods agree to within 0.04 °C on flight 4,
+which rules that out. It also answers whether the pattern is visible in a
+single image: the most ocean-dominated frame alone shows −0.217 °C, and 88% of
+frames carry the centre-cold sign, so the camera's internal shutter-based
+non-uniformity correction is not removing it.
+
 ```bash
 python scripts/diagnostics/radial_paired_test.py \
     --data data/flight4_vaihu_east_full_combined \
-    --label flight4_vaihu_east_full --n-frames 100 \
+    --label flight4_vaihu_east_full --n-blocks 6 --block-len 25 \
     --output sgd_output/diagnostics/radial_paired_flight4_vaihu_east_full
+
+python scripts/diagnostics/single_frame_radial.py \
+    --data data/flight4_vaihu_east_full_combined \
+    --label flight4_vaihu_east_full --n-candidates 200 --n-use 60 \
+    --output sgd_output/diagnostics/single_frame_radial_flight4_vaihu_east_full
 ```
 
-This requires the external volume mounted at `/Volumes/RapaNui`. The script
-aborts rather than writing partial output if the volume disappears mid-run,
-because a truncated flight is spatially biased toward one end of the transect
-and is indistinguishable from a valid result once written.
+Both need the external volume mounted at `/Volumes/RapaNui`, and both abort
+rather than write partial output if it disappears mid-run, because a truncated
+flight is spatially biased toward one end of the transect and is
+indistinguishable from a valid result once written. That guard exists because
+the volume dropped four times during this work, twice as a clean unmount and
+twice as `Errno 60` I/O timeouts under concurrent load.
+
+For any run longer than a few minutes, copy the frames to local disk first:
+
+```bash
+python scripts/diagnostics/stage_frames.py \
+    --data data/flight4_vaihu_east_full_combined \
+    --dest data/staged/flight4_vaihu_east_full --all
+```
+
+`stage_frames.py` is resumable, skipping files already present, so a drop
+mid-copy only needs the same command re-run. Setting `sudo pmset -a disksleep 0`
+while working removes one cause of the drops.
 
 ### An approach that did not work
 
@@ -417,38 +473,71 @@ exactly what land contamination predicts and is not evidence either way.
 
 The script is retained because its JSON output carries useful per-flight
 records (residual maps, headings, ocean fractions, the mask-leak count), but no
-conclusion should be drawn from its decomposition. The paired test above is
-immune to this failure mode and supersedes it.
+conclusion should be drawn from its decomposition, and the same applies to
+`scripts/diagnostics/frame_bias_crossflight.py`, which correlates that
+decomposition across flights and therefore inherits the same defect. The paired
+test above is immune to this failure mode and supersedes both.
+
+### Script index for this section
+
+| Script | Role |
+|---|---|
+| `diagnostics/radial_paired_test.py` | primary measurement, ground held fixed |
+| `diagnostics/single_frame_radial.py` | independent check, no projection |
+| `diagnostics/sun_asymmetry_test.py` | sensor vs glint discriminator (inconclusive) |
+| `diagnostics/make_synthetic_vignette.py` | builds the injected ramps |
+| `diagnostics/compare_sensitivity_arms.py` | polygon count, area, site matching |
+| `diagnostics/compare_sigma_anomaly.py` | Σ_anomaly global, per site, rank |
+| `diagnostics/stage_frames.py` | resumable local frame copier |
+| `figures/build_frame_bias_figures.py` | rebuilds Figures 1 and 2 |
+| `diagnostics/frame_position_bias.py` | superseded, see above |
+| `diagnostics/frame_bias_crossflight.py` | superseded, see above |
+
+Result files behind every number quoted here are in `docs/results/frame_bias/`,
+and the figure script reads from there, so both figures rebuild on a fresh
+clone without re-running the analysis.
 
 ### Limitations
 
 The scalar case is settled by the algebra above and needs no further
-measurement. The radial numbers carry three caveats.
+measurement. What follows applies to the radial numbers and to the sensitivity
+result.
+
+The sensitivity test covers one flight, `flight4_vaihu_east_full`, over 571 of
+its 750 frames. Confirming it on a second flight is the single most useful
+remaining step before the robustness claim goes into print.
+`flight11_hivahiva_to_hangapiko` is the natural choice: it has the tightest
+paired interval after flight 4, and its coast geometry differs.
+
+The injected ramp is a clean linear radial profile matched to the measurement
+in sign and magnitude. The real effect may carry structure that behaves
+differently, and the injection is applied uniformly to every frame, whereas a
+glint term would vary with heading.
 
 Interval widths differ substantially between flights, from ±0.09 °C on
 `flight4_vaihu_east_full` to ±0.49 °C on `flight10_anakena_to_west`, driven by
-how many independent 50 m blocks each survey covers. Flight 8 does not resolve
-the effect at 100 frames. This matters only if a correction is ever fitted. The
-sensitivity result above does not depend on knowing the magnitude precisely,
-because it brackets twice the largest value observed.
+how many independent 50 m blocks each survey covers. This matters only if a
+correction is ever fitted. The sensitivity result does not depend on knowing
+the magnitude precisely, because it brackets twice the largest value observed.
 
-The four per-flight numbers in Figure 1b come from different sampling schemes.
-`flight4_vaihu_east_full` uses six contiguous blocks spread across the whole
-flight, while the other three use the first 100 consecutive frames, which
-confines each to one leg of its transect and one time window. Flight 4 was
-measured both ways and agreed (−0.212 °C first-100 against −0.242 °C
-block-sampled), so the effect itself is not a sampling artefact. The
-between-flight spread in magnitude, however, is not yet trustworthy, and no
-conclusion should be drawn from it about whether the bias is stable across
-flights.
-
-The measurement is the total dependence on image position, which combines the
-sensor vignette with off-nadir viewing geometry. The two have opposite sign, so
-the sensor term alone is larger than what is reported.
+The three flights other than flight 4 have not been re-measured with block
+sampling, so their magnitudes describe one leg of each transect rather than the
+whole flight, as noted above.
 
 No flight contains open-water frames free of coast, so a coast-free control
 stratum was never available. The paired design removes the need for one by
 holding the ground fixed, which is why it replaced the earlier approach.
+
+Two defects found during this work are real, small, and independent of frame
+bias. The `binary_closing` step in `sgd_toolkit/detectors/spread.py` dilates the
+cold mask past the ocean boundary, so roughly 0.1 to 0.2 percent of detected
+pixels sit on land before georeferencing. And in `run_coast_stretch.py` the
+call order is load, `segment_ocean_land_waves`, `detect_sgd_plumes`, but
+`_last_thermal` is only set inside the last of those, so from the second frame
+onward the ocean mask is refined using the *previous* frame's thermal data
+before being refined again with the current frame's. Since refinement only ever
+expands the mask, production masks are slightly over-grown from stale data.
+Neither is fixed, because fixing either changes published results.
 
 One related defect is worth recording separately, because it is real and
 independent of frame bias. The `binary_closing` step in

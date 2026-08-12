@@ -31,8 +31,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 THERMAL = Path(__file__).resolve().parent.parent.parent
-DIAG = THERMAL / "sgd_output" / "diagnostics"
-SENS = THERMAL / "sgd_output" / "sensitivity"
+# Read from the small tracked result files, not from sgd_output/, which is
+# gitignored. This keeps the figures rebuildable on a fresh clone without
+# re-running the whole analysis.
+RESULTS = THERMAL / "docs" / "results" / "frame_bias"
+DIAG = RESULTS
+SENS = RESULTS
 OUT = THERMAL / "docs" / "images" / "frame_bias"
 
 # Okabe-Ito
