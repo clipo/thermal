@@ -121,6 +121,342 @@ log of every filter / threshold / approach we've tried and why,
 including dated entries for every iteration in the 2026-04-27 / 28
 work session that produced the current pipeline.
 
+## Per-frame thermal bias
+
+A recurring question about thermal-drone surveys is whether per-frame sensor
+bias contaminates the result, and whether it has to be corrected before the
+data can be trusted. The question is a fair one for uncooled microbolometers.
+It resolves differently for the two physically distinct effects that the phrase
+covers, so this section separates them, states what each would look like in
+these data, and gives the reason we do not treat either as a threat to the
+published numbers.
+
+### What the concern supposes
+
+**Scalar per-frame offset.** An uncooled microbolometer drifts. Shutter-based
+non-uniformity correction, housing temperature, and ambient conditions all
+shift the whole frame up or down by a common amount. Frame *i* reports
+`T_i(x) = T_true(x) + b_i` for some offset `b_i` that varies from frame to
+frame across a flight.
+
+**Intra-frame spatial non-uniformity.** The sensor is not uniform across its
+own array. The centre self-heats and reads colder than the edges, producing an
+approximately radial additive pattern that is fixed in image coordinates. This
+is a different quantity from `b_i`, and it does not vary frame to frame in the
+same way.
+
+The two get discussed under one label, but they behave differently in this
+pipeline, and conflating them is what makes the concern seem more serious than
+it is.
+
+### What each would look like if it were driving our results
+
+A scalar offset would show up as discontinuities at frame seams in any product
+built from absolute temperatures, as detections that switch on and off with
+frame boundaries rather than with coastal geography, and as plume extents
+truncated along straight lines where one frame's footprint ends.
+
+A radial non-uniformity would show up differently. Detections would cluster
+toward the frame centre in image coordinates, plume boundaries would follow
+frame edges, and the residual pattern would reproduce across separate flights
+because it is a property of the camera rather than of any coastline.
+
+Those signatures are distinguishable from real discharge, which is fixed in
+ground coordinates and has no reason to care where the aircraft happened to
+frame it.
+
+### Why a scalar offset cannot affect these products
+
+Both canonical detectors measure each frame against that same frame's own
+water. `SpreadSGDDetector` thresholds against the 75th percentile of in-frame
+ocean temperature:
+
+```
+anomaly_i(x) = max(0, P75(ocean in frame i) − T_i(x))
+```
+
+Substituting `T_i(x) = T_true(x) + b_i` raises the percentile by exactly `b_i`
+as well, so the two occurrences cancel and the anomaly is unchanged. The
+coast-anchored path is the same in structure. `fit_spatial_baseline` estimates
+`T_baseline(d)` and `sigma(d)` inside the frame being processed, and the
+z-score `(T − T_baseline(d)) / sigma(d)` is invariant to a common additive
+shift in the numerator while the MAD-based scale is untouched. The
+cancellation is algebraic, not approximate, and it does not depend on `b_i`
+being small.
+
+The magnitude involved is worth stating, because it explains why the concern
+sounds alarming. Measured across four flights, the per-frame P75 ocean baseline
+varies with a standard deviation of **1.65 to 2.76 °C within a single flight**.
+That is seven to eleven times the 0.25 °C detection threshold. If this drift
+propagated into the detection statistic it would overwhelm the signal
+completely. It does not appear because every threshold is referred to the frame
+it is applied to.
+
+The corollary is that applying a drift correction is not a neutral safeguard.
+A correction fitted to frame-mean or frame-median temperature removes real
+structure: ocean temperature genuinely varies along a coastal transect, and
+SGD is precisely a recurring cold offset in frames over discharge zones.
+Detrending on frame statistics subtracts part of the quantity being measured.
+Absolute-temperature mosaics under `results/` do band at frame seams, and that
+banding is real, but those mosaics are visualisation products and no paper
+figure or Σ_anomaly value derives from them.
+
+### What is not immune: the radial component is real and measured
+
+The radial component does not cancel. It adds directly to `T − baseline` and
+competes with the 0.25 °C threshold on equal terms. We measured it, and it is
+present in every flight tested.
+
+Measured with the paired within-ground-cell design described below, on 100
+frames per flight:
+
+| Flight | Centre − edge | 95% CI | Profile span | Paired cells |
+|---|---|---|---|---|
+| `flight10_anakena_to_west` | −0.634 °C | [−1.148, −0.175] | 0.813 °C | 28,351 |
+| `flight11_hivahiva_to_hangapiko` | −0.396 °C | [−0.521, −0.271] | 0.452 °C | 30,508 |
+| `flight4_vaihu_east_full` | −0.212 °C | [−0.270, −0.153] | 0.274 °C | 38,464 |
+| `flight8_hekii_west` | −0.116 °C | [−0.330, +0.097] | 0.176 °C | 41,819 |
+
+The sign is negative in all four flights, meaning the frame centre reads
+colder, and the profile is monotone across all six radius bins in each case.
+Three of the four exclude zero. Flight 8 does not resolve the effect at this
+sample size, and its interval is consistent with anything up to 0.330 °C, so it
+bounds the effect rather than arguing against it. The mean across flights is
+−0.340 °C, which is larger than the 0.25 °C detection threshold.
+
+Two consequences follow, and both matter for how the correction is built.
+
+The effect is instrumental rather than geographic. The paired design holds the
+ground fixed, so coastline position, nearshore cooling, and real discharge
+plumes cancel before the profile is formed. A pattern that reproduces in sign
+and shape across four surveys at different sites on different days is a
+property of the camera.
+
+The magnitude is not constant between flights. The intervals for
+`flight4_vaihu_east_full` and `flight11_hivahiva_to_hangapiko` do not overlap,
+so the difference between −0.212 °C and −0.396 °C is not sampling noise. A
+single fixed flat field will therefore not serve. The correction has to be
+estimated per flight, which is what `estimate_vignette` in
+`sgd_toolkit/calibration/vignette.py` already does, and which matches that
+module's own statement that the bias is stable within one flight rather than
+across a campaign.
+
+The measurement also includes off-nadir viewing geometry, not the sensor
+vignette alone. Water emissivity falls at high incidence angle, so frame-edge
+pixels should read colder from geometry by itself. The measured edge reads
+warmer, so geometry is partly cancelling the sensor term and the underlying
+vignette is likely larger than the numbers above. For detection purposes the
+combined effect is the relevant quantity, since that is what reaches the
+threshold.
+
+No correction for this is applied. `flat_field_path` defaults to `None` in
+`sgd_toolkit/detectors/base.py`, no flat fields are used in production, and
+both `build_anomaly_raster.py` and `run_coast_stretch.py` accept `--flat-field`
+but default to off. Every published raster and polygon product was produced
+without it.
+
+![Measured radial bias](docs/images/frame_bias/fig1_measured_radial_bias.png)
+
+**Figure 1.** Residual temperature against position in the thermal frame, with
+the ground held fixed. (a) Flight 4, measured two ways: the paired
+within-ground-cell design that projects pixels to a ground grid (blue), and raw
+frames in image coordinates with no projection at all (orange). The two agree
+to within 0.04 °C, which rules out the footprint projection as the source, and
+shows the camera's internal non-uniformity correction is not removing the
+pattern. Bands are 95% intervals. (b) Centre-minus-edge contrast for four
+flights. All four are negative, meaning the frame centre reads colder, and
+three of four exclude zero. Flight 8 is not resolved at this sample size and
+bounds rather than excludes the effect. Dashed line marks the 0.25 °C detection
+threshold.
+
+### Does it reach the published results?
+
+This is the question that decides whether anything must change, and it was
+settled by direct measurement rather than by argument.
+
+A synthetic radial ramp of known magnitude was injected into every frame and
+the full pipeline re-run unchanged, on 571 frames of flight 4. Four arms:
+uncorrected baseline, the measured magnitude (−0.24 °C), twice the measured
+magnitude (−0.48 °C, exceeding the largest value seen in any flight), and the
+reversed sign (+0.24 °C) as a control. Injection reuses the existing flat-field
+path, so no detection code was modified for the test.
+
+This route deliberately avoids building a real flat field. The cause of the
+bias is not settled between a sensor vignette and sun glint, and a flat field
+estimated from a flight would bake that day's sun geometry into something
+labelled a calibration. Sensitivity to a synthetic ramp of known shape is what
+the decision needs, and it holds regardless of the true cause.
+
+![Sensitivity of the products](docs/images/frame_bias/fig2_sensitivity.png)
+
+**Figure 2.** Effect of an injected radial bias on the pipeline outputs.
+(a) Σ_anomaly per site, injected against uncorrected, for the 51 baseline
+sites, with the 1:1 line dashed. Points shift off the diagonal but hold their
+order, which is what the Spearman coefficients in the legend record. (b) Change
+from baseline by metric. Plume count is nearly unaffected. Polygon area and
+absolute Σ_anomaly move substantially and in the expected direction, a colder
+centre yielding more detected cold signal.
+
+| Quantity | Response to the measured bias | Verdict |
+|---|---|---|
+| Scalar frame drift | exactly zero | immune by construction |
+| Plume count | +7.8% | robust |
+| Site identity | 63–73% retained | mostly stable |
+| Polygon area | +31.8% | **sensitive** |
+| Global Σ_anomaly | +16.8% | **sensitive** |
+| Median per-site Σ_anomaly | +23.1% | **sensitive** |
+| **Σ_anomaly site ranking** | **Spearman ρ = 0.9968** | **robust** |
+
+The ranking is what matters, because the paper's claims are comparative: which
+sites discharge more than which others. The bias inflates essentially all sites
+together, so the ordering is preserved. At twice the measured magnitude the
+rank correlation is still 0.9920, even though 92% of individual sites move more
+than 25%. Comparative conclusions across sites are therefore robust to this
+effect, and no correction is warranted for them.
+
+Absolute Σ_anomaly is a different matter. It carries a systematic uncertainty
+of roughly 20 to 40 percent from this source. Any absolute m²·°C figure quoted
+as a physical quantity should carry that caveat. Figures used comparatively
+need not.
+
+Part of the reason the response is so uniform is that the per-frame P75
+baseline partially self-corrects. Injecting a centre-cold ramp pulled the
+median frame baseline from 23.35 to 23.55 °C, which raises the absolute
+threshold and cancels some of the injection. That is a second protective
+mechanism alongside the multi-view consensus in density-grid clustering, and it
+is a direct consequence of referencing a percentile of each frame's own ocean
+rather than a fixed cut.
+
+Two limits on this result. It covers one flight (flight 4) over 571 of its 750
+frames, and should be confirmed on a second flight before it is relied on in
+print. And the injected ramp is a clean linear radial profile, matched to the
+measurement in sign and magnitude, but the real effect may carry structure that
+behaves differently.
+
+Reproduce with:
+
+```bash
+python scripts/diagnostics/make_synthetic_vignette.py \
+    --contrast-c -0.24 --output models/flat_fields/synth_m0p24.npz
+
+python scripts/pipeline/run_coast_stretch.py --detector spread \
+    --data data/staged/flight4_vaihu_east_full --start 1 --end 571 \
+    --save-raw --local-adaptive-fraction 0.85 \
+    --flat-field models/flat_fields/synth_m0p24.npz \
+    --output sgd_output/sensitivity/f4_m024
+
+python scripts/pipeline/build_anomaly_raster.py \
+    --data data/staged/flight4_vaihu_east_full \
+    --flat-field models/flat_fields/synth_m0p24.npz \
+    --output sgd_output/sensitivity/rasters/f4_m024_anom
+
+python scripts/diagnostics/compare_sigma_anomaly.py \
+    --baseline sgd_output/sensitivity/rasters/f4_baseline_anom.npz \
+    --arm m024:sgd_output/sensitivity/rasters/f4_m024_anom.npz \
+    --polygons sgd_output/sensitivity/f4_baseline.geojson
+```
+
+### How it is measured
+
+The measurement that produced the table above is
+`scripts/diagnostics/radial_paired_test.py`. It exploits survey overlap: the
+same patch of ocean is imaged near the frame centre in one frame and near the
+edge in another, so a ground cell can be compared against itself across those
+views.
+
+Each ocean pixel contributes three things. The residual
+`T − P75(ocean in its frame)`, which removes the per-frame scalar offset. The
+ground cell it falls in, at 2 m resolution. The image-radius bin it came from.
+Residuals are averaged per (ground cell, radius bin), then each cell's own mean
+across the radius bins it appeared in is subtracted, and what remains is
+averaged over cells.
+
+That subtraction is what makes the test work. Anything constant within a ground
+cell drops out: coastline position, nearshore cooling, a real discharge plume,
+even land wrongly included in the ocean mask, because a land pixel is land in
+every view of that cell. What survives is variation that tracks image position
+alone. A flat profile means image position carries no information once the
+ground is held fixed. A monotone profile is positional bias in °C, on the same
+scale as `delta_c`.
+
+Neighbouring ground cells are not independent, so confidence intervals come
+from a block bootstrap over 50 m spatial super-blocks rather than over
+individual cells.
+
+```bash
+python scripts/diagnostics/radial_paired_test.py \
+    --data data/flight4_vaihu_east_full_combined \
+    --label flight4_vaihu_east_full --n-frames 100 \
+    --output sgd_output/diagnostics/radial_paired_flight4_vaihu_east_full
+```
+
+This requires the external volume mounted at `/Volumes/RapaNui`. The script
+aborts rather than writing partial output if the volume disappears mid-run,
+because a truncated flight is spatially biased toward one end of the transect
+and is indistinguishable from a valid result once written.
+
+### An approach that did not work
+
+`scripts/diagnostics/frame_position_bias.py` attempts the same separation a
+different way, by splitting frames into opposing heading groups. Sensor bias is
+fixed in image coordinates while ground structure rotates 180° in the image when
+the aircraft flies the reciprocal leg, so writing the two groups as `A = S + G`
+and `B = S + rot180(G)` should let the symmetric and antisymmetric parts
+separate sensor from scene.
+
+It does not work on these data, and the reason is worth recording so it is not
+attempted again. The method requires an accurate ocean mask. Within a single
+heading group the coastline occupies the same part of the frame in nearly every
+frame, so any mask error parks land in fixed image blocks and the block median
+returns land temperature. The resulting maps reach +10 °C, which is impossible
+for an ocean residual, and the recovered "sensor" amplitudes of 0.8 to 10.4 °C
+across the four flights are measuring where the coastline sits rather than
+where sensor bias sits. All four flights report the maps as ground-fixed
+(`corr(A, rot180 B)` positive, `corr(A, B)` negative or near zero), which is
+exactly what land contamination predicts and is not evidence either way.
+
+The script is retained because its JSON output carries useful per-flight
+records (residual maps, headings, ocean fractions, the mask-leak count), but no
+conclusion should be drawn from its decomposition. The paired test above is
+immune to this failure mode and supersedes it.
+
+### Limitations
+
+The scalar case is settled by the algebra above and needs no further
+measurement. The radial numbers carry three caveats.
+
+Interval widths differ substantially between flights, from ±0.09 °C on
+`flight4_vaihu_east_full` to ±0.49 °C on `flight10_anakena_to_west`, driven by
+how many independent 50 m blocks each survey covers. Flight 8 does not resolve
+the effect at 100 frames. This matters only if a correction is ever fitted. The
+sensitivity result above does not depend on knowing the magnitude precisely,
+because it brackets twice the largest value observed.
+
+The four per-flight numbers in Figure 1b come from different sampling schemes.
+`flight4_vaihu_east_full` uses six contiguous blocks spread across the whole
+flight, while the other three use the first 100 consecutive frames, which
+confines each to one leg of its transect and one time window. Flight 4 was
+measured both ways and agreed (−0.212 °C first-100 against −0.242 °C
+block-sampled), so the effect itself is not a sampling artefact. The
+between-flight spread in magnitude, however, is not yet trustworthy, and no
+conclusion should be drawn from it about whether the bias is stable across
+flights.
+
+The measurement is the total dependence on image position, which combines the
+sensor vignette with off-nadir viewing geometry. The two have opposite sign, so
+the sensor term alone is larger than what is reported.
+
+No flight contains open-water frames free of coast, so a coast-free control
+stratum was never available. The paired design removes the need for one by
+holding the ground fixed, which is why it replaced the earlier approach.
+
+One related defect is worth recording separately, because it is real and
+independent of frame bias. The `binary_closing` step in
+`sgd_toolkit/detectors/spread.py` dilates the cold mask past the ocean
+boundary, so roughly 0.1 to 0.2 percent of detected pixels sit on land before
+georeferencing. The effect is small and stable across flights, but it is a
+defect rather than a design choice.
+
 ---
 
 # Submarine Groundwater Discharge (SGD) Detection Toolkit

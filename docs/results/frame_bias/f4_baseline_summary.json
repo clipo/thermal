@@ -1,0 +1,32 @@
+{
+  "frames_attempted": 571,
+  "frames_with_detections": 570,
+  "frames_failed": 0,
+  "raw_polygons": 1078,
+  "merged_polygons": 51,
+  "total_area_m2": 58891.51756981169,
+  "elapsed_s": 565.7974877080123,
+  "area_percentiles": {
+    "p10": 24.499988275143735,
+    "p50": 122.50011888241472,
+    "p90": 3100.464347378009,
+    "p99": 10945.544120216859,
+    "max": 11233.529287932906
+  },
+  "tier_counts": {
+    "very_large": 23,
+    "large": 9,
+    "moderate": 19
+  },
+  "tier_area_m2": {
+    "very_large": 57418.522137997694,
+    "large": 904.4955311558766,
+    "moderate": 568.4999006581198
+  },
+  "failures": [
+    [
+      "merge_diag",
+      "{'max_peak_obs': 52, 'min_observations_used': 26, 'min_observations_fraction': 0.5, 'local_adaptive_window_m': 200.0, 'local_adaptive_fraction': 0.85, 'local_floor': 11, 'tile_split_components': 3, 'max_site_diameter_m': 200.0}"
+    ]
+  ]
+}

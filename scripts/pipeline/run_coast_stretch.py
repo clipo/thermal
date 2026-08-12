@@ -529,6 +529,7 @@ def run(args) -> DetectionRun:
             use_ml=False,
             delta_c=args.delta_c,
             min_area_px=args.min_area,
+            flat_field_path=args.flat_field,
         )
     else:
         detector = RedesignedSGDDetector(
@@ -536,6 +537,7 @@ def run(args) -> DetectionRun:
             use_ml=False,
             temp_threshold=args.temp_threshold,
             min_area=args.min_area,
+            flat_field_path=args.flat_field,
         )
     georef = SGDPolygonGeoref(base_path=str(data_dir))
 
@@ -1033,6 +1035,15 @@ def parse_args():
         default=1.0,
         help="Grid cell size for density_grid clustering in meters. 1 m is "
         "a reasonable compromise between GPS precision and plume resolution.",
+    )
+    ap.add_argument(
+        "--flat-field",
+        default=None,
+        help="Path to a per-flight flat-field .npz from scripts/legacy/build_flat_field.py. "
+        "When given, the per-pixel bias is subtracted from every frame before "
+        "detection, correcting the image-fixed radial bias documented in README "
+        "('Per-frame thermal bias'). OFF by default: every published product was "
+        "produced without it, and enabling it changes the plume inventory.",
     )
     ap.add_argument("--verbose", action="store_true")
     return ap.parse_args()

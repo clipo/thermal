@@ -1,0 +1,43 @@
+{
+  "baseline_n": 51,
+  "baseline_area_m2": 58891.51756981169,
+  "match_distance_m": 15.0,
+  "arms": [
+    {
+      "arm": "m024",
+      "n": 55,
+      "area_m2": 77607.65698140733,
+      "matched": 17,
+      "lost": 34,
+      "gained": 38,
+      "count_change_pct": 7.8431372549019605,
+      "area_change_pct": 31.780704902720494,
+      "retained_area_change_pct": 44.53767213655892,
+      "retention_pct": 33.333333333333336
+    },
+    {
+      "arm": "m048",
+      "n": 46,
+      "area_m2": 94286.16745762667,
+      "matched": 13,
+      "lost": 38,
+      "gained": 33,
+      "count_change_pct": -9.803921568627452,
+      "area_change_pct": 60.1014396442699,
+      "retained_area_change_pct": 142.4795788050922,
+      "retention_pct": 25.49019607843137
+    },
+    {
+      "arm": "p024",
+      "n": 56,
+      "area_m2": 34659.04568827706,
+      "matched": 14,
+      "lost": 37,
+      "gained": 42,
+      "count_change_pct": 9.803921568627452,
+      "area_change_pct": -41.147643805933114,
+      "retained_area_change_pct": -12.509106732672025,
+      "retention_pct": 27.45098039215686
+    }
+  ]
+}
