@@ -352,6 +352,35 @@ of roughly 20 to 40 percent from this source. Any absolute m²·°C figure quote
 as a physical quantity should carry that caveat. Figures used comparatively
 need not.
 
+**Is SGD still found in the same places?** This is the question behind the
+observation that the results already match where the geology says discharge
+should occur, at collapsed lava-tube outlets in low-elevation bays rather than
+along cliff coasts. A bias large enough to drive the detections would scramble
+that pattern, because it is fixed to the drone's framing and has no relation to
+coastal geography. The pattern survives:
+
+| Arm | top-5 sites kept | top-10 | top-20 | strongest site unchanged |
+|---|---|---|---|---|
+| −0.24 °C (measured) | 5/5 | 9/10 | 20/20 | yes |
+| −0.48 °C (2×) | 5/5 | 9/10 | 19/20 | yes |
+| +0.24 °C (reversed) | 5/5 | 10/10 | 20/20 | yes |
+
+The strongest discharge sites remain the strongest under every injection,
+including at twice the measured magnitude and with the sign reversed. So the
+reasoning from geological plausibility is sound, and it is now measured rather
+than inferred.
+
+Scale matters to how far that holds, though. Comparing the anomaly rasters cell
+by cell over 914,010 ocean cells, the correlation with the uncorrected raster
+is 0.94 at the measured magnitude and 0.86 at twice it, and 22.8% of individual
+1 m cells shift by more than 0.1 °C. Fine raster detail is therefore
+noticeably perturbed even though site-level ordering is not. Aggregating to
+polygons averages the perturbation away, which is why the site-level rank
+correlation reaches 0.9968 while the cell-level correlation sits at 0.94. The
+site is the unit the paper compares, so the paper's unit is the robust one, but
+any analysis working at native raster resolution should not assume the same
+protection.
+
 Part of the reason the response is so uniform is that the per-frame P75
 baseline partially self-corrects. Injecting a centre-cold ramp pulled the
 median frame baseline from 23.35 to 23.55 °C, which raises the absolute
