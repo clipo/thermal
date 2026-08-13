@@ -316,7 +316,7 @@ a different site on a different day. The two flights agree to within 0.026 °C
 at every radius and correlate at r = 0.9948. Bands are 95% intervals, shown for
 the flight 4 traces. (b) Centre-minus-edge contrast per flight. All four are
 negative, meaning the frame centre reads colder. Flights 4 and 11 are sampled
-across the whole flight; flights 8 and 10 come from a single transect leg and
+across the whole flight. Flights 8 and 10 come from a single transect leg and
 are provisional. Dashed line marks the 0.25 °C detection threshold.
 
 ### Does it reach the published results?
