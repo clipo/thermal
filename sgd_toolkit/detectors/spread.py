@@ -63,6 +63,8 @@ class SpreadSGDDetector(ImprovedSGDDetector):
         min_area_px: int = 400,
         smooth_iterations: int = 2,
         apply_thermal_refine: bool = True,
+        reclip_to_ocean: bool = False,
+        refine_in_segment: bool = True,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -71,6 +73,10 @@ class SpreadSGDDetector(ImprovedSGDDetector):
         self.min_area_px = min_area_px
         self.smooth_iterations = smooth_iterations
         self.apply_thermal_refine = apply_thermal_refine
+        # Both default to the legacy behaviour, so existing outputs reproduce
+        # exactly. See the two comments below for what each corrects.
+        self.reclip_to_ocean = reclip_to_ocean
+        self.refine_in_segment = refine_in_segment
 
     def load_frame_data(self, frame_number):
         data = super().load_frame_data(frame_number)
@@ -79,7 +85,15 @@ class SpreadSGDDetector(ImprovedSGDDetector):
 
     def segment_ocean_land_waves(self, rgb_aligned):
         masks = super().segment_ocean_land_waves(rgb_aligned)
-        if self.apply_thermal_refine and getattr(self, "_last_thermal", None) is not None:
+        # `_last_thermal` is set inside detect_sgd_plumes, which the pipeline
+        # calls AFTER this method. So from the second frame onward this refines
+        # using the PREVIOUS frame's thermal data, and detect_sgd_plumes then
+        # refines the result again with the current frame's. Refinement only
+        # ever expands the ocean mask, so the mask ends up over-grown from stale
+        # data. Setting refine_in_segment=False skips this pass and leaves the
+        # single correct refinement in detect_sgd_plumes.
+        if (self.refine_in_segment and self.apply_thermal_refine
+                and getattr(self, "_last_thermal", None) is not None):
             rr = refine_ocean_with_thermal(masks, rgb_aligned, self._last_thermal)
             masks = rr.masks
         return masks
@@ -115,6 +129,13 @@ class SpreadSGDDetector(ImprovedSGDDetector):
         if self.smooth_iterations > 0:
             cold = ndimage.binary_opening(cold, iterations=self.smooth_iterations)
             cold = ndimage.binary_closing(cold, iterations=self.smooth_iterations)
+            # Closing dilates before it erodes, so it can push the cold mask past
+            # the ocean boundary and put detected pixels on land. Measured at
+            # 0.1-0.2% of detected pixels across flights. Re-mask to keep the
+            # smoothing while restoring the ocean constraint that the threshold
+            # step applied.
+            if self.reclip_to_ocean:
+                cold &= ocean
 
         labels, n_comp = measure.label(cold, connectivity=2, return_num=True)
         sgd_mask = np.zeros_like(cold)

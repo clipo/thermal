@@ -616,16 +616,46 @@ No flight contains open-water frames free of coast, so a coast-free control
 stratum was never available. The paired design removes the need for one by
 holding the ground fixed, which is why it replaced the earlier approach.
 
-Two defects found during this work are real, small, and independent of frame
-bias. The `binary_closing` step in `sgd_toolkit/detectors/spread.py` dilates the
-cold mask past the ocean boundary, so roughly 0.1 to 0.2 percent of detected
-pixels sit on land before georeferencing. And in `run_coast_stretch.py` the
-call order is load, `segment_ocean_land_waves`, `detect_sgd_plumes`, but
-`_last_thermal` is only set inside the last of those, so from the second frame
-onward the ocean mask is refined using the *previous* frame's thermal data
-before being refined again with the current frame's. Since refinement only ever
-expands the mask, production masks are slightly over-grown from stale data.
-Neither is fixed, because fixing either changes published results.
+### Two unrelated defects
+
+Two defects surfaced during this work. Both are real, both are independent of
+frame bias, and both are now correctable behind flags that default to the
+existing behaviour so published products reproduce exactly.
+
+`binary_closing` in `sgd_toolkit/detectors/spread.py` dilates before it erodes,
+pushing the cold mask past the ocean boundary, so 0.1 to 0.2 percent of
+detected pixels sit on land before georeferencing. `--reclip-to-ocean`
+re-applies the ocean mask after smoothing.
+
+In `run_coast_stretch.py` the call order is load, `segment_ocean_land_waves`,
+`detect_sgd_plumes`, but `_last_thermal` is only set inside the last of those.
+So from the second frame onward the ocean mask is refined using the *previous*
+frame's thermal data, then refined again with the current frame's. Refinement
+only ever expands the mask, so it ends up over-grown from stale data.
+`--no-refine-in-segment` drops the redundant first pass.
+
+Measured on `flight4_vaihu_east_full`, 571 frames, against the uncorrected run:
+
+| Fix | Merged | Δ count | Δ area | Sites retained |
+|---|---|---|---|---|
+| baseline (uncorrected) | 51 | n/a | n/a | n/a |
+| `--reclip-to-ocean` | 49 | −3.9% | −1.1% | 96% |
+| `--no-refine-in-segment` | 47 | −7.8% | −3.1% | 71% |
+| both | 44 | −13.7% | −3.7% | 65% |
+
+Both push the same way, trimming the inventory, which is the expected direction
+since each was inflating it. The land-leak fix is clean, removing two sites and
+adding none. The stale-thermal fix redistributes rather than trims: 15 sites
+lost and 11 gained, with retained sites growing 6.9% even as total area falls,
+because the ocean mask changes shape rather than simply shrinking.
+
+For scale, injecting the measured radial bias moves area by +31.8%, so these
+defects are roughly an order of magnitude less consequential than the effect
+this section is about, and their −3.7% sits well inside the 20 to 40 percent
+systematic already documented for absolute Σ_anomaly. Both also err toward
+over-counting, so the published products are conservative rather than inflated
+in any direction that would matter. Re-running the campaign to recover 3.7% is
+not justified. Enabling the flags on future runs is.
 
 One related defect is worth recording separately, because it is real and
 independent of frame bias. The `binary_closing` step in

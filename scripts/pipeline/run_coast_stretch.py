@@ -530,6 +530,8 @@ def run(args) -> DetectionRun:
             delta_c=args.delta_c,
             min_area_px=args.min_area,
             flat_field_path=args.flat_field,
+            reclip_to_ocean=args.reclip_to_ocean,
+            refine_in_segment=not args.no_refine_in_segment,
         )
     else:
         detector = RedesignedSGDDetector(
@@ -1044,6 +1046,23 @@ def parse_args():
         "detection, correcting the image-fixed radial bias documented in README "
         "('Per-frame thermal bias'). OFF by default: every published product was "
         "produced without it, and enabling it changes the plume inventory.",
+    )
+    ap.add_argument(
+        "--reclip-to-ocean",
+        action="store_true",
+        help="Re-apply the ocean mask after morphological smoothing. The closing "
+        "step dilates the cold mask past the ocean boundary, putting 0.1-0.2%% of "
+        "detected pixels on land. OFF by default because every published product "
+        "was produced without it.",
+    )
+    ap.add_argument(
+        "--no-refine-in-segment",
+        action="store_true",
+        help="Skip the ocean-mask refinement inside segment_ocean_land_waves, "
+        "which runs on the PREVIOUS frame's thermal data because _last_thermal "
+        "is set later, in detect_sgd_plumes. Since refinement only expands the "
+        "mask, the default double pass leaves it over-grown from stale data. "
+        "OFF by default because every published product was produced with it.",
     )
     ap.add_argument("--verbose", action="store_true")
     return ap.parse_args()
