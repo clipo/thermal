@@ -20,11 +20,17 @@ opposite responses.
   into something labelled a calibration and then apply it to frames whose sun
   geometry differs.
 
-Two observations already point away from a pure vignette. The measured
-magnitude ranges from -0.116 to -0.634 degC across four flights, with
-non-overlapping intervals, whereas fixed hardware should give a stable value.
-And the sign is edge-warm, which off-nadir emissivity alone cannot produce
-because falling emissivity at high incidence makes edges read COLDER.
+One observation motivated the test: the sign is edge-warm, which off-nadir
+emissivity alone cannot produce, because falling emissivity at high incidence
+makes edges read COLDER. Something else has to be responsible, and glint is
+the obvious candidate since it peaks at off-nadir angles.
+
+(An earlier version of this note also cited an apparent spread of -0.116 to
+-0.634 degC across flights as evidence against fixed hardware. That spread was
+a sampling artefact: three of the four flights were measured from a single
+contiguous run of frames covering one transect leg. Measured with block
+sampling across the whole flight, flights 4 and 11 give -0.242 and -0.281 degC
+and their radial profiles correlate at r = 0.9948. The magnitude is stable.)
 
 The discriminator
 -----------------
@@ -43,6 +49,19 @@ surveys, which decouples the two coordinate systems.
 A purely radial vignette is flat in BOTH angular binnings, which is itself a
 diagnostic result: it would mean the effect is radially symmetric and
 sun-independent, i.e. the sensor explanation.
+
+Result on flight 4, 250 block-sampled frames over 98,738 paired ground cells:
+image-fixed angular amplitude 0.301 degC [0.257, 0.353] against sun-relative
+0.119 degC [0.094, 0.199]. The intervals do not overlap, so the pattern lives
+in sensor coordinates and a flat field is the appropriate remedy if one is ever
+needed. The sun-relative amplitude is not zero, so a smaller
+illumination-dependent component may sit on top of the instrumental one.
+
+The test needs heading diversity to work at all, because solar azimuth moves
+only about 1 degree across a 12-minute flight. Sample with --n-blocks spread
+across the flight: 60 consecutive frames gave a relative-sun-bearing
+concentration of 0.62 and an inconclusive answer, while 250 block-sampled
+frames gave 0.96 and separated the two frames cleanly.
 
 Usage
 -----
