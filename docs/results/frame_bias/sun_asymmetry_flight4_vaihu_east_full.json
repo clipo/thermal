@@ -1,0 +1,62 @@
+{
+  "label": "flight4_vaihu_east_full",
+  "frames_used": 250,
+  "n_radial": 4,
+  "n_angular": 6,
+  "delta_c": 0.25,
+  "sun_bearing_in_frame_deg": [
+    8.173012790573964,
+    357.96069813946633
+  ],
+  "sun_elevation_deg": [
+    44.32985208364942,
+    47.12637774393131
+  ],
+  "image_fixed": {
+    "paired_cells": 98738,
+    "blocks": 272,
+    "angular_profile_c": [
+      -0.11259236598677744,
+      -0.038372385212946405,
+      0.10577133393382065,
+      0.1348981997284186,
+      -0.03291030210577962,
+      -0.16594771763506602
+    ],
+    "radial_profile_c": [
+      -0.11165417054012548,
+      -0.06470116345245776,
+      -0.00584829766977174,
+      0.1094348068101348
+    ],
+    "angular_amplitude_c": 0.30084591736348465,
+    "angular_amplitude_ci_c": [
+      0.25677038736131025,
+      0.3534762931445939
+    ]
+  },
+  "sun_relative": {
+    "paired_cells": 93987,
+    "blocks": 268,
+    "angular_profile_c": [
+      0.03272954993904023,
+      -0.07558754392083497,
+      -0.056323471525688,
+      -0.000391890628611731,
+      0.016271397396207213,
+      0.0432802682684562
+    ],
+    "radial_profile_c": [
+      -0.11218699211531057,
+      -0.06678648604883825,
+      0.020021571035961434,
+      0.13227078014723334
+    ],
+    "angular_amplitude_c": 0.11886781218929117,
+    "angular_amplitude_ci_c": [
+      0.09414709171753496,
+      0.19911889729527188
+    ]
+  },
+  "verdict": "Asymmetry is IMAGE-fixed: consistent with a sensor property. A flat-field correction is appropriate."
+}

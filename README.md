@@ -239,14 +239,37 @@ real between-flight difference until the other three are re-measured the same
 way, and the flight 4 and flight 11 intervals do in fact overlap. Nothing here
 supports or refutes a per-flight correction.
 
-**The cause is not settled between two candidates**, and they call for opposite
-responses. A sensor vignette, where the detector array self-heats at the
-centre, is fixed in image coordinates and would be corrected by a flat field.
-Sun glint, specular reflection off the water strongest at off-nadir view
-angles, is fixed relative to the solar azimuth, varies with time of day and sea
-state, and would be handled by glint masking rather than calibration. Applying
-a flat field to a glint artefact would encode one day's sun geometry as a
+**The cause is instrumental, not illumination.** Two candidates had to be
+separated, because they call for opposite responses. A sensor vignette, where
+the detector array self-heats at the centre, is fixed in image coordinates and
+would be corrected by a flat field. Sun glint, specular reflection off the
+water strongest at off-nadir view angles, is fixed relative to the solar
+azimuth and would be handled by glint masking rather than calibration.
+Applying a flat field to it would encode one day's sun geometry as a
 calibration and then apply it to frames with different geometry.
+
+`scripts/diagnostics/sun_asymmetry_test.py` separates them by binning the same
+paired residual by angle in two coordinate frames, image-fixed and
+sun-relative, and asking which one retains more angular amplitude. On 250
+block-sampled frames of flight 4, over 98,738 paired cells:
+
+| Coordinate frame | Angular amplitude | 95% CI |
+|---|---|---|
+| image-fixed | **0.301 °C** | [0.257, 0.353] |
+| sun-relative | 0.119 °C | [0.094, 0.199] |
+
+The intervals do not overlap and the image-fixed amplitude is 2.5 times the
+sun-relative one, so the pattern lives in sensor coordinates. A flat field is
+therefore the appropriate remedy should one ever be needed, and
+`estimate_vignette` in `sgd_toolkit/calibration/vignette.py` is the right tool
+for it.
+
+Two qualifications. The sun-relative amplitude is not zero, so a smaller
+illumination-dependent component may sit on top of the dominant instrumental
+one. And the test depends entirely on the drone's heading varying, because
+solar azimuth moves only about 1° across a 12-minute flight. It works here
+because relative sun bearing spans 8 to 358° with a concentration of 0.96. An
+earlier attempt on 60 consecutive frames was inconclusive at 0.62.
 
 A third term is certainly present and works against the measured sign: water
 emissivity falls at high incidence angle, so frame edges should read colder
@@ -255,15 +278,7 @@ cancels whatever produces the centre-cold pattern, and the underlying term is
 larger than the numbers above. For detection purposes the combined effect is
 what matters, since that is what reaches the threshold.
 
-`scripts/diagnostics/sun_asymmetry_test.py` is the discriminator: it bins the
-same paired residual by angle in image-fixed and sun-relative coordinates, and
-whichever frame retains more angular amplitude is the one the effect lives in.
-It has not yet produced a conclusive answer, because solar azimuth is
-effectively constant within a single 12-minute flight, so the two coordinate
-frames are decoupled only by the drone's heading changes. Comparing flights
-flown at different times of day is the route that would settle it.
-
-Settling the cause only matters if a correction is warranted. As the next
+Knowing the cause only matters if a correction is warranted. As the next
 section shows, it is not, for the comparative claims the paper makes.
 
 No correction for this is applied. `flat_field_path` defaults to `None` in
@@ -298,11 +313,12 @@ magnitude (−0.48 °C, exceeding the largest value seen in any flight), and the
 reversed sign (+0.24 °C) as a control. Injection reuses the existing flat-field
 path, so no detection code was modified for the test.
 
-This route deliberately avoids building a real flat field. The cause of the
-bias is not settled between a sensor vignette and sun glint, and a flat field
-estimated from a flight would bake that day's sun geometry into something
-labelled a calibration. Sensitivity to a synthetic ramp of known shape is what
-the decision needs, and it holds regardless of the true cause.
+This route uses a synthetic ramp rather than a flat field fitted to the flight.
+A synthetic ramp of known shape and calibrated magnitude makes the sensitivity
+interpretable on its own terms, and the result holds whatever the underlying
+cause turns out to be. It was chosen while the sensor-versus-glint question was
+still open, and it remains the cleaner test now that the question is settled,
+because it does not require the correction itself to be correct.
 
 ![Sensitivity of the products](docs/images/frame_bias/fig2_sensitivity.png)
 
