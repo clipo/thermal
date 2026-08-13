@@ -10,8 +10,7 @@ published product.
 
 Each arm is the SAME pipeline over the SAME frames, differing only by a
 synthetic radial ramp injected through --flat-field. Comparing the arms against
-the uncorrected baseline gives the sensitivity directly, without needing to
-know whether the real cause is a sensor vignette or sun glint.
+the uncorrected baseline gives the sensitivity directly.
 
 What is compared
 ----------------
@@ -23,16 +22,20 @@ are also matched spatially between arms by centroid distance, which separates
     lost      a baseline site with no counterpart
     gained    an injected-arm site with no baseline counterpart
 
-and reports the area change over retained sites. For a threshold-independent
-view, `total area` stands in for Sigma_anomaly here: the raster metric needs
-build_anomaly_raster, which does not yet accept a flat field.
+and reports the area change over retained sites.
 
-Reading the result
-------------------
-Small changes across the board mean the multi-view consensus in the density-grid
-clustering absorbs the bias, and no correction is warranted. Large changes, or
-losses concentrated at particular sites, mean the bias reaches the product and
-the sensor-versus-glint question then has to be settled before choosing a fix.
+What this does NOT answer
+-------------------------
+Everything here is threshold-dependent: counts and areas tally pixels or
+polygons on one side of a fixed cut, so a bias that shifts pixels across that
+cut moves them by construction. They duly move, and on two flights the count
+does not even keep its sign.
+
+The paper compares Sigma_anomaly across sites, and what decides whether its
+conclusions hold is whether the ORDERING of sites survives, not whether
+absolute values shift. Use compare_sigma_anomaly.py for that. It reports
+Spearman rho of 0.9968 on flight 4 and 0.9981 on flight 11, so the comparative
+claims are robust even where the numbers here are not.
 
 Usage
 -----
@@ -161,16 +164,24 @@ def main():
     worst_area = max((abs(r["area_change_pct"]) for r in rows), default=0.0)
     worst_keep = min((r["retention_pct"] for r in rows), default=100.0)
     print()
-    if worst < 10 and worst_area < 15 and worst_keep > 90:
-        print(f"  INSENSITIVE: the largest injected bias moves the count by "
-              f"{worst:.1f}% and total area by {worst_area:.1f}%, retaining "
-              f"{worst_keep:.0f}% of baseline sites. The uncorrected radial bias "
-              f"does not materially reach the product.")
-    else:
-        print(f"  SENSITIVE: up to {worst:.1f}% count change, {worst_area:.1f}% area "
-              f"change, {100-worst_keep:.0f}% of baseline sites lost. The bias "
-              f"reaches the product; the cause (sensor vs glint) must be settled "
-              f"before choosing a correction.")
+    print(f"  Polygon-level response: up to {worst:.1f}% count change, "
+          f"{worst_area:.1f}% area change, {worst_keep:.0f}% of baseline sites "
+          f"matched within {args.match_distance_m:g} m.")
+    print()
+    print("  These are THRESHOLD-DEPENDENT products and are expected to move: both")
+    print("  count pixels or polygons on one side of a fixed cut, so a bias that")
+    print("  shifts pixels across that cut changes them directly. Measured on two")
+    print("  flights, count is not even stable in sign (+7.8% on flight 4, -11.8%")
+    print("  on flight 11), because colder frame centres merge neighbouring")
+    print("  detections into fewer, larger polygons.")
+    print()
+    print("  This script does NOT answer whether the published results are")
+    print("  affected. Sigma_anomaly is the metric the paper compares across")
+    print("  sites, and what matters there is whether the ORDERING of sites")
+    print("  survives, not whether absolute values shift. Run")
+    print("  scripts/diagnostics/compare_sigma_anomaly.py for that. On flights 4")
+    print("  and 11 it gives Spearman rho of 0.9968 and 0.9981, so comparative")
+    print("  claims are robust even though the numbers above are not.")
 
     if args.output:
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
