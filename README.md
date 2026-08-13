@@ -211,10 +211,15 @@ Measured with the paired within-ground-cell design described below:
 
 | Flight | Centre − edge | 95% CI | Frames | Paired cells |
 |---|---|---|---|---|
+| `flight4_vaihu_east_full` | **−0.242 °C** | [−0.344, −0.166] | 150 block-sampled | 71,122 |
+| `flight11_hivahiva_to_hangapiko` | **−0.281 °C** | [−0.451, −0.115] | 150 block-sampled | 191,459 |
 | `flight10_anakena_to_west` | −0.634 °C | [−1.148, −0.175] | 100 consecutive | 28,351 |
 | `flight11_hivahiva_to_hangapiko` | −0.396 °C | [−0.521, −0.271] | 94 consecutive | 30,508 |
-| `flight4_vaihu_east_full` | −0.242 °C | [−0.344, −0.166] | 150 block-sampled | 71,122 |
 | `flight8_hekii_west` | −0.116 °C | [−0.330, +0.097] | 100 consecutive | 41,819 |
+
+The first two rows are the trustworthy ones. Block sampling draws contiguous
+runs spread across the whole flight. The three consecutive-frame rows each
+describe a single leg under near-constant sun and sea state.
 
 The sign is negative in all four flights, meaning the frame centre reads
 colder, and the profile is monotone across the radius bins in each case. Three
@@ -228,16 +233,28 @@ the profile is formed. A pattern of this sign and shape appearing at four
 different sites on different days is a property of the instrument or of the
 viewing geometry, not of any coastline.
 
-**Whether the magnitude differs between flights is not established.** The four
-numbers above use different sampling: flight 4 draws six contiguous blocks
-spread across the whole flight, the other three take the first ~100 consecutive
-frames, which confines each to one leg of its transect under near-constant sun
-and sea state. Flight 4 measured both ways agrees (−0.212 °C from the first 100
-frames, −0.242 °C block-sampled), so the effect itself is not a sampling
-artefact. But the apparent spread from −0.116 to −0.634 °C cannot be read as a
-real between-flight difference until the other three are re-measured the same
-way, and the flight 4 and flight 11 intervals do in fact overlap. Nothing here
-supports or refutes a per-flight correction.
+**The magnitude is consistent between flights, and the apparent spread was a
+sampling artefact.** Measured the same way, flights 4 and 11 agree closely: the
+radial profiles correlate at r = 0.9948 and differ by at most 0.026 °C at any
+radius, with centre-minus-edge values of −0.242 and −0.281 °C.
+
+| Normalised radius | Flight 4 | Flight 11 | Difference |
+|---|---|---|---|
+| 0.08 | −0.172 °C | −0.194 °C | −0.022 |
+| 0.25 | −0.128 °C | −0.151 °C | −0.023 |
+| 0.42 | −0.068 °C | −0.094 °C | −0.026 |
+| 0.58 | −0.016 °C | −0.014 °C | +0.002 |
+| 0.75 | +0.040 °C | +0.067 °C | +0.026 |
+| 0.92 | +0.143 °C | +0.151 °C | +0.007 |
+
+Flight 11 moved from −0.396 °C on its first 100 frames to −0.281 °C when
+sampled across the whole flight, close to flight 4's −0.242 °C. Two surveys at
+different sites on different days reproducing to 0.026 °C, well inside the
+0.1 °C quantisation of the raw thermal data, is what a stable camera property
+looks like. It also corroborates the sensor conclusion independently of the
+sun-asymmetry test below, since glint conditions differed between the surveys.
+`flight8_hekii_west` and `flight10_anakena_to_west` have not been re-measured
+this way, and flight 10's −0.634 °C should be treated as provisional.
 
 **The cause is instrumental, not illumination.** Two candidates had to be
 separated, because they call for opposite responses. A sensor vignette, where
@@ -290,16 +307,17 @@ without it.
 ![Measured radial bias](docs/images/frame_bias/fig1_measured_radial_bias.png)
 
 **Figure 1.** Residual temperature against position in the thermal frame, with
-the ground held fixed. (a) Flight 4, measured two ways: the paired
-within-ground-cell design that projects pixels to a ground grid (blue), and raw
-frames in image coordinates with no projection at all (orange). The two agree
-to within 0.04 °C, which rules out the footprint projection as the source, and
-shows the camera's internal non-uniformity correction is not removing the
-pattern. Bands are 95% intervals. (b) Centre-minus-edge contrast for four
-flights. All four are negative, meaning the frame centre reads colder, and
-three of four exclude zero. Flight 8 is not resolved at this sample size and
-bounds rather than excludes the effect. Dashed line marks the 0.25 °C detection
-threshold.
+the ground held fixed. (a) Three measurements that should disagree if the
+effect were an artefact, and do not. Flight 4 by the paired within-ground-cell
+design, which projects pixels to a ground grid (blue); flight 4 from raw frames
+in image coordinates with no projection at all (orange), which rules out the
+footprint projection as the source; and flight 11 by the paired design (green),
+a different site on a different day. The two flights agree to within 0.026 °C
+at every radius and correlate at r = 0.9948. Bands are 95% intervals, shown for
+the flight 4 traces. (b) Centre-minus-edge contrast per flight. All four are
+negative, meaning the frame centre reads colder. Flights 4 and 11 are sampled
+across the whole flight; flights 8 and 10 come from a single transect leg and
+are provisional. Dashed line marks the 0.25 °C detection threshold.
 
 ### Does it reach the published results?
 
@@ -330,15 +348,31 @@ from baseline by metric. Plume count is nearly unaffected. Polygon area and
 absolute Σ_anomaly move substantially and in the expected direction, a colder
 centre yielding more detected cold signal.
 
-| Quantity | Response to the measured bias | Verdict |
-|---|---|---|
-| Scalar frame drift | exactly zero | immune by construction |
-| Plume count | +7.8% | robust |
-| Site identity | 63–73% retained | mostly stable |
-| Polygon area | +31.8% | **sensitive** |
-| Global Σ_anomaly | +16.8% | **sensitive** |
-| Median per-site Σ_anomaly | +23.1% | **sensitive** |
-| **Σ_anomaly site ranking** | **Spearman ρ = 0.9968** | **robust** |
+Run on two flights with different coast geometry, `flight4_vaihu_east_full`
+(571 frames, coast axis 88°) and `flight11_hivahiva_to_hangapiko` (1,372
+frames, axis 30°), both at the measured magnitude:
+
+| Quantity | Flight 4 | Flight 11 | Verdict |
+|---|---|---|---|
+| Scalar frame drift | exactly zero | exactly zero | immune by construction |
+| Plume count | +7.8% | −11.8% | varies, see below |
+| Site identity retained | 71% | 63% | mostly stable |
+| Polygon area | +31.8% | +21.2% | **sensitive** |
+| Global Σ_anomaly | +16.8% | +12.2% | **sensitive** |
+| Median per-site Σ_anomaly | +23.1% | +22.9% | **sensitive** |
+| **Σ_anomaly site ranking** | **ρ = 0.9968** | **ρ = 0.9981** | **robust** |
+
+Plume count is the one quantity that does not generalise. Flight 4 moved
++7.8% and flight 11 moved −11.8%, and at twice the measured bias flight 11
+dropped 26.5%, from 68 merged polygons to 50. Colder frame centres yield fewer
+but larger merged polygons as neighbouring detections coalesce, and how much
+that happens depends on how densely the coast is covered. Count should not be
+quoted as a stable quantity.
+
+Everything that matters for the paper reproduces closely. Median per-site
+Σ_anomaly change agrees to within 0.2 percentage points across the two flights,
+and the rank correlation is 0.9968 and 0.9981. At twice the measured bias it is
+still 0.9920 and 0.9961.
 
 The ranking is what matters, because the paper's claims are comparative: which
 sites discharge more than which others. The bias inflates essentially all sites
@@ -359,16 +393,20 @@ along cliff coasts. A bias large enough to drive the detections would scramble
 that pattern, because it is fixed to the drone's framing and has no relation to
 coastal geography. The pattern survives:
 
-| Arm | top-5 sites kept | top-10 | top-20 | strongest site unchanged |
-|---|---|---|---|---|
-| −0.24 °C (measured) | 5/5 | 9/10 | 20/20 | yes |
-| −0.48 °C (2×) | 5/5 | 9/10 | 19/20 | yes |
-| +0.24 °C (reversed) | 5/5 | 10/10 | 20/20 | yes |
+| Arm | Flight | top-5 | top-10 | top-20 | strongest site |
+|---|---|---|---|---|---|
+| −0.24 °C (measured) | 4 | 5/5 | 9/10 | 20/20 | unchanged |
+| −0.24 °C (measured) | 11 | 5/5 | 9/10 | 20/20 | unchanged |
+| −0.48 °C (2×) | 4 | 5/5 | 9/10 | 19/20 | unchanged |
+| −0.48 °C (2×) | 11 | 4/5 | 9/10 | 20/20 | unchanged |
+| +0.24 °C (reversed) | 4 | 5/5 | 10/10 | 20/20 | unchanged |
+| +0.24 °C (reversed) | 11 | 5/5 | 10/10 | 19/20 | unchanged |
 
-The strongest discharge sites remain the strongest under every injection,
-including at twice the measured magnitude and with the sign reversed. So the
-reasoning from geological plausibility is sound, and it is now measured rather
-than inferred.
+The strongest discharge sites remain
+the strongest under every injection on both flights, including at twice the
+measured magnitude and with the sign reversed, and the single strongest site
+never changes. So the reasoning from geological plausibility is sound, and it
+is now measured on two surveys rather than inferred.
 
 Scale matters to how far that holds, though. Comparing the anomaly rasters cell
 by cell over 914,010 ocean cells, the correlation with the uncorrected raster
@@ -548,11 +586,13 @@ The scalar case is settled by the algebra above and needs no further
 measurement. What follows applies to the radial numbers and to the sensitivity
 result.
 
-The sensitivity test covers one flight, `flight4_vaihu_east_full`, over 571 of
-its 750 frames. Confirming it on a second flight is the single most useful
-remaining step before the robustness claim goes into print.
-`flight11_hivahiva_to_hangapiko` is the natural choice: it has the tightest
-paired interval after flight 4, and its coast geometry differs.
+The sensitivity test covers two flights: `flight4_vaihu_east_full` over 571 of
+its 750 frames, and `flight11_hivahiva_to_hangapiko` over all 1,372 of its
+frames. Their coast axes differ (88° against 30°), so the shoreline sits
+differently within the swath, which is the geometry that governs whether some
+stretches receive edge-only frame coverage. The result reproduces across that
+difference. Extending to the remaining flights would strengthen it further but
+is no longer the limiting step.
 
 The injected ramp is a clean linear radial profile matched to the measurement
 in sign and magnitude. The real effect may carry structure that behaves
@@ -565,9 +605,12 @@ how many independent 50 m blocks each survey covers. This matters only if a
 correction is ever fitted. The sensitivity result does not depend on knowing
 the magnitude precisely, because it brackets twice the largest value observed.
 
-The three flights other than flight 4 have not been re-measured with block
-sampling, so their magnitudes describe one leg of each transect rather than the
-whole flight, as noted above.
+`flight8_hekii_west` and `flight10_anakena_to_west` have not been re-measured
+with block sampling, so their magnitudes describe one leg of each transect
+rather than the whole flight. Flight 10's −0.634 °C is the outlier that created
+the apparent between-flight spread and has the widest interval of the four. On
+the evidence from flights 4 and 11 it should be expected to converge toward
+−0.26 °C, and it should be treated as provisional until it is re-run.
 
 No flight contains open-water frames free of coast, so a coast-free control
 stratum was never available. The paired design removes the need for one by

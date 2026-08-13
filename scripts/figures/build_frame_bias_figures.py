@@ -59,11 +59,13 @@ plt.rcParams.update({
     "legend.frameon": False,
 })
 
+# Block-sampled measurements first (the trustworthy ones), then the
+# consecutive-frame measurements, which describe one leg of each transect.
 FLIGHTS = [
     ("flight4_vaihu_east_full", "Flight 4 Vaihu East"),
-    ("flight11_hivahiva_to_hangapiko", "Flight 11 Hivahiva"),
-    ("flight10_anakena_to_west", "Flight 10 Anakena"),
-    ("flight8_hekii_west", "Flight 8 Hekii West"),
+    ("flight11_blocksampled", "Flight 11 Hivahiva"),
+    ("flight10_anakena_to_west", "Flight 10 Anakena (1 leg)"),
+    ("flight8_hekii_west", "Flight 8 Hekii West (1 leg)"),
 ]
 
 
@@ -85,19 +87,27 @@ def figure1(out_png: Path):
         ax.fill_between(c, paired["profile_ci_lo_c"], paired["profile_ci_hi_c"],
                         color=BLUE, alpha=0.20, linewidth=0)
         ax.plot(c, y, color=BLUE, lw=1.4, marker="o", ms=3,
-                label="paired, ground held fixed")
+                label="flight 4, paired, ground held fixed")
     if single:
         c2 = np.array(single["r_centers"])
         y2 = np.array(single["stacked_profile_c"])
         ax.fill_between(c2, single["stacked_ci_lo_c"], single["stacked_ci_hi_c"],
                         color=ORANGE, alpha=0.20, linewidth=0)
         ax.plot(c2, y2, color=ORANGE, lw=1.4, marker="s", ms=3,
-                label="raw frames, no projection")
+                label="flight 4, raw frames, no projection")
+    # A second flight, measured the same way. Three near-identical curves show
+    # both that the projection is not responsible and that the pattern is a
+    # stable property of the camera rather than of either survey.
+    f11 = load(DIAG / "radial_paired_flight11_blocksampled.json")
+    if f11:
+        c3 = np.array(f11["r_centers"])
+        ax.plot(c3, np.array(f11["profile_c"]), color=GREEN, lw=1.4, marker="^",
+                ms=3, label="flight 11, paired")
 
     ax.axhline(0, color=GREY, lw=0.5, ls=":")
     ax.set_xlabel("Normalised radius from frame centre")
     ax.set_ylabel("Residual (°C)")
-    ax.legend(fontsize=6.5, loc="upper left")
+    ax.legend(fontsize=5.8, loc="upper left")
     ax.text(-0.20, 1.02, "a", transform=ax.transAxes, fontsize=10, fontweight="bold")
 
     # (b) per-flight contrast
